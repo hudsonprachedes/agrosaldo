@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,7 @@ import Extrato from "./pages/Extrato";
 import Lancamentos from "./pages/Lancamentos";
 import LaunchForm from "./pages/LaunchForm";
 import Analytics from "./pages/Analytics";
+import Financeiro from "./pages/Financeiro";
 import MinhaFazenda from "./pages/MinhaFazenda";
 import Blog from "./pages/Blog";
 import Contact from "./pages/Contact";
@@ -143,7 +145,7 @@ const App = () => (
               <ProtectedRoute><Lancamentos /></ProtectedRoute>
             } />
             <Route path="/financeiro" element={
-              <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><Financeiro /></ProtectedRoute>
             } />
             <Route path="/analises" element={
               <ProtectedRoute><Analytics /></ProtectedRoute>

@@ -38,9 +38,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
+      <aside className="w-64 bg-card border-r border-border flex flex-col shrink-0">
         {/* Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-y-auto">
         <div className="p-6 lg:p-8">
           {children}
         </div>

@@ -2,362 +2,506 @@ import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import ApexChart from 'react-apexcharts';
-import { ApexOptions } from 'apexcharts';
-import { 
-  ArrowLeft,
-  TrendingUp,
+import ReactApexChart from 'react-apexcharts';
+import {
   BarChart3,
-  PieChart,
+  TrendingUp,
   Activity,
+  PieChart,
+  Calendar,
+  Target,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockAnalyticsData, mockComplianceData, getAgeDistribution } from '@/mocks/mock-analytics';
-import { getTotalCattle } from '@/mocks/mock-bovinos';
-import MobileLayout from '@/components/layout/MobileLayout';
 import AppLayout from '@/components/layout/AppLayout';
+import { ApexOptions } from 'apexcharts';
 
 export default function Analytics() {
   const { selectedProperty } = useAuth();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [period, setPeriod] = useState<'30' | '180' | '365'>('365');
+  const navigate = useNavigate();
+  const [period, setPeriod] = useState('year');
 
   if (!selectedProperty) {
     navigate('/login');
     return null;
   }
 
-  const analyticsData = mockAnalyticsData[selectedProperty.id] || [];
-  const complianceData = mockComplianceData[selectedProperty.id] || [];
-  const ageDistribution = getAgeDistribution(selectedProperty.id);
-  const totalCattle = getTotalCattle(selectedProperty.id);
-
-  // Filter data based on period
-  const filteredData = period === '30' 
-    ? analyticsData.slice(-1) 
-    : period === '180' 
-    ? analyticsData.slice(-6) 
-    : analyticsData;
-
-  // Chart 1: Evolução do Rebanho (Area Chart)
-  const evolutionOptions: ApexOptions = {
+  // Gráfico de Produtividade do Rebanho
+  const productivityOptions: ApexOptions = {
     chart: {
-      type: 'area',
+      type: 'line',
+      height: 350,
       toolbar: { show: false },
       fontFamily: 'Inter, sans-serif',
-      background: 'transparent',
     },
-    colors: ['hsl(142, 76%, 36%)'],
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.7,
-        opacityTo: 0.2,
-        stops: [0, 100]
-      }
-    },
+    colors: ['#3b82f6', '#10b981', '#f59e0b'],
+    dataLabels: { enabled: false },
     stroke: { curve: 'smooth', width: 3 },
-    dataLabels: { enabled: false },
-    xaxis: { 
-      categories: filteredData.map(d => d.month),
-      labels: { style: { colors: 'hsl(var(--muted-foreground))' } }
-    },
-    yaxis: { 
-      labels: { 
-        style: { colors: 'hsl(var(--muted-foreground))' },
-        formatter: (val) => val.toLocaleString('pt-BR')
+    xaxis: {
+      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      labels: {
+        style: { colors: '#64748b', fontSize: '11px' }
       }
     },
-    grid: { 
-      borderColor: 'hsl(var(--border))',
-      strokeDashArray: 4,
-    },
-    tooltip: {
-      theme: 'dark',
-      y: { formatter: (val) => `${val.toLocaleString('pt-BR')} cabeças` }
-    }
-  };
-
-  const evolutionSeries = [{
-    name: 'Total de Cabeças',
-    data: filteredData.map(d => d.totalCattle)
-  }];
-
-  // Chart 2: Nascimentos x Mortes (Bar Chart)
-  const birthDeathOptions: ApexOptions = {
-    chart: {
-      type: 'bar',
-      toolbar: { show: false },
-      fontFamily: 'Inter, sans-serif',
-      background: 'transparent',
-    },
-    colors: ['hsl(142, 76%, 36%)', 'hsl(0, 84%, 60%)'],
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '60%',
-        borderRadius: 4,
+    yaxis: {
+      labels: {
+        style: { colors: '#64748b', fontSize: '12px' }
       }
     },
-    dataLabels: { enabled: false },
-    xaxis: { 
-      categories: filteredData.map(d => d.month),
-      labels: { style: { colors: 'hsl(var(--muted-foreground))' } }
-    },
-    yaxis: { 
-      labels: { 
-        style: { colors: 'hsl(var(--muted-foreground))' } 
-      }
-    },
-    grid: { 
-      borderColor: 'hsl(var(--border))',
+    grid: {
+      borderColor: '#e2e8f0',
       strokeDashArray: 4,
     },
     legend: {
       position: 'top',
-      labels: { colors: 'hsl(var(--foreground))' }
+      horizontalAlign: 'left',
+      labels: { colors: '#475569' }
     },
-    tooltip: { theme: 'dark' }
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `${val}%`
+      }
+    },
+    markers: {
+      size: 4,
+      strokeWidth: 0,
+      hover: { size: 6 }
+    }
   };
 
-  const birthDeathSeries = [
-    { name: 'Nascimentos', data: filteredData.map(d => d.births) },
-    { name: 'Mortes', data: filteredData.map(d => d.deaths) }
+  const productivitySeries = [
+    {
+      name: 'Taxa de Natalidade',
+      data: [85, 87, 88, 90, 89, 91, 92, 90, 91, 93, 92, 94]
+    },
+    {
+      name: 'Taxa de Sobrevivência',
+      data: [96, 97, 96, 97, 98, 97, 98, 97, 98, 99, 98, 99]
+    },
+    {
+      name: 'Taxa de Ganho de Peso',
+      data: [82, 84, 85, 86, 87, 88, 87, 89, 88, 90, 89, 91]
+    }
   ];
 
-  // Chart 3: Estratificação por Idade (Donut)
-  const ageOptions: ApexOptions = {
+  // Gráfico de Comparação de Desempenho Anual
+  const yearComparisonOptions: ApexOptions = {
     chart: {
-      type: 'donut',
+      type: 'bar',
+      height: 350,
+      toolbar: { show: false },
       fontFamily: 'Inter, sans-serif',
-      background: 'transparent',
     },
-    colors: [
-      'hsl(142, 76%, 36%)',
-      'hsl(200, 80%, 50%)',
-      'hsl(43, 96%, 56%)',
-      'hsl(280, 60%, 50%)',
-      'hsl(0, 84%, 60%)',
-    ],
-    labels: ageDistribution.map(d => d.label),
-    dataLabels: {
-      enabled: true,
-      formatter: (val: number) => `${val.toFixed(0)}%`
+    colors: ['#3b82f6', '#8b5cf6'],
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        borderRadius: 6,
+      },
+    },
+    dataLabels: { enabled: false },
+    stroke: { show: true, width: 2, colors: ['transparent'] },
+    xaxis: {
+      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      labels: {
+        style: { colors: '#64748b', fontSize: '11px' }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: '#64748b', fontSize: '12px' }
+      }
+    },
+    grid: {
+      borderColor: '#e2e8f0',
+      strokeDashArray: 4,
     },
     legend: {
-      position: 'bottom',
-      labels: { colors: 'hsl(var(--foreground))' }
+      position: 'top',
+      horizontalAlign: 'left',
+      labels: { colors: '#475569' }
     },
-    plotOptions: {
-      pie: {
-        donut: {
-          size: '65%',
-          labels: {
-            show: true,
-            name: { show: true },
-            value: { 
-              show: true,
-              formatter: (val) => `${parseInt(String(val)).toLocaleString('pt-BR')}`
-            },
-            total: {
-              show: true,
-              label: 'Total',
-              formatter: () => totalCattle.toLocaleString('pt-BR')
-            }
-          }
-        }
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `${val} cabeças`
       }
-    },
-    tooltip: { theme: 'dark' }
+    }
   };
 
-  const ageSeries = ageDistribution.map(d => d.male + d.female);
+  const yearComparisonSeries = [
+    {
+      name: '2025',
+      data: [85, 92, 98, 105, 112, 118, 125, 132, 138, 145, 152, 160]
+    },
+    {
+      name: '2026',
+      data: [90, 98, 105, 110, 120, 128, 135, 142, 150, 158, 165, 175]
+    }
+  ];
 
-  // Chart 4: Compliance (Radial Gauge)
-  const overallCompliance = complianceData.length > 0
-    ? Math.round(complianceData.reduce((sum, c) => sum + c.percentage, 0) / complianceData.length)
-    : 100;
-
-  const complianceOptions: ApexOptions = {
+  // Gráfico de Saúde do Rebanho (Radial)
+  const healthRadialOptions: ApexOptions = {
     chart: {
       type: 'radialBar',
+      height: 350,
       fontFamily: 'Inter, sans-serif',
-      background: 'transparent',
     },
-    colors: [
-      overallCompliance >= 95 ? 'hsl(142, 76%, 36%)' : 
-      overallCompliance >= 80 ? 'hsl(43, 96%, 56%)' : 
-      'hsl(0, 84%, 60%)'
-    ],
     plotOptions: {
       radialBar: {
-        hollow: { size: '70%' },
-        track: { background: 'hsl(var(--muted))' },
+        offsetY: 0,
+        startAngle: 0,
+        endAngle: 270,
+        hollow: {
+          margin: 5,
+          size: '30%',
+          background: 'transparent',
+        },
         dataLabels: {
           name: {
-            show: true,
-            fontSize: '14px',
-            color: 'hsl(var(--muted-foreground))'
+            show: false,
           },
           value: {
-            show: true,
-            fontSize: '32px',
-            fontWeight: 700,
-            color: 'hsl(var(--foreground))',
-            formatter: (val) => `${val}%`
+            show: false,
           }
+        },
+        track: {
+          background: '#e2e8f0',
         }
       }
     },
-    labels: ['Compliance'],
+    colors: ['#16a34a', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6'],
+    labels: ['Vacinação', 'Vermifugação', 'Nutrição', 'Bem-estar', 'Reprodução'],
+    legend: {
+      show: true,
+      floating: true,
+      fontSize: '13px',
+      position: 'left',
+      offsetX: 0,
+      offsetY: 15,
+      labels: { colors: '#475569', useSeriesColors: false },
+      formatter: function(seriesName, opts) {
+        return seriesName + ":  " + opts.w.globals.series[opts.seriesIndex] + "%"
+      },
+      itemMargin: { vertical: 3 }
+    },
   };
 
-  const complianceSeries = [overallCompliance];
+  const healthRadialSeries = [95, 88, 92, 85, 90];
+
+  // Gráfico de Taxa de Conversão Alimentar
+  const feedConversionOptions: ApexOptions = {
+    chart: {
+      type: 'area',
+      height: 300,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+      sparkline: { enabled: false }
+    },
+    colors: ['#10b981'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.5,
+        opacityTo: 0.1,
+      }
+    },
+    xaxis: {
+      categories: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'],
+      labels: {
+        style: { colors: '#64748b', fontSize: '11px' }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: '#64748b', fontSize: '12px' },
+        formatter: (val) => `${val.toFixed(1)}`
+      }
+    },
+    grid: {
+      borderColor: '#e2e8f0',
+      strokeDashArray: 4,
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `${val.toFixed(2)} kg/kg`
+      }
+    }
+  };
+
+  const feedConversionSeries = [{
+    name: 'Taxa de Conversão',
+    data: [6.5, 6.3, 6.2, 6.0, 5.9, 5.8, 5.7, 5.6]
+  }];
+
+  // Gráfico de Distribuição de Peso
+  const weightDistributionOptions: ApexOptions = {
+    chart: {
+      type: 'boxPlot',
+      height: 300,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+    },
+    colors: ['#3b82f6'],
+    plotOptions: {
+      boxPlot: {
+        colors: {
+          upper: '#3b82f6',
+          lower: '#8b5cf6'
+        }
+      }
+    },
+    xaxis: {
+      categories: ['0-4m', '5-12m', '13-24m', '25-36m', '36m+'],
+      labels: {
+        style: { colors: '#64748b', fontSize: '11px' }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: '#64748b', fontSize: '12px' },
+        formatter: (val) => `${val} kg`
+      }
+    },
+    grid: {
+      borderColor: '#e2e8f0',
+      strokeDashArray: 4,
+    },
+    tooltip: {
+      theme: 'light',
+    }
+  };
+
+  const weightDistributionSeries = [{
+    name: 'Peso',
+    type: 'boxPlot',
+    data: [
+      { x: '0-4m', y: [25, 35, 45, 55, 65] },
+      { x: '5-12m', y: [80, 110, 140, 170, 200] },
+      { x: '13-24m', y: [180, 230, 280, 330, 380] },
+      { x: '25-36m', y: [280, 340, 400, 460, 520] },
+      { x: '36m+', y: [380, 450, 520, 590, 660] },
+    ]
+  }];
+
+  // Gráfico de Heatmap de Nascimentos
+  const birthHeatmapOptions: ApexOptions = {
+    chart: {
+      type: 'heatmap',
+      height: 300,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+    },
+    dataLabels: {
+      enabled: true,
+      style: {
+        colors: ['#fff']
+      }
+    },
+    colors: ['#16a34a'],
+    xaxis: {
+      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      labels: {
+        style: { colors: '#64748b', fontSize: '11px' }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: '#64748b', fontSize: '12px' }
+      }
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `${val} nascimentos`
+      }
+    }
+  };
+
+  const birthHeatmapSeries = [
+    {
+      name: '2024',
+      data: [45, 52, 48, 55, 60, 58, 62, 65, 63, 68, 70, 72]
+    },
+    {
+      name: '2025',
+      data: [50, 58, 54, 60, 65, 63, 68, 72, 70, 75, 78, 82]
+    },
+    {
+      name: '2026',
+      data: [55, 62, 59, 65, 70, 68, 73, 78, 75, 80, 85, 90]
+    }
+  ];
 
   const content = (
-    <div className={`p-4 md:p-6 lg:p-8 space-y-6 ${isMobile ? 'pb-24' : ''}`}>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-            <BarChart3 className="w-7 h-7 text-primary" />
-            Análises
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+            📊 Análises Avançadas
           </h1>
           <p className="text-muted-foreground">
-            Visualize a evolução do seu rebanho
+            Insights e indicadores de desempenho
           </p>
         </div>
-        
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as '30' | '180' | '365')}>
+
+        <Tabs value={period} onValueChange={setPeriod} className="w-auto">
           <TabsList>
-            <TabsTrigger value="30">30 dias</TabsTrigger>
-            <TabsTrigger value="180">6 meses</TabsTrigger>
-            <TabsTrigger value="365">1 ano</TabsTrigger>
+            <TabsTrigger value="month">Mês</TabsTrigger>
+            <TabsTrigger value="quarter">Trimestre</TabsTrigger>
+            <TabsTrigger value="year">Ano</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
-      {/* Charts Grid */}
+      {/* KPIs Rápidos */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-blue-600">94%</div>
+            <p className="text-sm text-blue-700 mt-1">Taxa de Natalidade</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-green-600">99%</div>
+            <p className="text-sm text-green-700 mt-1">Taxa de Sobrevivência</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-amber-600">5.6</div>
+            <p className="text-sm text-amber-700 mt-1">Conversão Alimentar</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-purple-600">520kg</div>
+            <p className="text-sm text-purple-700 mt-1">Peso Médio</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gráficos Principais */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Evolution Chart */}
-        <Card className="col-span-1 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="w-5 h-5 text-success" />
-              Evolução do Rebanho
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ApexChart
-              options={evolutionOptions}
-              series={evolutionSeries}
-              type="area"
-              height={isMobile ? 250 : 300}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Birth vs Death Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Activity className="w-5 h-5 text-chart-3" />
-              Nascimentos x Mortes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ApexChart
-              options={birthDeathOptions}
-              series={birthDeathSeries}
-              type="bar"
-              height={isMobile ? 250 : 300}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Age Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <PieChart className="w-5 h-5 text-chart-5" />
-              Estratificação por Idade
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ApexChart
-              options={ageOptions}
-              series={ageSeries}
-              type="donut"
-              height={isMobile ? 280 : 320}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Compliance Gauge */}
+        {/* Produtividade */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-lg">Compliance Sanitária</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Indicadores de Produtividade
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-6 items-center`}>
-              <div className="flex justify-center">
-                <ApexChart
-                  options={complianceOptions}
-                  series={complianceSeries}
-                  type="radialBar"
-                  height={250}
-                  width={250}
-                />
-              </div>
-              <div className="space-y-3">
-                {complianceData.map((item) => (
-                  <div 
-                    key={item.category}
-                    className={`p-4 rounded-xl ${
-                      item.status === 'ok' ? 'bg-success/10' : 
-                      item.status === 'warning' ? 'bg-warning/10' : 
-                      'bg-error/10'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{item.category}</span>
-                      <span className={`text-xl font-bold ${
-                        item.status === 'ok' ? 'text-success' : 
-                        item.status === 'warning' ? 'text-warning' : 
-                        'text-error'
-                      }`}>
-                        {item.percentage}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ReactApexChart
+              options={productivityOptions}
+              series={productivitySeries}
+              type="line"
+              height={350}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Comparação Anual */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Comparação Anual
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={yearComparisonOptions}
+              series={yearComparisonSeries}
+              type="bar"
+              height={350}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Saúde do Rebanho */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Saúde do Rebanho
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={healthRadialOptions}
+              series={healthRadialSeries}
+              type="radialBar"
+              height={350}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Taxa de Conversão Alimentar */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Conversão Alimentar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={feedConversionOptions}
+              series={feedConversionSeries}
+              type="area"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Distribuição de Peso */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-primary" />
+              Distribuição de Peso
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={weightDistributionOptions}
+              series={weightDistributionSeries}
+              type="boxPlot"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Heatmap de Nascimentos */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              Sazonalidade de Nascimentos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={birthHeatmapOptions}
+              series={birthHeatmapSeries}
+              type="heatmap"
+              height={300}
+            />
           </CardContent>
         </Card>
       </div>
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <MobileLayout>
-        <div className="p-4 space-y-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-lg">Análises</h1>
-          </div>
-          {content}
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  return <AppLayout>{content}</AppLayout>;
+  return isMobile ? content : <AppLayout>{content}</AppLayout>;
 }

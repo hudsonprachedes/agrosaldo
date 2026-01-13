@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
   Baby,
   Skull,
@@ -9,10 +10,11 @@ import {
   Dog,
   ChevronRight,
   Plus,
+  TrendingUp,
+  Calendar,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import AppLayout from '@/components/layout/AppLayout';
 
 const launchTypes = [
@@ -65,6 +67,7 @@ const launchTypes = [
 
 export default function Lancamentos() {
   const { selectedProperty } = useAuth();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
 
   if (!selectedProperty) {
@@ -86,82 +89,144 @@ export default function Lancamentos() {
         </div>
       </div>
 
-      {/* Launch Types Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {launchTypes.map((type) => {
-          const Icon = type.icon;
-          return (
-            <Card 
-              key={type.id}
-              className="cursor-pointer hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02] border-2 border-transparent hover:border-primary/20"
-              onClick={() => navigate(type.path)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className={`w-14 h-14 rounded-xl ${type.color} flex items-center justify-center shrink-0`}>
-                    <Icon className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-semibold text-lg text-foreground mb-1">
-                      {type.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {type.description}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Ações Rápidas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      {/* Versão Web - Grid de Cards Grandes */}
+      {!isMobile && (
+        <>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {launchTypes.map((type) => {
               const Icon = type.icon;
               return (
-                <Button
+                <Card 
                   key={type.id}
-                  variant="outline"
-                  className="h-auto py-4 flex flex-col items-center gap-2"
+                  className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-2 border-transparent hover:border-primary/20"
                   onClick={() => navigate(type.path)}
                 >
-                  <div className={`w-10 h-10 rounded-lg ${type.color} flex items-center justify-center`}>
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-xs font-medium">{type.title}</span>
-                </Button>
+                  <CardContent className="p-8">
+                    <div className="flex flex-col items-center text-center gap-4">
+                      <div className={`w-20 h-20 rounded-2xl ${type.color} flex items-center justify-center`}>
+                        <Icon className="w-10 h-10 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-semibold text-xl text-foreground mb-2">
+                          {type.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {type.description}
+                        </p>
+                      </div>
+                      <Button className="w-full mt-2" variant="outline">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Novo Lançamento
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Info Card */}
-      <Card className="border-l-4 border-l-primary">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Plus className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-foreground mb-1">
-                Dica: Lançamentos são retroativos
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                Você pode registrar movimentações de datas anteriores. Basta selecionar a data correta no formulário.
-              </p>
-            </div>
+          {/* Estatísticas Rápidas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Lançamentos Hoje</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">12</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-primary" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">Última atualização: 14:32</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Esta Semana</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">45</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-success" />
+                  </div>
+                </div>
+                <p className="text-xs text-success mt-4">+18% vs semana anterior</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Este Mês</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">187</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-chart-3/10 flex items-center justify-center">
+                    <Plus className="w-6 h-6 text-chart-3" />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">Média de 6 lançamentos/dia</p>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Info Card */}
+          <Card className="border-l-4 border-l-primary">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Plus className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground text-lg mb-2">
+                    💡 Dica: Lançamentos são retroativos
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Você pode registrar movimentações de datas anteriores. Basta selecionar a data correta no formulário. 
+                    Todos os lançamentos são automaticamente validados conforme as regras de negócio da sua propriedade.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Versão Mobile - Lista Compacta */}
+      {isMobile && (
+        <div className="grid gap-4">
+          {launchTypes.map((type) => {
+            const Icon = type.icon;
+            return (
+              <Card 
+                key={type.id}
+                className="cursor-pointer hover:shadow-card-hover transition-all duration-300"
+                onClick={() => navigate(type.path)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 rounded-xl ${type.color} flex items-center justify-center shrink-0`}>
+                      <Icon className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display font-semibold text-lg text-foreground mb-1">
+                        {type.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {type.description}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 

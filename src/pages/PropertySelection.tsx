@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { MaskedInput } from '@/components/ui/masked-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { fetchViaCepWithCache } from '@/lib/cep';
@@ -23,7 +24,10 @@ import { fetchViaCepWithCache } from '@/lib/cep';
 
 const propertySchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  cep: z.string().length(8, 'CEP deve ter 8 dígitos'),
+  cep: z
+    .string()
+    .min(1, 'CEP é obrigatório')
+    .refine((value) => value.replace(/\D/g, '').length === 8, 'CEP deve ter 8 dígitos'),
   accessRoute: z.string().optional(),
   community: z.string().optional(),
   city: z.string().min(2, 'Cidade inválida'),
@@ -286,8 +290,10 @@ export default function PropertySelection() {
                   <FormItem>
                     <FormLabel>CEP</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
+                      <MaskedInput
+                        mask="99999-999"
+                        value={field.value}
+                        onChange={field.onChange}
                         placeholder="12345-678"
                         disabled={cepLoading}
                         onBlur={() => {

@@ -13,23 +13,42 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { fetchViaCepWithCache } from '@/lib/cep';
+import { MaskedInput } from '@/components/ui/masked-input';
 
 // ============================================================================
 // SCHEMAS ZOD
 // ============================================================================
 
 const loginSchema = z.object({
-  cpfCnpj: z.string().min(11, 'CPF/CNPJ inválido'),
+  cpfCnpj: z
+    .string()
+    .min(1, 'CPF/CNPJ é obrigatório')
+    .refine((value) => {
+      const digits = value.replace(/\D/g, '');
+      return digits.length === 11 || digits.length === 14;
+    }, 'CPF/CNPJ inválido'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 });
 
 const registerSchema = z.object({
   name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  cpfCnpj: z.string().min(11, 'CPF/CNPJ inválido'),
+  cpfCnpj: z
+    .string()
+    .min(1, 'CPF/CNPJ é obrigatório')
+    .refine((value) => {
+      const digits = value.replace(/\D/g, '');
+      return digits.length === 11 || digits.length === 14;
+    }, 'CPF/CNPJ inválido'),
   email: z.string().email('Email inválido'),
-  phone: z.string().min(10, 'Telefone inválido'),
+  phone: z
+    .string()
+    .min(1, 'Telefone é obrigatório')
+    .refine((value) => value.replace(/\D/g, '').length >= 10, 'Telefone inválido'),
   nickname: z.string().optional(),
-  cep: z.string().length(8, 'CEP deve ter 8 dígitos'),
+  cep: z
+    .string()
+    .min(1, 'CEP é obrigatório')
+    .refine((value) => value.replace(/\D/g, '').length === 8, 'CEP deve ter 8 dígitos'),
   address: z.string().min(5, 'Endereço inválido'),
   city: z.string().min(2, 'Cidade inválida'),
   uf: z.string().length(2, 'UF inválido'),
@@ -81,10 +100,10 @@ export default function Login() {
   });
 
   const isCnpjLogin = loginForm.watch('cpfCnpj').replace(/\D/g, '').length > 11;
-  const loginMask = isCnpjLogin ? '99.999.999/9999-99' : '999.999.999-999';
+  const loginMask = isCnpjLogin ? '99.999.999/9999-99' : '999.999.999-99';
 
   const isCnpjRegister = registerForm.watch('cpfCnpj').replace(/\D/g, '').length > 11;
-  const registerMask = isCnpjRegister ? '99.999.999/9999-99' : '999.999.999-999';
+  const registerMask = isCnpjRegister ? '99.999.999/9999-99' : '999.999.999-99';
 
   // Handle login
   const onLoginSubmit = async (data: LoginFormData) => {
@@ -196,9 +215,12 @@ export default function Login() {
                       <FormItem>
                         <FormLabel>CPF ou CNPJ</FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="000.000.000-00"
+                          <MaskedInput
+                            mask={loginMask}
+                            value={field.value}
+                            onChange={field.onChange}
+                            onBlur={field.onBlur}
+                            placeholder={isCnpjLogin ? '00.000.000/0000-00' : '000.000.000-00'}
                             className="h-12"
                             autoComplete="username"
                           />
@@ -323,7 +345,13 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>CPF ou CNPJ</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="000.000.000-00" />
+                        <MaskedInput
+                          mask={registerMask}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          placeholder={isCnpjRegister ? '00.000.000/0000-00' : '000.000.000-00'}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -353,7 +381,13 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>Telefone (WhatsApp)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="(11) 99999-9999" />
+                        <MaskedInput
+                          mask="(99) 99999-9999"
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          placeholder="(11) 99999-9999"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -383,8 +417,10 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>CEP</FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
+                        <MaskedInput
+                          mask="99999-999"
+                          value={field.value}
+                          onChange={field.onChange}
                           placeholder="12345-678"
                           disabled={cepLoading}
                           onBlur={() => {

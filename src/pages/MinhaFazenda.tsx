@@ -3,24 +3,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
-  ArrowLeft,
   MapPin,
   User,
   CreditCard,
   Settings,
   Edit2,
   Save,
-  ChevronRight,
-  Phone,
   Mail,
+  Phone,
   FileText,
-  Ruler,
   Beef,
-  Trees,
-  Tractor,
-  Crown,
-  CheckCircle,
-  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,12 +20,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { plans } from '@/mocks/mock-auth';
 import { getTotalCattle } from '@/mocks/mock-bovinos';
-import MobileLayout from '@/components/layout/MobileLayout';
+import { plans } from '@/mocks/mock-auth';
 import AppLayout from '@/components/layout/AppLayout';
 
 export default function MinhaFazenda() {
@@ -49,8 +38,6 @@ export default function MinhaFazenda() {
     city: selectedProperty?.city || '',
     state: selectedProperty?.state || '',
     totalArea: selectedProperty?.totalArea || 0,
-    cultivatedArea: selectedProperty?.cultivatedArea || 0,
-    naturalArea: selectedProperty?.naturalArea || 0,
   });
 
   const [userData, setUserData] = useState({
@@ -60,13 +47,6 @@ export default function MinhaFazenda() {
     phone: '(65) 99999-9999',
   });
 
-  const [settings, setSettings] = useState({
-    notifications: true,
-    emailReports: true,
-    autoSync: true,
-    darkMode: false,
-  });
-
   if (!user || !selectedProperty) {
     navigate('/login');
     return null;
@@ -74,15 +54,14 @@ export default function MinhaFazenda() {
 
   const totalCattle = getTotalCattle(selectedProperty.id);
   const currentPlan = plans.find(p => p.id === selectedProperty.plan);
-  const nextPlan = plans.find(p => p.maxCattle > (currentPlan?.maxCattle || 0));
 
   const handleSave = () => {
     setIsEditing(false);
-    toast.success('Dados salvos com sucesso!');
+    toast.success('Dados atualizados com sucesso!');
   };
 
   const content = (
-    <div className={`p-4 md:p-6 lg:p-8 space-y-6 ${isMobile ? 'pb-24' : ''}`}>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -98,7 +77,7 @@ export default function MinhaFazenda() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className={`grid w-full ${isMobile ? 'grid-cols-2' : 'grid-cols-4'} h-auto`}>
+        <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="propriedade" className="py-3">
             <MapPin className="w-4 h-4 mr-2" />
             Propriedade
@@ -107,32 +86,11 @@ export default function MinhaFazenda() {
             <User className="w-4 h-4 mr-2" />
             Produtor
           </TabsTrigger>
-          {!isMobile && (
-            <>
-              <TabsTrigger value="plano" className="py-3">
-                <CreditCard className="w-4 h-4 mr-2" />
-                Plano
-              </TabsTrigger>
-              <TabsTrigger value="config" className="py-3">
-                <Settings className="w-4 h-4 mr-2" />
-                Configurações
-              </TabsTrigger>
-            </>
-          )}
+          <TabsTrigger value="plano" className="py-3">
+            <CreditCard className="w-4 h-4 mr-2" />
+            Plano
+          </TabsTrigger>
         </TabsList>
-
-        {isMobile && (
-          <TabsList className="grid w-full grid-cols-2 h-auto">
-            <TabsTrigger value="plano" className="py-3">
-              <CreditCard className="w-4 h-4 mr-2" />
-              Plano
-            </TabsTrigger>
-            <TabsTrigger value="config" className="py-3">
-              <Settings className="w-4 h-4 mr-2" />
-              Config
-            </TabsTrigger>
-          </TabsList>
-        )}
 
         {/* PROPRIEDADE TAB */}
         <TabsContent value="propriedade" className="space-y-6">
@@ -191,34 +149,16 @@ export default function MinhaFazenda() {
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Areas Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Ruler className="w-5 h-5 text-primary" />
-                Áreas (hectares)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-xl bg-primary/10 text-center">
-                  <Tractor className="w-8 h-8 mx-auto text-primary mb-2" />
-                  <p className="text-2xl font-bold text-primary">{farmData.totalArea.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">Área Total</p>
-                </div>
-                <div className="p-4 rounded-xl bg-warning/10 text-center">
-                  <Beef className="w-8 h-8 mx-auto text-warning mb-2" />
-                  <p className="text-2xl font-bold text-warning">{farmData.cultivatedArea.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">Área Cultivada</p>
-                </div>
-                <div className="p-4 rounded-xl bg-success/10 text-center">
-                  <Trees className="w-8 h-8 mx-auto text-success mb-2" />
-                  <p className="text-2xl font-bold text-success">{farmData.naturalArea.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">Área Natural</p>
-                </div>
+              <div className="space-y-2">
+                <Label>Área Total (hectares)</Label>
+                <Input
+                  type="number"
+                  value={farmData.totalArea}
+                  onChange={(e) => setFarmData({ ...farmData, totalArea: Number(e.target.value) })}
+                  disabled={!isEditing}
+                  className="h-12"
+                />
               </div>
             </CardContent>
           </Card>
@@ -231,7 +171,7 @@ export default function MinhaFazenda() {
                   <p className="text-primary-foreground/80 text-sm">Total de Cabeças</p>
                   <p className="text-4xl font-bold font-display">{totalCattle.toLocaleString('pt-BR')}</p>
                 </div>
-                <div className="text-6xl">🐮</div>
+                <Beef className="w-16 h-16 text-primary-foreground/20" />
               </div>
             </CardContent>
           </Card>
@@ -274,8 +214,6 @@ export default function MinhaFazenda() {
                 </div>
               </div>
 
-              <Separator />
-
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
@@ -311,8 +249,9 @@ export default function MinhaFazenda() {
                   </Label>
                   <Input
                     value={userData.cpfCnpj}
-                    disabled
-                    className="h-12 bg-muted"
+                    onChange={(e) => setUserData({ ...userData, cpfCnpj: e.target.value })}
+                    disabled={!isEditing}
+                    className="h-12"
                   />
                 </div>
 
@@ -335,194 +274,47 @@ export default function MinhaFazenda() {
 
         {/* PLANO TAB */}
         <TabsContent value="plano" className="space-y-6">
-          {/* Current Plan */}
-          <Card className="border-2 border-primary">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-primary" />
-                  Plano Atual
-                </CardTitle>
-                <Badge className="bg-primary text-lg px-4 py-1">
-                  {currentPlan?.name}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl">
-                <div>
-                  <p className="text-3xl font-bold text-primary">
-                    R$ {currentPlan?.price.toFixed(2).replace('.', ',')}
-                    <span className="text-base font-normal text-muted-foreground">/mês</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Até {currentPlan?.maxCattle === Infinity ? 'ilimitado' : currentPlan?.maxCattle.toLocaleString()} cabeças
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 text-success">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">Ativo</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Renova em 15/02/2024
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 p-4 bg-muted/50 rounded-xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm">Uso do plano</span>
-                  <span className="text-sm font-medium">
-                    {totalCattle} / {currentPlan?.maxCattle === Infinity ? '∞' : currentPlan?.maxCattle}
-                  </span>
-                </div>
-                <div className="h-3 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ 
-                      width: currentPlan?.maxCattle === Infinity 
-                        ? '10%' 
-                        : `${Math.min(100, (totalCattle / currentPlan!.maxCattle) * 100)}%` 
-                    }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* All Plans */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Todos os Planos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {plans.map((plan) => (
-                  <div 
-                    key={plan.id}
-                    className={`p-4 rounded-xl border-2 transition-all ${
-                      plan.id === currentPlan?.id 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-4 h-4 rounded-full" 
-                          style={{ backgroundColor: plan.color }}
-                        />
-                        <div>
-                          <p className="font-semibold">{plan.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Até {plan.maxCattle === Infinity ? 'ilimitado' : plan.maxCattle.toLocaleString()} cabeças
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">R$ {plan.price.toFixed(2).replace('.', ',')}</p>
-                        <p className="text-xs text-muted-foreground">/mês</p>
-                      </div>
-                    </div>
-                    {plan.id === currentPlan?.id && (
-                      <Badge className="mt-2" variant="secondary">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Seu plano atual
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {nextPlan && (
-                <Button className="w-full mt-4" variant="outline">
-                  <Crown className="w-4 h-4 mr-2" />
-                  Fazer upgrade para {nextPlan.name}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* CONFIGURAÇÕES TAB */}
-        <TabsContent value="config" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-primary" />
-                Configurações Gerais
+                <CreditCard className="w-5 h-5 text-primary" />
+                Plano Atual
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Notificações Push</p>
-                  <p className="text-sm text-muted-foreground">Receber alertas no celular</p>
+            <CardContent>
+              <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-2xl font-bold text-primary font-display">{currentPlan?.name}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{currentPlan?.description}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-foreground">R$ {currentPlan?.price}</p>
+                    <p className="text-sm text-muted-foreground">/mês</p>
+                  </div>
                 </div>
-                <Switch
-                  checked={settings.notifications}
-                  onCheckedChange={(v) => setSettings({ ...settings, notifications: v })}
-                />
-              </div>
 
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Relatórios por E-mail</p>
-                  <p className="text-sm text-muted-foreground">Receber resumo semanal</p>
+                <div className="space-y-3 mt-4">
+                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                    <span className="text-sm text-muted-foreground">Limite de cabeças</span>
+                    <span className="font-medium">{currentPlan?.maxCattle === -1 ? 'Ilimitado' : currentPlan?.maxCattle.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                    <span className="text-sm text-muted-foreground">Cabeças atuais</span>
+                    <span className="font-medium">{totalCattle.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                    <span className="text-sm text-muted-foreground">Disponível</span>
+                    <span className="font-medium text-success">
+                      {currentPlan?.maxCattle === -1 ? 'Ilimitado' : (currentPlan!.maxCattle - totalCattle).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-                <Switch
-                  checked={settings.emailReports}
-                  onCheckedChange={(v) => setSettings({ ...settings, emailReports: v })}
-                />
+
+                <Button className="w-full mt-6" size="lg">
+                  Fazer Upgrade
+                </Button>
               </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Sincronização Automática</p>
-                  <p className="text-sm text-muted-foreground">Sincronizar dados ao abrir</p>
-                </div>
-                <Switch
-                  checked={settings.autoSync}
-                  onCheckedChange={(v) => setSettings({ ...settings, autoSync: v })}
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Modo Escuro</p>
-                  <p className="text-sm text-muted-foreground">Tema escuro para o app</p>
-                </div>
-                <Switch
-                  checked={settings.darkMode}
-                  onCheckedChange={(v) => setSettings({ ...settings, darkMode: v })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Danger Zone */}
-          <Card className="border-destructive/50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertCircle className="w-5 h-5" />
-                Zona de Perigo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button variant="outline" className="w-full justify-between" onClick={() => toast.info('Em desenvolvimento')}>
-                <span>Exportar meus dados</span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="destructive" className="w-full" onClick={() => toast.error('Entre em contato com o suporte')}>
-                Cancelar assinatura
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -530,21 +322,5 @@ export default function MinhaFazenda() {
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <MobileLayout>
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-lg">Minha Fazenda</h1>
-          </div>
-          {content}
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  return <AppLayout>{content}</AppLayout>;
+  return isMobile ? content : <AppLayout>{content}</AppLayout>;
 }

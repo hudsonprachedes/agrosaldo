@@ -17,6 +17,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MaskedInput } from '@/components/ui/masked-input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -80,10 +81,14 @@ export default function AdminClientes() {
   const [blockDialog, setBlockDialog] = useState(false);
   const [impersonateDialog, setImpersonateDialog] = useState(false);
   const [historyDialog, setHistoryDialog] = useState(false);
+  const [editDialog, setEditDialog] = useState(false);
   
   // Form state
   const [newPlan, setNewPlan] = useState('');
   const [blockReason, setBlockReason] = useState('');
+  const [editCpfCnpj, setEditCpfCnpj] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [actionLogs] = useState<ActionLog[]>([
     {
       timestamp: new Date('2026-01-10T14:30:00'),
@@ -99,10 +104,20 @@ export default function AdminClientes() {
     },
   ]);
   
-  const filteredTenants = tenantsData.filter(tenant =>
-    tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.cpfCnpj.includes(searchTerm)
-  );
+  const filteredTenants = tenantsData.filter((tenant) => {
+    const term = searchTerm.trim();
+    if (!term) return true;
+
+    const termLower = term.toLowerCase();
+    const termDigits = term.replace(/\D/g, '');
+    const tenantDigits = tenant.cpfCnpj.replace(/\D/g, '');
+
+    return (
+      tenant.name.toLowerCase().includes(termLower) ||
+      tenant.cpfCnpj.toLowerCase().includes(termLower) ||
+      (termDigits.length > 0 && tenantDigits.includes(termDigits))
+    );
+  });
 
   const handleResetPassword = () => {
     if (!selectedTenant) return;
@@ -187,6 +202,40 @@ export default function AdminClientes() {
   const openHistoryDialog = (tenant: Tenant) => {
     setSelectedTenant(tenant);
     setHistoryDialog(true);
+  };
+
+  const openEditDialog = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setEditCpfCnpj(tenant.cpfCnpj || '');
+    setEditPhone(tenant.phone || '');
+    setEditEmail(tenant.email || '');
+    setEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!selectedTenant) return;
+
+    const cpfCnpjDigits = editCpfCnpj.replace(/\D/g, '');
+    if (!(cpfCnpjDigits.length === 11 || cpfCnpjDigits.length === 14)) {
+      toast.error('CPF/CNPJ inválido');
+      return;
+    }
+
+    const phoneDigits = editPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      toast.error('Telefone inválido');
+      return;
+    }
+
+    setTenantsData(tenantsData.map((t) => (
+      t.id === selectedTenant.id
+        ? { ...t, cpfCnpj: editCpfCnpj, phone: editPhone, email: editEmail }
+        : t
+    )));
+
+    toast.success('Dados do cliente atualizados');
+    setEditDialog(false);
+    setSelectedTenant(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -294,6 +343,10 @@ export default function AdminClientes() {
                         <DropdownMenuItem onClick={() => openImpersonateDialog(tenant)}>
                           <UserCheck className="w-4 h-4 mr-2" />
                           Acessar como cliente
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditDialog(tenant)}>
+                          <User className="w-4 h-4 mr-2" />
+                          Editar dados
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openChangePlanDialog(tenant)}>
                           <CreditCard className="w-4 h-4 mr-2" />
@@ -521,6 +574,60 @@ export default function AdminClientes() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setHistoryDialog(false)}>
               Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Dados do Cliente</DialogTitle>
+            <DialogDescription>
+              Atualize CPF/CNPJ e telefone de {selectedTenant?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={selectedTenant?.name || ''} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label>CPF/CNPJ</Label>
+              <MaskedInput
+                mask={editCpfCnpj.replace(/\D/g, '').length > 11 ? '99.999.999/9999-99' : '999.999.999-99'}
+                value={editCpfCnpj}
+                onChange={(e) => setEditCpfCnpj(e.target.value)}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="cliente@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <MaskedInput
+                mask="(99) 99999-9999"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              <Save className="w-4 h-4 mr-2" />
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

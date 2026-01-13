@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { MaskedInput } from '@/components/ui/masked-input';
 import {
   Form,
   FormControl,
@@ -220,7 +221,13 @@ export default function Contact() {
                           <FormItem>
                             <FormLabel>Telefone</FormLabel>
                             <FormControl>
-                              <Input placeholder="(00) 00000-0000" {...field} />
+                              <MaskedInput
+                                mask="(99) 99999-9999"
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                placeholder="(00) 00000-0000"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

@@ -21,6 +21,7 @@ import {
     Cloud,
     CloudOff,
     Loader2,
+    BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,6 +43,7 @@ const navItems = [
   { path: '/lancamentos', label: 'Lançamentos', icon: Plus },
   { path: '/extrato', label: 'Extrato', icon: FileText },
   { path: '/financeiro', label: 'Financeiro', icon: Wallet },
+  { path: '/analises', label: 'Análises', icon: BarChart3 },
   { path: '/configuracoes', label: 'Minha Fazenda', icon: Settings },
 ];
 
@@ -61,10 +63,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+        <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
           {/* Logo */}
           <div className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
@@ -365,7 +367,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content */}
       <main
         className={cn(
-          'flex-1 overflow-auto',
+          'flex-1 overflow-y-auto',
           isMobile && 'pt-14 pb-20'
         )}
       >

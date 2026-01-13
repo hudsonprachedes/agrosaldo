@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_setup';
 
 test.describe('Seleção de Propriedade', () => {
   test.beforeEach(async ({ page }) => {

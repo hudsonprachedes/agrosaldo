@@ -6,19 +6,16 @@ import {
   mockCattleBalance,
   ageGroups,
   getTotalCattle,
-  CattleBalance,
 } from '@/mocks/mock-bovinos';
+import ReactApexChart from 'react-apexcharts';
 import {
   Beef,
   TrendingUp,
   TrendingDown,
   ArrowLeft,
-  ChevronRight,
-  Filter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -28,6 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/components/layout/AppLayout';
+import { ApexOptions } from 'apexcharts';
 
 export default function Rebanho() {
   const { selectedProperty } = useAuth();
@@ -59,6 +57,90 @@ export default function Rebanho() {
     { maleBalance: 0, femaleBalance: 0, maleEntries: 0, femaleEntries: 0, maleExits: 0, femaleExits: 0 }
   );
 
+  // Gráfico de Distribuição por Sexo
+  const sexDistributionOptions: ApexOptions = {
+    chart: {
+      type: 'pie',
+      height: 300,
+      fontFamily: 'Inter, sans-serif',
+    },
+    colors: ['#3b82f6', '#ec4899'],
+    labels: ['Machos', 'Fêmeas'],
+    legend: {
+      position: 'bottom',
+      labels: { colors: '#475569' }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val: number) => `${val.toFixed(1)}%`
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `${val} cabeças`
+      }
+    }
+  };
+
+  const sexDistributionSeries = [totals.maleBalance, totals.femaleBalance];
+
+  // Gráfico de Distribuição por Faixa Etária
+  const ageDistributionOptions: ApexOptions = {
+    chart: {
+      type: 'bar',
+      height: 350,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+    },
+    colors: ['#3b82f6', '#ec4899'],
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '70%',
+        borderRadius: 6,
+      },
+    },
+    dataLabels: { enabled: false },
+    stroke: { show: true, width: 0 },
+    xaxis: {
+      categories: balances.map(b => getAgeGroupLabel(b.ageGroupId)),
+      labels: {
+        style: { colors: '#64748b', fontSize: '11px' }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: { colors: '#64748b', fontSize: '12px' }
+      }
+    },
+    grid: {
+      borderColor: '#e2e8f0',
+      strokeDashArray: 4,
+    },
+    legend: {
+      position: 'top',
+      horizontalAlign: 'left',
+      labels: { colors: '#475569' }
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `${val} cabeças`
+      }
+    }
+  };
+
+  const ageDistributionSeries = [
+    {
+      name: 'Machos',
+      data: balances.map(b => b.male.currentBalance)
+    },
+    {
+      name: 'Fêmeas',
+      data: balances.map(b => b.female.currentBalance)
+    }
+  ];
+
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
       {/* Header */}
@@ -71,153 +153,194 @@ export default function Rebanho() {
             Controle de estoque por faixa etária
           </p>
         </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filtrar
-          </Button>
-        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-2">
               <Beef className="w-5 h-5 text-primary" />
               <span className="text-sm text-muted-foreground">Total</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{totalCattle.toLocaleString('pt-BR')}</p>
+            <p className="text-3xl font-bold text-foreground">{totalCattle.toLocaleString('pt-BR')}</p>
             <p className="text-xs text-muted-foreground">cabeças</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">♂️</span>
+              <span className="text-xl">♂️</span>
               <span className="text-sm text-muted-foreground">Machos</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{totals.maleBalance.toLocaleString('pt-BR')}</p>
+            <p className="text-3xl font-bold text-foreground">{totals.maleBalance.toLocaleString('pt-BR')}</p>
             <p className="text-xs text-muted-foreground">cabeças</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">♀️</span>
+              <span className="text-xl">♀️</span>
               <span className="text-sm text-muted-foreground">Fêmeas</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{totals.femaleBalance.toLocaleString('pt-BR')}</p>
+            <p className="text-3xl font-bold text-foreground">{totals.femaleBalance.toLocaleString('pt-BR')}</p>
             <p className="text-xs text-muted-foreground">cabeças</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-5 h-5 text-success" />
               <span className="text-sm text-muted-foreground">Entradas</span>
             </div>
-            <p className="text-2xl font-bold text-success">+{(totals.maleEntries + totals.femaleEntries).toLocaleString('pt-BR')}</p>
+            <p className="text-3xl font-bold text-success">+{(totals.maleEntries + totals.femaleEntries).toLocaleString('pt-BR')}</p>
             <p className="text-xs text-muted-foreground">no período</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Balance Table */}
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distribuição por Sexo */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Beef className="w-5 h-5 text-primary" />
+              Distribuição por Sexo
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={sexDistributionOptions}
+              series={sexDistributionSeries}
+              type="pie"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Distribuição por Faixa Etária */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Beef className="w-5 h-5 text-primary" />
+              Distribuição por Faixa Etária
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={ageDistributionOptions}
+              series={ageDistributionSeries}
+              type="bar"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Espelho Oficial do Rebanho */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Saldo por Faixa Etária</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Beef className="w-5 h-5 text-primary" />
+            Espelho Oficial do Rebanho
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Faixa Etária</TableHead>
-                  <TableHead className="text-center">♂️ Machos</TableHead>
-                  <TableHead className="text-center">♀️ Fêmeas</TableHead>
-                  <TableHead className="text-center text-success">Entradas</TableHead>
-                  <TableHead className="text-center text-error">Saídas</TableHead>
-                  <TableHead className="text-right">Saldo Atual</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {balances.map((balance) => (
+        <CardContent className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-32">Faixa Etária</TableHead>
+                <TableHead className="text-center" colSpan={4}>Machos</TableHead>
+                <TableHead className="text-center" colSpan={4}>Fêmeas</TableHead>
+                <TableHead className="text-center">Total</TableHead>
+              </TableRow>
+              <TableRow>
+                <TableHead></TableHead>
+                <TableHead className="text-center text-xs">Anterior</TableHead>
+                <TableHead className="text-center text-xs text-success">Entradas</TableHead>
+                <TableHead className="text-center text-xs text-error">Saídas</TableHead>
+                <TableHead className="text-center text-xs font-bold">Atual</TableHead>
+                <TableHead className="text-center text-xs">Anterior</TableHead>
+                <TableHead className="text-center text-xs text-success">Entradas</TableHead>
+                <TableHead className="text-center text-xs text-error">Saídas</TableHead>
+                <TableHead className="text-center text-xs font-bold">Atual</TableHead>
+                <TableHead className="text-center text-xs font-bold">Atual</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {balances.map((balance) => {
+                const ageGroup = ageGroups.find(g => g.id === balance.ageGroupId);
+                const totalCurrent = balance.male.currentBalance + balance.female.currentBalance;
+                
+                return (
                   <TableRow key={balance.ageGroupId}>
-                    <TableCell className="font-medium">
-                      {getAgeGroupLabel(balance.ageGroupId)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {balance.male.currentBalance.toLocaleString('pt-BR')}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {balance.female.currentBalance.toLocaleString('pt-BR')}
+                    <TableCell className="font-medium">{ageGroup?.label}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {balance.male.previousBalance}
                     </TableCell>
                     <TableCell className="text-center text-success">
-                      +{(balance.male.entries + balance.female.entries).toLocaleString('pt-BR')}
+                      +{balance.male.entries}
                     </TableCell>
                     <TableCell className="text-center text-error">
-                      -{(balance.male.exits + balance.female.exits).toLocaleString('pt-BR')}
+                      -{balance.male.exits}
                     </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {(balance.male.currentBalance + balance.female.currentBalance).toLocaleString('pt-BR')}
+                    <TableCell className="text-center font-bold">
+                      {balance.male.currentBalance}
+                    </TableCell>
+                    <TableCell className="text-center text-muted-foreground">
+                      {balance.female.previousBalance}
+                    </TableCell>
+                    <TableCell className="text-center text-success">
+                      +{balance.female.entries}
+                    </TableCell>
+                    <TableCell className="text-center text-error">
+                      -{balance.female.exits}
+                    </TableCell>
+                    <TableCell className="text-center font-bold">
+                      {balance.female.currentBalance}
+                    </TableCell>
+                    <TableCell className="text-center font-bold text-primary">
+                      {totalCurrent}
                     </TableCell>
                   </TableRow>
-                ))}
-                <TableRow className="bg-muted/50 font-bold">
-                  <TableCell>Total</TableCell>
-                  <TableCell className="text-center">{totals.maleBalance.toLocaleString('pt-BR')}</TableCell>
-                  <TableCell className="text-center">{totals.femaleBalance.toLocaleString('pt-BR')}</TableCell>
-                  <TableCell className="text-center text-success">
-                    +{(totals.maleEntries + totals.femaleEntries).toLocaleString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-center text-error">
-                    -{(totals.maleExits + totals.femaleExits).toLocaleString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-right">{totalCattle.toLocaleString('pt-BR')}</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
+                );
+              })}
+              {/* Totals Row */}
+              <TableRow className="bg-muted/50 font-bold">
+                <TableCell>TOTAL</TableCell>
+                <TableCell className="text-center">
+                  {balances.reduce((s, b) => s + b.male.previousBalance, 0)}
+                </TableCell>
+                <TableCell className="text-center text-success">
+                  +{balances.reduce((s, b) => s + b.male.entries, 0)}
+                </TableCell>
+                <TableCell className="text-center text-error">
+                  -{balances.reduce((s, b) => s + b.male.exits, 0)}
+                </TableCell>
+                <TableCell className="text-center">
+                  {balances.reduce((s, b) => s + b.male.currentBalance, 0)}
+                </TableCell>
+                <TableCell className="text-center">
+                  {balances.reduce((s, b) => s + b.female.previousBalance, 0)}
+                </TableCell>
+                <TableCell className="text-center text-success">
+                  +{balances.reduce((s, b) => s + b.female.entries, 0)}
+                </TableCell>
+                <TableCell className="text-center text-error">
+                  -{balances.reduce((s, b) => s + b.female.exits, 0)}
+                </TableCell>
+                <TableCell className="text-center">
+                  {balances.reduce((s, b) => s + b.female.currentBalance, 0)}
+                </TableCell>
+                <TableCell className="text-center text-primary text-lg">
+                  {totalCattle}
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-
-      {/* Age Group Cards (Mobile Friendly) */}
-      {isMobile && (
-        <div className="space-y-3">
-          {balances.map((balance) => (
-            <Card key={balance.ageGroupId}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <Badge variant="secondary">{getAgeGroupLabel(balance.ageGroupId)}</Badge>
-                  <span className="text-lg font-bold">
-                    {(balance.male.currentBalance + balance.female.currentBalance).toLocaleString('pt-BR')}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">♂️ Machos:</span>
-                    <span className="ml-2 font-medium">{balance.male.currentBalance}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">♀️ Fêmeas:</span>
-                    <span className="ml-2 font-medium">{balance.female.currentBalance}</span>
-                  </div>
-                  <div>
-                    <span className="text-success">+{balance.male.entries + balance.female.entries}</span>
-                    <span className="text-muted-foreground ml-1">entradas</span>
-                  </div>
-                  <div>
-                    <span className="text-error">-{balance.male.exits + balance.female.exits}</span>
-                    <span className="text-muted-foreground ml-1">saídas</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
     </div>
   );
 
