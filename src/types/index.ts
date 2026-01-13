@@ -43,6 +43,12 @@ export interface UserDTO {
   name: string;
   email: string;
   cpfCnpj: string;
+  phone?: string;
+  nickname?: string;
+  cep?: string;
+  address?: string;
+  city?: string;
+  uf?: string;
   role: 'super_admin' | 'owner' | 'manager' | 'operator';
   avatar?: string;
   createdAt: string;
@@ -53,6 +59,12 @@ export interface CreateUserRequest {
   name: string;
   email: string;
   cpfCnpj: string;
+  phone: string;
+  nickname?: string;
+  cep: string;
+  address: string;
+  city: string;
+  uf: string;
   password: string;
   role: 'owner' | 'manager' | 'operator';
 }
@@ -60,6 +72,12 @@ export interface CreateUserRequest {
 export interface UpdateUserRequest {
   name?: string;
   email?: string;
+  phone?: string;
+  nickname?: string;
+  cep?: string;
+  address?: string;
+  city?: string;
+  uf?: string;
   avatar?: string;
 }
 
@@ -80,27 +98,40 @@ export interface PropertyDTO {
   id: string;
   userId: string;
   name: string;
+  cep?: string;
+  accessRoute?: string;
+  community?: string;
   city: string;
   state: string;
   totalArea: number;
   cultivatedArea: number;
   naturalArea: number;
+  pastureNaturalHa?: number;
+  pastureCultivatedHa?: number;
+  areaTotalHa?: number;
   cattleCount: number;
   status: 'active' | 'pending' | 'suspended';
   plan: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
+  speciesEnabled?: { bovino: boolean; bubalino: boolean };
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreatePropertyRequest {
   name: string;
+  cep: string;
+  accessRoute?: string;
+  community?: string;
   city: string;
   state: string;
   totalArea: number;
   cultivatedArea: number;
   naturalArea: number;
-  cattleCount: number;
+  pastureNaturalHa?: number;
+  pastureCultivatedHa?: number;
+  areaTotalHa?: number;
   plan: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
+  speciesEnabled: { bovino: boolean; bubalino: boolean };
 }
 
 export interface UpdatePropertyRequest {
@@ -110,8 +141,12 @@ export interface UpdatePropertyRequest {
   totalArea?: number;
   cultivatedArea?: number;
   naturalArea?: number;
+  pastureNaturalHa?: number;
+  pastureCultivatedHa?: number;
+  areaTotalHa?: number;
   cattleCount?: number;
   plan?: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
+  speciesEnabled?: { bovino: boolean; bubalino: boolean };
 }
 
 // ============================================================================
@@ -358,4 +393,118 @@ export interface PropertyFilterParams {
   plan?: string;
   limit?: number;
   offset?: number;
+}
+
+// ============================================================================
+// ONBOARDING
+// ============================================================================
+
+export type SpeciesType = 'bovino' | 'bubalino';
+
+export interface InitialStockEntry {
+  id: string;
+  propertyId: string;
+  species: SpeciesType;
+  sex: 'male' | 'female';
+  ageGroupId: string; // '0-4m', '5-12m', '13-24m', '25-36m', '36m+'
+  quantity: number;
+}
+
+export interface OnboardingState {
+  propertyId: string;
+  speciesEnabled: { bovino: boolean; bubalino: boolean };
+  initialStockSubmitted: boolean;
+  initialStockData: InitialStockEntry[];
+  completedAt?: string;
+}
+
+// ============================================================================
+// NOTIFICAÇÕES
+// ============================================================================
+
+export type NotificationType = 'announcement' | 'system' | 'reminder';
+export type NotificationStatus = 'unread' | 'read' | 'archived';
+
+export interface NotificationDTO {
+  id: string;
+  propertyId?: string;
+  userId?: string;
+  type: NotificationType;
+  status: NotificationStatus;
+  title: string;
+  message: string;
+  actionUrl?: string;
+  icon?: string;
+  createdAt: string;
+  readAt?: string;
+}
+
+export interface CreateNotificationRequest {
+  propertyId?: string;
+  userId?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  actionUrl?: string;
+}
+
+// ============================================================================
+// QUESTIONÁRIO EPIDEMIOLÓGICO
+// ============================================================================
+
+export interface EpidemiologyField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea';
+  required: boolean;
+  options?: { label: string; value: string }[];
+  hint?: string;
+}
+
+export interface EpidemiologyAnswer {
+  fieldId: string;
+  value: string | string[] | number | boolean;
+}
+
+export interface EpidemiologySurveyDTO {
+  id: string;
+  propertyId: string;
+  version: number;
+  answers: EpidemiologyAnswer[];
+  submittedAt: string;
+  nextDueAt: string; // data para próxima submissão (6 meses depois)
+}
+
+export interface CreateEpidemiologySurveyRequest {
+  propertyId: string;
+  answers: EpidemiologyAnswer[];
+}
+
+// ============================================================================
+// OUTRAS ESPÉCIES
+// ============================================================================
+
+export interface OtherSpeciesBalance {
+  id: string;
+  propertyId: string;
+  species: string; // 'equinos', 'ovinos', 'suínos', 'muares', 'aves', etc.
+  count: number;
+  updatedAt: string;
+}
+
+export interface OtherSpeciesAdjustment {
+  id: string;
+  propertyId: string;
+  species: string;
+  previousCount: number;
+  newCount: number;
+  quantityChanged: number;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface CreateOtherSpeciesAdjustmentRequest {
+  species: string;
+  newCount: number;
+  reason?: string;
 }

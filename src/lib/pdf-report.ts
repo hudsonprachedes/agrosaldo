@@ -390,11 +390,11 @@ export async function generatePDF(
   const html = generateReportHTML(data);
   
   const options = {
-    margin: [10, 10, 10, 10],
+    margin: [10, 10, 10, 10] as [number, number, number, number],
     filename: fileName,
-    image: { type: 'jpeg', quality: 0.98 },
+    image: { type: 'jpeg' as const, quality: 0.98 },
     html2canvas: { scale: 2 },
-    jsPDF: { format: 'a4', orientation: 'portrait' },
+    jsPDF: { format: 'a4' as const, orientation: 'portrait' as const },
   };
 
   try {
@@ -412,10 +412,10 @@ export async function generatePDFBlob(data: ReportData): Promise<Blob> {
   const html = generateReportHTML(data);
   
   const options = {
-    margin: [10, 10, 10, 10],
-    image: { type: 'jpeg', quality: 0.98 },
+    margin: [10, 10, 10, 10] as [number, number, number, number],
+    image: { type: 'jpeg' as const, quality: 0.98 },
     html2canvas: { scale: 2 },
-    jsPDF: { format: 'a4', orientation: 'portrait' },
+    jsPDF: { format: 'a4' as const, orientation: 'portrait' as const },
   };
 
   return new Promise((resolve, reject) => {

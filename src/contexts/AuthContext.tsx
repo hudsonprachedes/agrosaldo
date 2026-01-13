@@ -1,11 +1,25 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Property, authenticateUser, mockUsers } from '@/mocks/mock-auth';
 
+interface RegisterData {
+  name: string;
+  cpfCnpj: string;
+  email: string;
+  phone: string;
+  nickname?: string;
+  cep: string;
+  address: string;
+  city: string;
+  uf: string;
+  password: string;
+}
+
 interface AuthContextType {
   user: User | null;
   selectedProperty: Property | null;
   isLoading: boolean;
   login: (cpfCnpj: string, password: string) => Promise<boolean>;
+  register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
   selectProperty: (property: Property) => void;
   clearSelectedProperty: () => void;
@@ -48,6 +62,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const register = async (data: RegisterData): Promise<boolean> => {
+    try {
+      // Verificar se usuário já existe
+      const exists = mockUsers.some(u => u.cpfCnpj === data.cpfCnpj);
+      if (exists) {
+        return false;
+      }
+
+      // Criar novo usuário com status pending_approval
+      const newUser: User = {
+        id: `user_${Date.now()}`,
+        name: data.name,
+        cpfCnpj: data.cpfCnpj,
+        email: data.email,
+        phone: data.phone,
+        nickname: data.nickname,
+        cep: data.cep,
+        address: data.address,
+        city: data.city,
+        uf: data.uf,
+        password: data.password,
+        role: 'operator',
+        status: 'pending_approval',
+        properties: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Adicionar ao mock (em produção, seria enviado via API)
+      mockUsers.push(newUser);
+
+      // Aqui seria criado um PendingRequest no IndexedDB para aprovação do SuperAdmin
+      // Por enquanto apenas retorna sucesso
+      return true;
+    } catch (error) {
+      console.error('Erro ao registrar usuário:', error);
+      return false;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setSelectedProperty(null);
@@ -71,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectedProperty,
       isLoading,
       login,
+      register,
       logout,
       selectProperty,
       clearSelectedProperty,

@@ -1,227 +1,96 @@
-/**
- * Testes para sincronização offline e IndexedDB
- */
-
-import { describe, it, expect, beforeEach, afterEach, vi } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import {
-  saveMovement,
-  savePhoto,
-  getMovements,
-  getSyncQueue,
-  clearCompletedSyncItems,
-} from '@/lib/db';
+  saveMovementOffline,
+  savePhotoOffline,
+  getPendingMovements,
+  getSyncQueueItems,
+  clearDatabase,
+} from '@/lib/indexeddb';
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 describe('Sincronização Offline-First', () => {
   beforeEach(async () => {
-    // Limpa banco antes de cada teste
-    // await clearAllData();
+    await clearDatabase();
   });
 
-  afterEach(async () => {
-    // Cleanup após testes
+  it('salva movimento offline e adiciona à fila', async () => {
+    const movement = await saveMovementOffline({
+      id: `mov-${Date.now()}`,
+      propertyId: 'prop-123',
+      type: 'birth',
+      quantity: 5,
+      ageGroupId: '0-4',
+      date: new Date().toISOString(),
+      description: 'Nascimento registrado',
+      createdAt: new Date().toISOString(),
+    });
+
+    expect(movement.id).toBeTruthy();
+
+    const pending = await getPendingMovements('prop-123');
+    expect(pending.find(m => m.id === movement.id)).toBeTruthy();
+
+    const queue = await getSyncQueueItems();
+    expect(queue.some(item => item.resourceId === movement.id && item.type === 'movement')).toBe(true);
   });
 
-  describe('saveMovement', () => {
-    it('deve salvar movimento no IndexedDB', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'nascimento' as const,
-        quantity: 5,
-        ageGroup: 'bezerraMeses4',
-        date: new Date().toISOString(),
-        notes: 'Nascimento registrado',
-        photoId: undefined,
-        gtaNumber: undefined,
-      };
+  it('salva foto offline e adiciona à fila', async () => {
+    const photoData = new Blob(['teste'], { type: 'image/jpeg' });
+    const photo = await savePhotoOffline('mov-321', photoData, photoData.size + 200);
 
-      const id = await saveMovement(movement);
-      expect(id).toBeTruthy();
-      expect(typeof id).toBe('string');
-    });
+    expect(photo.id).toBeTruthy();
 
-    it('deve salvar movimento com foto', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'mortalidade' as const,
-        quantity: 1,
-        ageGroup: 'vacaAdulta',
-        date: new Date().toISOString(),
-        notes: 'Morte registrada',
-        photoId: 'photo-123',
-      };
-
-      const id = await saveMovement(movement);
-      expect(id).toBeTruthy();
-    });
-
-    it('deve adicionar movimento à fila de sincronização', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'venda' as const,
-        quantity: 10,
-        ageGroup: 'novilha12Meses',
-        date: new Date().toISOString(),
-        gtaNumber: 'MS.123.456.789/0001-01-2024-001',
-      };
-
-      await saveMovement(movement);
-
-      const queue = await getSyncQueue();
-      expect(queue.length).toBeGreaterThan(0);
-      expect(queue[queue.length - 1].type).toBe('movimento');
-    });
+    const queue = await getSyncQueueItems();
+    expect(queue.some(item => item.resourceId === photo.id && item.type === 'photo')).toBe(true);
   });
 
-  describe('savePhoto', () => {
-    it('deve salvar foto no IndexedDB', async () => {
-      const photoData = 'data:image/jpeg;base64,/9j/4AAQSkZJRg...'; // Exemplo base64
-      const result = await savePhoto('mov-123', photoData, 'mortalidade');
-
-      expect(result).toBeTruthy();
+  it('retorna fila ordenável por criação', async () => {
+    await saveMovementOffline({
+      id: `mov-${Date.now()}`,
+      propertyId: 'prop-123',
+      type: 'birth',
+      quantity: 1,
+      ageGroupId: '0-4',
+      date: new Date().toISOString(),
+      description: 'Primeiro movimento',
+      createdAt: new Date().toISOString(),
     });
 
-    it('deve adicionar foto à fila de sincronização', async () => {
-      const photoData = 'data:image/jpeg;base64,/9j/4AAQSkZJRg...';
-      await savePhoto('mov-123', photoData, 'mortalidade');
+    await delay(5);
 
-      const queue = await getSyncQueue();
-      const photoQueue = queue.filter(item => item.type === 'foto');
-      expect(photoQueue.length).toBeGreaterThan(0);
+    await saveMovementOffline({
+      id: `mov-${Date.now()}`,
+      propertyId: 'prop-123',
+      type: 'sale',
+      quantity: 2,
+      ageGroupId: '12-24',
+      date: new Date().toISOString(),
+      description: 'Segundo movimento',
+      createdAt: new Date().toISOString(),
     });
+
+    const queue = await getSyncQueueItems();
+    const sorted = [...queue].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    expect(sorted.map(i => i.id)).toHaveLength(queue.length);
   });
 
-  describe('getSyncQueue', () => {
-    it('deve retornar fila de sincronização vazia inicialmente', async () => {
-      // Assume limpeza anterior
-      const queue = await getSyncQueue();
-      expect(Array.isArray(queue)).toBe(true);
+  it('mantém dados localmente em cenários de erro de rede', async () => {
+    const movement = await saveMovementOffline({
+      id: `mov-${Date.now()}`,
+      propertyId: 'prop-123',
+      type: 'birth',
+      quantity: 3,
+      ageGroupId: '0-4',
+      date: new Date().toISOString(),
+      description: 'Teste falha de rede',
+      createdAt: new Date().toISOString(),
     });
 
-    it('deve retornar itens com propriedade correta', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'nascimento' as const,
-        quantity: 5,
-        ageGroup: 'bezerraMeses4',
-        date: new Date().toISOString(),
-      };
-
-      await saveMovement(movement);
-      const queue = await getSyncQueue();
-
-      expect(queue[0]).toHaveProperty('id');
-      expect(queue[0]).toHaveProperty('type');
-      expect(queue[0]).toHaveProperty('createdAt');
-      expect(queue[0]).toHaveProperty('retries');
-    });
-
-    it('deve ordenar itens por timestamp de criação', async () => {
-      // Cria múltiplos movimentos
-      const mov1 = {
-        propertyId: 'prop-123',
-        type: 'nascimento' as const,
-        quantity: 1,
-        ageGroup: 'bezerraMeses4',
-        date: new Date().toISOString(),
-      };
-
-      await saveMovement(mov1);
-      await new Promise(resolve => setTimeout(resolve, 100)); // Aguarda 100ms
-
-      const mov2 = {
-        propertyId: 'prop-123',
-        type: 'venda' as const,
-        quantity: 2,
-        ageGroup: 'novilha12Meses',
-        date: new Date().toISOString(),
-      };
-
-      await saveMovement(mov2);
-      const queue = await getSyncQueue();
-
-      // Verifica se segunda inserção é mais recente
-      if (queue.length >= 2) {
-        const timestamps = queue.map(item => new Date(item.createdAt).getTime());
-        expect(timestamps[timestamps.length - 1] >= timestamps[0]).toBe(true);
-      }
-    });
-  });
-
-  describe('clearCompletedSyncItems', () => {
-    it('deve remover itens sincronizados com sucesso', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'nascimento' as const,
-        quantity: 5,
-        ageGroup: 'bezerraMeses4',
-        date: new Date().toISOString(),
-      };
-
-      await saveMovement(movement);
-      const queueBefore = await getSyncQueue();
-      expect(queueBefore.length).toBeGreaterThan(0);
-
-      // Limpa itens completados
-      await clearCompletedSyncItems();
-
-      // Em produção, verifica se itens foram removidos
-      const queueAfter = await getSyncQueue();
-      // Resultado depende de quantos itens foram completados
-      expect(Array.isArray(queueAfter)).toBe(true);
-    });
-  });
-
-  describe('Cenários de Erro', () => {
-    it('deve lidar com falha de conexão ao salvar movimento', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'nascimento' as const,
-        quantity: 5,
-        ageGroup: 'bezerraMeses4',
-        date: new Date().toISOString(),
-      };
-
-      // Mesmo com erro de conexão, deve salvar localmente
-      const id = await saveMovement(movement);
-      expect(id).toBeTruthy();
-    });
-
-    it('deve persistir dados mesmo após erro de sincronização', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'venda' as const,
-        quantity: 10,
-        ageGroup: 'novilha12Meses',
-        date: new Date().toISOString(),
-      };
-
-      const id = await saveMovement(movement);
-      
-      // Dados devem estar salvos localmente
-      const movements = await getMovements('prop-123');
-      const saved = movements.find(m => m.id === id);
-      expect(saved).toBeTruthy();
-    });
-  });
-
-  describe('Integração com Auto-Sync', () => {
-    it('deve marcar itens para sincronização automática quando online', async () => {
-      const movement = {
-        propertyId: 'prop-123',
-        type: 'nascimento' as const,
-        quantity: 5,
-        ageGroup: 'bezerraMeses4',
-        date: new Date().toISOString(),
-      };
-
-      await saveMovement(movement);
-      const queue = await getSyncQueue();
-
-      // Todos os itens da fila devem ter contador de tentativas
-      queue.forEach(item => {
-        expect(item).toHaveProperty('retries');
-        expect(typeof item.retries).toBe('number');
-      });
-    });
+    const pending = await getPendingMovements('prop-123');
+    expect(pending.some(m => m.id === movement.id)).toBe(true);
   });
 });

@@ -126,13 +126,9 @@ export default function Extrato() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
   }, [filterType, filterAgeGroup, dateFrom, dateTo]);
 
-  if (!selectedProperty) {
-    navigate('/login');
-    return null;
-  }
-
   // Apply filters and pagination
   const filteredMovements = useMemo(() => {
+    if (!selectedProperty) return [];
     let filtered = mockMovements
       .filter(m => m.propertyId === selectedProperty.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -160,7 +156,12 @@ export default function Extrato() {
     }
 
     return filtered;
-  }, [selectedProperty.id, filterType, filterAgeGroup, dateFrom, dateTo]);
+  }, [selectedProperty?.id, filterType, filterAgeGroup, dateFrom, dateTo]);
+
+  if (!selectedProperty) {
+    navigate('/login');
+    return null;
+  }
 
   // Pagination
   const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);

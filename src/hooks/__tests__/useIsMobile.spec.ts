@@ -3,7 +3,7 @@
  * useAuth, useIsMobile, useSyncStatus
  */
 
-import { describe, it, expect, beforeEach, vi } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 

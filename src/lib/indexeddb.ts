@@ -84,6 +84,81 @@ export interface StoredProperty {
   lastSyncedAt?: string;
 }
 
+// ============================================================================
+// ONBOARDING E ESTOQUE INICIAL
+// ============================================================================
+
+export interface StoredInitialStock {
+  id: string;
+  propertyId: string;
+  species: 'bovino' | 'bubalino';
+  sex: 'male' | 'female';
+  ageGroupId: string;
+  quantity: number;
+  createdAt: string;
+}
+
+export interface StoredOnboardingStatus {
+  propertyId: string;
+  completed: boolean;
+  speciesEnabled: { bovino: boolean; bubalino: boolean };
+  completedAt?: string;
+}
+
+// ============================================================================
+// OUTRAS ESPÉCIES
+// ============================================================================
+
+export interface StoredSpeciesBalance {
+  id: string;
+  propertyId: string;
+  species: string;
+  count: number;
+  updatedAt: string;
+}
+
+export interface StoredSpeciesAdjustment {
+  id: string;
+  propertyId: string;
+  species: string;
+  previousCount: number;
+  newCount: number;
+  quantityChanged: number;
+  reason?: string;
+  createdAt: string;
+}
+
+// ============================================================================
+// QUESTIONÁRIO EPIDEMIOLÓGICO
+// ============================================================================
+
+export interface StoredEpidemiologySurvey {
+  id: string;
+  propertyId: string;
+  version: number;
+  answers: Array<{ fieldId: string; value: any }>;
+  submittedAt: string;
+  nextDueAt: string;
+}
+
+// ============================================================================
+// NOTIFICAÇÕES
+// ============================================================================
+
+export interface StoredNotification {
+  id: string;
+  propertyId?: string;
+  userId?: string;
+  type: 'announcement' | 'system' | 'reminder';
+  status: 'unread' | 'read' | 'archived';
+  title: string;
+  message: string;
+  actionUrl?: string;
+  icon?: string;
+  createdAt: string;
+  readAt?: string;
+}
+
 export interface AgroSaldoDB extends IDBPDatabase {
   // Store methods will be available via object notation
 }
@@ -150,6 +225,59 @@ export async function initDB(): Promise<AgroSaldoDB> {
         newsletterStore.createIndex('email', 'email', { unique: true });
         newsletterStore.createIndex('subscribedAt', 'subscribedAt');
       }
+
+      // Store de estoque inicial (onboarding)
+      if (!db.objectStoreNames.contains('initialStock')) {
+        const initStockStore = db.createObjectStore('initialStock', {
+          keyPath: 'id',
+        });
+        initStockStore.createIndex('propertyId', 'propertyId');
+        initStockStore.createIndex('propertyId-species', ['propertyId', 'species']);
+      }
+
+      // Store de status de onboarding
+      if (!db.objectStoreNames.contains('onboardingStatus')) {
+        db.createObjectStore('onboardingStatus', { keyPath: 'propertyId' });
+      }
+
+      // Store de saldo de outras espécies
+      if (!db.objectStoreNames.contains('speciesBalances')) {
+        const speciesStore = db.createObjectStore('speciesBalances', {
+          keyPath: 'id',
+        });
+        speciesStore.createIndex('propertyId', 'propertyId');
+        speciesStore.createIndex('propertyId-species', ['propertyId', 'species']);
+      }
+
+      // Store de histórico de ajustes de outras espécies
+      if (!db.objectStoreNames.contains('speciesAdjustments')) {
+        const adjustStore = db.createObjectStore('speciesAdjustments', {
+          keyPath: 'id',
+        });
+        adjustStore.createIndex('propertyId', 'propertyId');
+        adjustStore.createIndex('propertyId-species', ['propertyId', 'species']);
+        adjustStore.createIndex('createdAt', 'createdAt');
+      }
+
+      // Store de questionários epidemiológicos
+      if (!db.objectStoreNames.contains('epidemiologySurveys')) {
+        const surveyStore = db.createObjectStore('epidemiologySurveys', {
+          keyPath: 'id',
+        });
+        surveyStore.createIndex('propertyId', 'propertyId');
+        surveyStore.createIndex('submittedAt', 'submittedAt');
+      }
+
+      // Store de notificações
+      if (!db.objectStoreNames.contains('notifications')) {
+        const notifStore = db.createObjectStore('notifications', {
+          keyPath: 'id',
+        });
+        notifStore.createIndex('propertyId', 'propertyId');
+        notifStore.createIndex('userId', 'userId');
+        notifStore.createIndex('status', 'status');
+        notifStore.createIndex('createdAt', 'createdAt');
+      }
     },
   }) as Promise<AgroSaldoDB>;
 }
@@ -180,6 +308,15 @@ export async function saveMovementOffline(
   };
 
   await db.add('movements', stored);
+
+  await addToSyncQueue({
+    propertyId: stored.propertyId,
+    type: 'movement',
+    resourceId: stored.id,
+    payload: stored,
+    status: 'pending',
+  });
+
   return stored;
 }
 
@@ -296,6 +433,15 @@ export async function savePhotoOffline(
   };
 
   await db.add('photos', photo);
+
+  await addToSyncQueue({
+    propertyId: movementId.split('-')[1] || 'unknown',
+    type: 'photo',
+    resourceId: photo.id,
+    payload: photo,
+    status: 'pending',
+  });
+
   return photo;
 }
 
@@ -370,7 +516,7 @@ export async function getSyncStats(): Promise<{
   const pendingMovements = await db
     .transaction('movements')
     .store.index('syncStatus')
-    .countAll();
+    .count('pending');
 
   const failedQueue = await db
     .transaction('syncQueue')
@@ -466,3 +612,281 @@ export async function isEmailSubscribed(email: string): Promise<boolean> {
   const existing = await db.getFromIndex('newsletter', 'email', email);
   return !!existing;
 }
+// ============================================================================
+// INICIAL STOCK (ONBOARDING)
+// ============================================================================
+
+/**
+ * Salvar entrada de estoque inicial
+ */
+export async function saveInitialStockEntry(
+  entry: Omit<StoredInitialStock, 'id' | 'createdAt'>
+): Promise<StoredInitialStock> {
+  const db = await getDB();
+
+  const stored: StoredInitialStock = {
+    ...entry,
+    id: `init-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  await db.add('initialStock', stored);
+  return stored;
+}
+
+/**
+ * Obter estoque inicial de uma propriedade
+ */
+export async function getInitialStock(propertyId: string): Promise<StoredInitialStock[]> {
+  const db = await getDB();
+  const index = db.transaction('initialStock').store.index('propertyId');
+  return index.getAll(propertyId);
+}
+
+/**
+ * Marcar onboarding como completo
+ */
+export async function completeOnboarding(
+  propertyId: string,
+  speciesEnabled: { bovino: boolean; bubalino: boolean }
+): Promise<void> {
+  const db = await getDB();
+
+  const status: StoredOnboardingStatus = {
+    propertyId,
+    completed: true,
+    speciesEnabled,
+    completedAt: new Date().toISOString(),
+  };
+
+  await db.put('onboardingStatus', status);
+}
+
+/**
+ * Verificar se onboarding foi completado
+ */
+export async function isOnboardingCompleted(propertyId: string): Promise<boolean> {
+  const db = await getDB();
+  const status = await db.get('onboardingStatus', propertyId);
+  return status?.completed ?? false;
+}
+
+/**
+ * Obter status do onboarding
+ */
+export async function getOnboardingStatus(
+  propertyId: string
+): Promise<StoredOnboardingStatus | null> {
+  const db = await getDB();
+  return (await db.get('onboardingStatus', propertyId)) || null;
+}
+
+// ============================================================================
+// OUTRAS ESPÉCIES
+// ============================================================================
+
+/**
+ * Salvar ou atualizar saldo de espécie
+ */
+export async function saveSpeciesBalance(
+  balance: Omit<StoredSpeciesBalance, 'id' | 'updatedAt'>
+): Promise<StoredSpeciesBalance> {
+  const db = await getDB();
+
+  // Verifica se já existe
+  const index = db.transaction('speciesBalances').store.index('propertyId-species');
+  const existing = await index.getAll([balance.propertyId, balance.species]);
+
+  if (existing.length > 0) {
+    const updated = {
+      ...existing[0],
+      ...balance,
+      updatedAt: new Date().toISOString(),
+    };
+    await db.put('speciesBalances', updated);
+    return updated;
+  }
+
+  const stored: StoredSpeciesBalance = {
+    ...balance,
+    id: `species-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await db.add('speciesBalances', stored);
+  return stored;
+}
+
+/**
+ * Obter saldos de outras espécies de uma propriedade
+ */
+export async function getSpeciesBalances(propertyId: string): Promise<StoredSpeciesBalance[]> {
+  const db = await getDB();
+  const index = db.transaction('speciesBalances').store.index('propertyId');
+  return index.getAll(propertyId);
+}
+
+/**
+ * Registrar ajuste de espécie
+ */
+export async function saveSpeciesAdjustment(
+  adjustment: Omit<StoredSpeciesAdjustment, 'id' | 'createdAt'>
+): Promise<StoredSpeciesAdjustment> {
+  const db = await getDB();
+
+  const stored: StoredSpeciesAdjustment = {
+    ...adjustment,
+    id: `adj-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  await db.add('speciesAdjustments', stored);
+  return stored;
+}
+
+/**
+ * Obter histórico de ajustes de uma espécie
+ */
+export async function getSpeciesAdjustments(
+  propertyId: string,
+  species?: string
+): Promise<StoredSpeciesAdjustment[]> {
+  const db = await getDB();
+  const index = db.transaction('speciesAdjustments').store.index('propertyId');
+  const all = await index.getAll(propertyId);
+
+  if (species) {
+    return all.filter((a) => a.species === species);
+  }
+
+  return all;
+}
+
+// ============================================================================
+// QUESTIONÁRIO EPIDEMIOLÓGICO
+// ============================================================================
+
+/**
+ * Salvar resposta de questionário epidemiológico
+ */
+export async function saveEpidemiologySurvey(
+  survey: Omit<StoredEpidemiologySurvey, 'id'>
+): Promise<StoredEpidemiologySurvey> {
+  const db = await getDB();
+
+  const stored: StoredEpidemiologySurvey = {
+    ...survey,
+    id: `survey-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  };
+
+  await db.add('epidemiologySurveys', stored);
+  return stored;
+}
+
+/**
+ * Obter última submissão de questionário
+ */
+export async function getLastEpidemiologySurvey(
+  propertyId: string
+): Promise<StoredEpidemiologySurvey | null> {
+  const db = await getDB();
+  const index = db.transaction('epidemiologySurveys').store.index('propertyId');
+  const surveys = await index.getAll(propertyId);
+
+  if (surveys.length === 0) return null;
+
+  // Retorna a mais recente
+  return surveys.reduce((latest, current) =>
+    new Date(current.submittedAt) > new Date(latest.submittedAt) ? current : latest
+  );
+}
+
+/**
+ * Obter histórico de questionários
+ */
+export async function getEpidemiologySurveyHistory(
+  propertyId: string
+): Promise<StoredEpidemiologySurvey[]> {
+  const db = await getDB();
+  const index = db.transaction('epidemiologySurveys').store.index('propertyId');
+  return index.getAll(propertyId);
+}
+
+// ============================================================================
+// NOTIFICAÇÕES
+// ============================================================================
+
+/**
+ * Salvar notificação
+ */
+export async function saveNotification(
+  notification: Omit<StoredNotification, 'id'>
+): Promise<StoredNotification> {
+  const db = await getDB();
+
+  const stored: StoredNotification = {
+    ...notification,
+    id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  };
+
+  await db.add('notifications', stored);
+  return stored;
+}
+
+/**
+ * Obter notificações não lidas
+ */
+export async function getUnreadNotifications(propertyId?: string): Promise<StoredNotification[]> {
+  const db = await getDB();
+  const index = db.transaction('notifications').store.index('status');
+  const unread = await index.getAll('unread');
+
+  if (propertyId) {
+    return unread.filter((n) => n.propertyId === propertyId);
+  }
+
+  return unread;
+}
+
+/**
+ * Marcar notificação como lida
+ */
+export async function markNotificationAsRead(id: string): Promise<void> {
+  const db = await getDB();
+  const notification = await db.get('notifications', id);
+
+  if (notification) {
+    notification.status = 'read';
+    notification.readAt = new Date().toISOString();
+    await db.put('notifications', notification);
+  }
+}
+
+/**
+ * Obter notificações de uma propriedade
+ */
+export async function getPropertyNotifications(propertyId: string): Promise<StoredNotification[]> {
+  const db = await getDB();
+  const index = db.transaction('notifications').store.index('propertyId');
+  return index.getAll(propertyId);
+}
+
+/**
+ * Obter todas as notificações (paginado)
+ */
+export async function getAllNotifications(
+  limit: number = 50,
+  offset: number = 0
+): Promise<StoredNotification[]> {
+  const db = await getDB();
+  const all = await db.getAll('notifications');
+  return all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(offset, offset + limit);
+}
+
+// ============================================================================
+// ALIASES PARA COMPATIBILIDADE
+// ============================================================================
+
+export const saveMovement = saveMovementOffline;
+export const savePhoto = savePhotoOffline;

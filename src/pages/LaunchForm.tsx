@@ -41,7 +41,12 @@ import { toast } from 'sonner';
 import { ageGroups } from '@/mocks/mock-bovinos';
 import { cn } from '@/lib/utils';
 import MobileLayout from '@/components/layout/MobileLayout';
-import { saveMovement, savePhoto } from '@/lib/db';
+import { 
+  saveMovement, 
+  savePhoto,
+  saveSpeciesBalance,
+  saveSpeciesAdjustment,
+} from '@/lib/indexeddb';
 import { compressImage } from '@/lib/image-compression';
 
 import { getAvailableMatrizes } from '@/mocks/mock-bovinos';
@@ -218,6 +223,34 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           icon: '💉',
         });
       } else if (type === 'outras') {
+        // Persistir ajustes de outras espécies no IndexedDB
+        const previousCounts = Object.fromEntries(otherSpecies.map(s => [s.id, s.count]));
+        
+        for (const species of otherSpecies) {
+          const newCount = speciesCounts[species.id] || 0;
+          const previousCount = previousCounts[species.id] || 0;
+          
+          if (newCount !== previousCount) {
+            // Salvar ajuste individual
+            await saveSpeciesAdjustment({
+              propertyId: selectedProperty.id,
+              species: species.id,
+              previousCount,
+              newCount,
+              reason: notes || 'Ajuste manual de saldo',
+              createdAt: new Date(),
+            });
+            
+            // Atualizar saldo
+            await saveSpeciesBalance({
+              propertyId: selectedProperty.id,
+              species: species.id,
+              count: newCount,
+              lastUpdated: new Date(),
+            });
+          }
+        }
+        
         toast.success('Saldo de outras espécies atualizado', {
           icon: '🐴',
         });

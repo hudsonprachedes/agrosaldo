@@ -2,6 +2,7 @@
  * Utilitários para SEO e Meta Tags
  * Garante que cada página tenha metadados corretos para Google e redes sociais
  */
+import { useEffect } from 'react';
 
 export interface MetaTags {
   title: string;
@@ -233,7 +234,7 @@ export const localBusinessSchema = {
  * usePageMeta(PAGE_META_TAGS.home)
  */
 export function usePageMeta(tags: (typeof PAGE_META_TAGS)[keyof typeof PAGE_META_TAGS]) {
-  React.useEffect(() => {
+  useEffect(() => {
     setMetaTags(tags as MetaTags);
   }, [tags]);
 }

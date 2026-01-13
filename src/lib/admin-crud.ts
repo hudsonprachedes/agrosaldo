@@ -100,7 +100,7 @@ export async function adminUpsert<K extends keyof AdminDB>(
   value: AdminDB[K]['value']
 ): Promise<void> {
   const db = await getAdminDB();
-  await db.put(storeName, value);
+  await db.put(storeName as 'plans' | 'clients' | 'requests', value);
 }
 
 /**
@@ -111,7 +111,7 @@ export async function adminGetById<K extends keyof AdminDB>(
   id: string
 ): Promise<AdminDB[K]['value'] | undefined> {
   const db = await getAdminDB();
-  return await db.get(storeName, id);
+  return await db.get(storeName as 'plans' | 'clients' | 'requests', id);
 }
 
 /**
@@ -121,7 +121,7 @@ export async function adminGetAll<K extends keyof AdminDB>(
   storeName: K
 ): Promise<AdminDB[K]['value'][]> {
   const db = await getAdminDB();
-  return await db.getAll(storeName);
+  return await db.getAll(storeName as 'plans' | 'clients' | 'requests');
 }
 
 /**
@@ -132,7 +132,7 @@ export async function adminDelete<K extends keyof AdminDB>(
   id: string
 ): Promise<void> {
   const db = await getAdminDB();
-  await db.delete(storeName, id);
+  await db.delete(storeName as 'plans' | 'clients' | 'requests', id);
 }
 
 /**
@@ -142,9 +142,13 @@ export async function adminGetByIndex<K extends keyof AdminDB>(
   storeName: K,
   indexName: string,
   query: string
-): Promise<AdminDB[K]['value'][]> {
+): Promise<any[]> {
   const db = await getAdminDB();
-  return await db.getAllFromIndex(storeName, indexName as any, query);
+  return await db.getAllFromIndex(
+    storeName as any,
+    indexName as any,
+    query
+  );
 }
 
 // ==================== FUNÇÕES ESPECÍFICAS ====================

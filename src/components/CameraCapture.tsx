@@ -51,7 +51,7 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
   }, [stream]);
 
   // Capturar foto
-  const capturePhoto = useCallback(() => {
+  const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;

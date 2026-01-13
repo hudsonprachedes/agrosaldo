@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSyncStatus } from '@/hooks/useSyncStatus';
+import { NotificationsPanel } from '@/components/NotificationsPanel';
 import {
   LayoutDashboard,
   Beef,
@@ -193,10 +194,35 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
             </div>
 
-          {/* User Menu */}
-          <div className="p-4 border-t border-sidebar-border">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+          {/* User Menu & Sync Status */}
+          <div className="p-4 border-t border-sidebar-border space-y-2">
+            {/* Sync Status */}
+            <div className="flex items-center justify-between px-3 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                {isSyncing ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                ) : isOnline ? (
+                  <Cloud className="w-4 h-4 text-green-500" />
+                ) : (
+                  <CloudOff className="w-4 h-4 text-gray-400" />
+                )}
+                <span className="text-sidebar-muted">
+                  {isSyncing ? 'Sincronizando...' : isOnline ? 'Sincronizado' : 'Offline'}
+                </span>
+              </div>
+              {pendingCount > 0 && (
+                <span className="text-sidebar-muted bg-sidebar-accent px-2 py-1 rounded text-xs">
+                  {pendingCount}
+                </span>
+              )}
+            </div>
+
+            {/* Notifications + User */}
+            <div className="flex items-center justify-between">
+              <NotificationsPanel propertyId={selectedProperty?.id} />
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-3 h-auto py-2"
@@ -221,6 +247,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
         </aside>
       )}

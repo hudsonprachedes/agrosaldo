@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPendingSyncItems, getDatabaseStats, syncAll } from '@/lib/db';
+import { getPendingSyncItems, getDatabaseStats, syncAll } from '@/lib/db-compat';
 
 export type SyncStatus = 'synced' | 'syncing' | 'error' | 'offline';
 

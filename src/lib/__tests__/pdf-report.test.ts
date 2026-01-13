@@ -1,13 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, jest } from '@jest/globals';
 import { generateReportHTML, generatePDFBlob } from '../pdf-report';
 
 // Mock do html2pdf
-vi.mock('html2pdf.js', () => ({
-  default: vi.fn(() => ({
-    set: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    save: vi.fn().mockResolvedValue(undefined),
-    outputPdf: vi.fn().mockResolvedValue(new Blob(['mock pdf'], { type: 'application/pdf' })),
+jest.mock('html2pdf.js', () => ({
+  default: jest.fn(() => ({
+    set: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
+    save: jest.fn(async () => undefined),
+    outputPdf: jest.fn(async () => new Blob(['mock pdf'], { type: 'application/pdf' })),
   })),
 }));
 
@@ -49,7 +49,7 @@ describe('generateReportHTML', () => {
 
   it('deve incluir data de geração', () => {
     const html = generateReportHTML(mockData);
-    expect(html).toContain('2024-01-15 14:30');
+    expect(html).toContain('Gerado em 15 de janeiro de 2024 às 14:30');
   });
 
   it('deve incluir total de cabeças', () => {

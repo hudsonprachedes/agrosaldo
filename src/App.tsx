@@ -10,6 +10,8 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import PropertySelection from "./pages/PropertySelection";
+import Onboarding from "./pages/Onboarding";
+import QuestionarioEpidemiologico from "./pages/QuestionarioEpidemiologico";
 import Dashboard from "./pages/Dashboard";
 import MobileHome from "./pages/MobileHome";
 import Rebanho from "./pages/Rebanho";
@@ -39,14 +41,40 @@ import AdminLayout from "./components/layout/AdminLayout";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children, requireProperty = true, requireAdmin = false }: { 
+function ProtectedRoute({ 
+  children, 
+  requireProperty = true, 
+  requireAdmin = false,
+  requireOnboarding = true 
+}: { 
   children: React.ReactNode; 
   requireProperty?: boolean;
   requireAdmin?: boolean;
+  requireOnboarding?: boolean;
 }) {
   const { user, selectedProperty, isLoading } = useAuth();
+  const [onboardingCompleted, setOnboardingCompleted] = React.useState<boolean | null>(null);
+
+  // Carregar status do onboarding
+  React.useEffect(() => {
+    if (selectedProperty && requireOnboarding) {
+      const checkOnboarding = async () => {
+        try {
+          const { isOnboardingCompleted } = await import('./lib/indexeddb');
+          const completed = await isOnboardingCompleted(selectedProperty.id);
+          setOnboardingCompleted(completed);
+        } catch (error) {
+          console.error('Erro ao verificar onboarding:', error);
+          setOnboardingCompleted(false);
+        }
+      };
+      checkOnboarding();
+    } else {
+      setOnboardingCompleted(true);
+    }
+  }, [selectedProperty, requireOnboarding]);
   
-  if (isLoading) {
+  if (isLoading || (requireOnboarding && onboardingCompleted === null)) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   
@@ -61,6 +89,11 @@ function ProtectedRoute({ children, requireProperty = true, requireAdmin = false
   
   if (requireProperty && !selectedProperty) {
     return <Navigate to="/selecionar-propriedade" replace />;
+  }
+
+  // Verificar onboarding
+  if (requireOnboarding && requireProperty && !onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />;
   }
   
   return <>{children}</>;
@@ -85,6 +118,16 @@ const App = () => (
             <Route path="/blog" element={<Blog />} />
             <Route path="/contato" element={<Contact />} />
             <Route path="/selecionar-propriedade" element={<PropertySelection />} />
+            
+            {/* Onboarding Route */}
+            <Route path="/onboarding" element={
+              <ProtectedRoute requireProperty={true} requireOnboarding={false}><Onboarding /></ProtectedRoute>
+            } />
+            
+            {/* Questionário Route */}
+            <Route path="/questionario-epidemiologico" element={
+              <ProtectedRoute><QuestionarioEpidemiologico /></ProtectedRoute>
+            } />
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={

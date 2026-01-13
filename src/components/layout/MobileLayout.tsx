@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { NotificationsPanel } from '@/components/NotificationsPanel';
 import {
   Home,
   Beef,
@@ -117,6 +118,11 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
             >
               <RefreshCw className="w-5 h-5" />
             </Button>
+
+            <NotificationsPanel 
+              propertyId={selectedProperty?.id}
+              className="text-primary-foreground hover:bg-primary-foreground/10"
+            />
           </div>
         </div>
       </header>
