@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, UserPlus, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { fetchCEP } from '@/lib/cep';
+import { fetchViaCep } from '@/lib/cep';
 
 // Validação de CPF
 const isValidCPF = (cpf: string) => {
@@ -122,9 +122,9 @@ export default function Cadastro() {
       if (cepValue && cepValue.replace(/\D/g, '').length === 8) {
         setFetchingCEP(true);
         try {
-          const data = await fetchCEP(cepValue);
-          if (data) {
-            setValue('municipio', data.localidade);
+          const data = await fetchViaCep(cepValue);
+          if (data.found) {
+            setValue('municipio', data.city);
             setValue('uf', data.uf);
           }
         } catch (error) {

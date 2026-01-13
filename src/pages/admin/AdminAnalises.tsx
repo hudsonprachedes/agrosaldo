@@ -233,7 +233,7 @@ export default function AdminAnalises() {
             </p>
           </div>
 
-          <Select value={period} onValueChange={(value: any) => setPeriod(value)}>
+          <Select value={period} onValueChange={(value: '7d' | '30d' | '90d' | '1y') => setPeriod(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>

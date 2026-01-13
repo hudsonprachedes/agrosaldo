@@ -279,7 +279,7 @@ export default function AdminRegulamentacoes() {
                 <Label htmlFor="saldoReportFrequency">Frequência de Declaração de Saldo</Label>
                 <Select
                   value={formData.saldoReportFrequency}
-                  onValueChange={(value: any) => setFormData({ ...formData, saldoReportFrequency: value })}
+                  onValueChange={(value: 'monthly' | 'quarterly' | 'biannual' | 'annual') => setFormData({ ...formData, saldoReportFrequency: value })}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue />

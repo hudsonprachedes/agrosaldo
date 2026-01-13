@@ -144,7 +144,7 @@ export async function adminGetByIndex(
   query: string
 ): Promise<Record<string, unknown>[]> {
   const db = await getAdminDB();
-  return await (db as any).getAllFromIndex(
+  return await (db as IDBPDatabase).getAllFromIndex(
     storeName,
     indexName,
     query

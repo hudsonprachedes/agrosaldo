@@ -2,7 +2,7 @@ import { test as base, expect } from '@playwright/test';
 
 // Fixture that collects console errors and fails tests if any occur
 export const test = base.extend<{ consoleErrors: string[] }>({
-  consoleErrors: async ({ page }, use) => {
+  consoleErrors: async ({ page }, useFixture) => {
     const errors: string[] = [];
     
     // Captura erros críticos de JavaScript não tratados
@@ -37,7 +37,7 @@ export const test = base.extend<{ consoleErrors: string[] }>({
       }
     });
     
-    await use(errors);
+    await useFixture(errors);
     
     if (errors.length > 0) {
       throw new Error('Erros críticos de console detectados:\n' + errors.join('\n'));

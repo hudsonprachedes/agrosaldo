@@ -92,7 +92,7 @@ export default function AdminFinanceiro() {
   const handlePixConfigSave = () => {
     updatePixConfig({
       pixKey,
-      pixKeyType: pixKeyType as any,
+      pixKeyType: pixKeyType as 'cpf' | 'cnpj' | 'email' | 'phone' | 'random',
       qrCodeImage,
     });
 
@@ -463,7 +463,7 @@ export default function AdminFinanceiro() {
 
               <div>
                 <Label htmlFor="paymentMethod">Método de Pagamento</Label>
-                <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                <Select value={paymentMethod} onValueChange={(value: 'pix' | 'credit_card' | 'debit_card' | 'bank_slip' | 'cash') => setPaymentMethod(value)}>
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
@@ -528,7 +528,7 @@ export default function AdminFinanceiro() {
             <div className="space-y-4 py-4">
               <div>
                 <Label htmlFor="pixKeyType">Tipo de Chave</Label>
-                <Select value={pixKeyType} onValueChange={(value: any) => setPixKeyType(value)}>
+                <Select value={pixKeyType} onValueChange={(value: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random') => setPixKeyType(value)}>
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>

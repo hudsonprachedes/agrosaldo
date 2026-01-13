@@ -267,7 +267,7 @@ export default function AdminCadastros() {
 
               <div>
                 <Label htmlFor="trialPlan">Plano do Período de Teste</Label>
-                <Select value={trialPlan} onValueChange={(value: any) => setTrialPlan(value)}>
+                <Select value={trialPlan} onValueChange={(value: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao') => setTrialPlan(value)}>
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
