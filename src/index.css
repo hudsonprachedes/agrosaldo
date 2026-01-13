@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    /* Background & Surfaces */
+    --background: 40 33% 98%;
+    --foreground: 20 14% 10%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 10%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 10%;
+
+    /* Primary - Forest Green (Agricultural) */
+    --primary: 142 76% 22%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - Warm Earth */
+    --secondary: 35 25% 92%;
+    --secondary-foreground: 20 14% 10%;
+
+    /* Muted - Soft Earth */
+    --muted: 40 20% 94%;
+    --muted-foreground: 20 10% 45%;
+
+    /* Accent - Golden Wheat */
+    --accent: 43 96% 56%;
+    --accent-foreground: 20 14% 10%;
+
+    /* Destructive - Alert Red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Semantic Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 43 96% 56%;
+    --warning-foreground: 20 14% 10%;
+    
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
+    
+    --death: 0 0% 10%;
+    --death-foreground: 0 0% 100%;
+
+    /* UI Elements */
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 142 76% 22%;
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 142 30% 15%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 142 76% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 30% 22%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 142 20% 25%;
+    --sidebar-ring: 142 76% 45%;
+    --sidebar-muted: 142 15% 40%;
+
+    /* Charts */
+    --chart-1: 142 76% 36%;
+    --chart-2: 43 96% 56%;
+    --chart-3: 200 80% 50%;
+    --chart-4: 0 84% 60%;
+    --chart-5: 280 60% 50%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(142 76% 22%) 0%, hsl(142 50% 30%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 33% 97%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 60% 45%) 100%);
+    --gradient-warning: linear-gradient(135deg, hsl(43 96% 56%) 0%, hsl(43 80% 60%) 100%);
+    --gradient-death: linear-gradient(135deg, hsl(0 0% 10%) 0%, hsl(0 0% 25%) 100%);
+  }
+
+  .dark {
+    --background: 20 14% 8%;
+    --foreground: 40 20% 95%;
+    
+    --card: 20 14% 12%;
+    --card-foreground: 40 20% 95%;
+    
+    --popover: 20 14% 12%;
+    --popover-foreground: 40 20% 95%;
+
+    --primary: 142 60% 45%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 20 14% 18%;
+    --secondary-foreground: 40 20% 95%;
+
+    --muted: 20 14% 18%;
+    --muted-foreground: 40 10% 60%;
+
+    --accent: 43 80% 50%;
+    --accent-foreground: 20 14% 10%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 14% 22%;
+    --input: 20 14% 22%;
+    --ring: 142 60% 45%;
+
+    --sidebar-background: 20 14% 6%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 142 60% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 20 14% 15%;
+    --sidebar-accent-foreground: 40 20% 95%;
+    --sidebar-border: 20 14% 18%;
+    --sidebar-ring: 142 60% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', system-ui, sans-serif;
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Status Cards */
+  .status-card {
+    @apply rounded-xl p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg;
+  }
+  
+  .status-card-success {
+    @apply status-card bg-success text-success-foreground;
+  }
+  
+  .status-card-warning {
+    @apply status-card bg-warning text-warning-foreground;
+  }
+  
+  .status-card-error {
+    @apply status-card bg-error text-error-foreground;
+  }
+  
+  .status-card-death {
+    @apply status-card bg-death text-death-foreground;
+  }
+
+  /* Mobile Action Grid */
+  .mobile-action-btn {
+    @apply flex flex-col items-center justify-center gap-2 p-6 rounded-2xl 
+           transition-all duration-200 active:scale-95 shadow-sm;
+  }
+
+  /* Sidebar Active State */
+  .sidebar-item-active {
+    @apply bg-sidebar-accent text-sidebar-primary font-medium;
+  }
+
+  /* Glass Effect */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-white/20;
+  }
+
+  /* Hero gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  /* Animation utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
