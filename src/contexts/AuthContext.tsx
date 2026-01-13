@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Property, authenticateUser, mockUsers } from '@/mocks/mock-auth';
 
 interface RegisterData {
@@ -18,10 +18,10 @@ interface AuthContextType {
   user: User | null;
   selectedProperty: Property | null;
   isLoading: boolean;
-  login: (cpfCnpj: string, password: string) => Promise<boolean>;
+  login: (cpfCnpj: string, password: string) => Promise<{ success: boolean; user: User | null }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
-  selectProperty: (property: Property) => void;
+  selectProperty: (propertyOrId: Property | string) => void;
   clearSelectedProperty: () => void;
 }
 
@@ -52,14 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (cpfCnpj: string, password: string): Promise<boolean> => {
+  const login = async (cpfCnpj: string, password: string): Promise<{ success: boolean; user: User | null }> => {
     const foundUser = authenticateUser(cpfCnpj, password);
     if (foundUser) {
       setUser(foundUser);
       localStorage.setItem('agrosaldo_user_id', foundUser.id);
-      return true;
+      return { success: true, user: foundUser };
     }
-    return false;
+    return { success: false, user: null };
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {
@@ -109,7 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('agrosaldo_property_id');
   };
 
-  const selectProperty = (property: Property) => {
+  const selectProperty = (propertyOrId: Property | string) => {
+    let property: Property | undefined;
+    
+    if (typeof propertyOrId === 'string') {
+      // Se é um ID, buscar a propriedade no array de propriedades do usuário
+      property = user?.properties.find(p => p.id === propertyOrId);
+      if (!property) {
+        console.error('Propriedade não encontrada');
+        return;
+      }
+    } else {
+      property = propertyOrId;
+    }
+    
     setSelectedProperty(property);
     localStorage.setItem('agrosaldo_property_id', property.id);
   };

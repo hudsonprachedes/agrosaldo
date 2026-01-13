@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AppLayout from '@/components/layout/AppLayout';
 import { ApexOptions } from 'apexcharts';
 
 export default function Analytics() {
@@ -192,8 +191,8 @@ export default function Analytics() {
 
   const healthRadialSeries = [95, 88, 92, 85, 90];
 
-  // Gráfico de Taxa de Conversão Alimentar
-  const feedConversionOptions: ApexOptions = {
+  // Gráfico de Taxa de Mortalidade
+  const mortalityRateOptions: ApexOptions = {
     chart: {
       type: 'area',
       height: 300,
@@ -201,7 +200,7 @@ export default function Analytics() {
       fontFamily: 'Inter, sans-serif',
       sparkline: { enabled: false }
     },
-    colors: ['#10b981'],
+    colors: ['#ef4444'],
     dataLabels: { enabled: false },
     stroke: { curve: 'smooth', width: 2 },
     fill: {
@@ -213,7 +212,7 @@ export default function Analytics() {
       }
     },
     xaxis: {
-      categories: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'],
+      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
       labels: {
         style: { colors: '#64748b', fontSize: '11px' }
       }
@@ -221,7 +220,7 @@ export default function Analytics() {
     yaxis: {
       labels: {
         style: { colors: '#64748b', fontSize: '12px' },
-        formatter: (val) => `${val.toFixed(1)}`
+        formatter: (val) => `${val.toFixed(1)}%`
       }
     },
     grid: {
@@ -231,43 +230,50 @@ export default function Analytics() {
     tooltip: {
       theme: 'light',
       y: {
-        formatter: (val) => `${val.toFixed(2)} kg/kg`
+        formatter: (val) => `${val.toFixed(2)}%`
       }
     }
   };
 
-  const feedConversionSeries = [{
-    name: 'Taxa de Conversão',
-    data: [6.5, 6.3, 6.2, 6.0, 5.9, 5.8, 5.7, 5.6]
+  const mortalityRateSeries = [{
+    name: 'Taxa de Mortalidade',
+    data: [2.5, 2.3, 1.8, 1.5, 1.2, 1.0, 0.9, 1.1, 1.3, 1.0, 0.8, 0.7]
   }];
 
-  // Gráfico de Distribuição de Peso
-  const weightDistributionOptions: ApexOptions = {
+  // Gráfico de Preço Médio de Venda por Categoria
+  const avgPriceOptions: ApexOptions = {
     chart: {
-      type: 'boxPlot',
+      type: 'bar',
       height: 300,
       toolbar: { show: false },
       fontFamily: 'Inter, sans-serif',
     },
-    colors: ['#3b82f6'],
+    colors: ['#10b981'],
     plotOptions: {
-      boxPlot: {
-        colors: {
-          upper: '#3b82f6',
-          lower: '#8b5cf6'
-        }
+      bar: {
+        horizontal: true,
+        borderRadius: 6,
+        barHeight: '70%',
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val) => `R$ ${(Number(val) / 1000).toFixed(1)}k`,
+      style: {
+        fontSize: '11px',
+        colors: ['#fff']
       }
     },
     xaxis: {
       categories: ['0-4m', '5-12m', '13-24m', '25-36m', '36m+'],
       labels: {
-        style: { colors: '#64748b', fontSize: '11px' }
+        style: { colors: '#64748b', fontSize: '11px' },
+        formatter: (val) => `R$ ${(Number(val) / 1000).toFixed(0)}k`
       }
     },
     yaxis: {
       labels: {
-        style: { colors: '#64748b', fontSize: '12px' },
-        formatter: (val) => `${val} kg`
+        style: { colors: '#64748b', fontSize: '12px' }
       }
     },
     grid: {
@@ -276,19 +282,15 @@ export default function Analytics() {
     },
     tooltip: {
       theme: 'light',
+      y: {
+        formatter: (val) => `R$ ${val.toLocaleString('pt-BR')}`
+      }
     }
   };
 
-  const weightDistributionSeries = [{
-    name: 'Peso',
-    type: 'boxPlot',
-    data: [
-      { x: '0-4m', y: [25, 35, 45, 55, 65] },
-      { x: '5-12m', y: [80, 110, 140, 170, 200] },
-      { x: '13-24m', y: [180, 230, 280, 330, 380] },
-      { x: '25-36m', y: [280, 340, 400, 460, 520] },
-      { x: '36m+', y: [380, 450, 520, 590, 660] },
-    ]
+  const avgPriceSeries = [{
+    name: 'Preço Médio',
+    data: [800, 1500, 2800, 3500, 4200]
   }];
 
   // Gráfico de Heatmap de Nascimentos
@@ -378,14 +380,14 @@ export default function Analytics() {
         </Card>
         <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-amber-600">5.6</div>
-            <p className="text-sm text-amber-700 mt-1">Conversão Alimentar</p>
+            <div className="text-3xl font-bold text-amber-600">+12%</div>
+            <p className="text-sm text-amber-700 mt-1">Crescimento do Rebanho</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-purple-600">520kg</div>
-            <p className="text-sm text-purple-700 mt-1">Peso Médio</p>
+            <div className="text-3xl font-bold text-purple-600">R$ 3,2k</div>
+            <p className="text-sm text-purple-700 mt-1">Preço Médio de Venda</p>
           </CardContent>
         </Card>
       </div>
@@ -446,37 +448,37 @@ export default function Analytics() {
           </CardContent>
         </Card>
 
-        {/* Taxa de Conversão Alimentar */}
+        {/* Taxa de Mortalidade */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
-              Conversão Alimentar
+              Taxa de Mortalidade
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ReactApexChart
-              options={feedConversionOptions}
-              series={feedConversionSeries}
+              options={mortalityRateOptions}
+              series={mortalityRateSeries}
               type="area"
               height={300}
             />
           </CardContent>
         </Card>
 
-        {/* Distribuição de Peso */}
+        {/* Preço Médio de Venda */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="w-5 h-5 text-primary" />
-              Distribuição de Peso
+              Preço Médio por Faixa Etária
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ReactApexChart
-              options={weightDistributionOptions}
-              series={weightDistributionSeries}
-              type="boxPlot"
+              options={avgPriceOptions}
+              series={avgPriceSeries}
+              type="bar"
               height={300}
             />
           </CardContent>
@@ -503,5 +505,5 @@ export default function Analytics() {
     </div>
   );
 
-  return isMobile ? content : <AppLayout>{content}</AppLayout>;
+  return content;
 }

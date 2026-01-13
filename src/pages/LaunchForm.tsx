@@ -927,10 +927,8 @@ export default function LaunchForm({ type }: LaunchFormProps) {
             />
           </CardContent>
         </Card>
-      </form>
 
-      {/* Fixed Submit Button */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-background border-t border-border">
+        {/* Submit Button */}
         <Button 
           type="submit" 
           onClick={handleSubmit}
@@ -945,7 +943,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           <Check className="w-5 h-5 mr-2" />
           Confirmar Lançamento
         </Button>
-      </div>
+      </form>
     </>
   );
 

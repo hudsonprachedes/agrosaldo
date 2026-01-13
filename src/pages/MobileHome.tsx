@@ -200,6 +200,24 @@ export default function MobileHome() {
       <div className="px-4 space-y-3 pb-4">
         <Card 
           className="cursor-pointer active:scale-[0.98] transition-transform border-0 shadow-card" 
+          onClick={() => navigate('/financeiro')}
+        >
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                <span className="text-2xl">💰</span>
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Financeiro</p>
+                <p className="text-sm text-muted-foreground">Receitas e despesas</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer active:scale-[0.98] transition-transform border-0 shadow-card" 
           onClick={() => navigate('/analises')}
         >
           <CardContent className="p-4 flex items-center justify-between">

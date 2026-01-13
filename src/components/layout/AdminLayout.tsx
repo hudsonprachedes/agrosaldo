@@ -13,6 +13,9 @@ import {
   MapPin,
   LogOut,
   ChevronLeft,
+  UserPlus,
+  BarChart3,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -23,11 +26,14 @@ interface AdminLayoutProps {
 
 const navItems = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { path: '/admin/cadastros', label: 'Cadastros', icon: UserPlus },
+  { path: '/admin/analises', label: 'Análises', icon: BarChart3 },
   { path: '/admin/solicitacoes', label: 'Solicitações', icon: Bell },
   { path: '/admin/clientes', label: 'Clientes', icon: Users },
   { path: '/admin/indicacao', label: 'Indicação', icon: Ticket },
   { path: '/admin/planos', label: 'Planos', icon: CreditCard },
   { path: '/admin/financeiro', label: 'Financeiro', icon: DollarSign },
+  { path: '/admin/regulamentacoes', label: 'Regulamentações', icon: FileText },
   { path: '/admin/comunicacao', label: 'Comunicação', icon: Megaphone },
   { path: '/admin/auditoria', label: 'Auditoria', icon: Shield },
   { path: '/admin/regras', label: 'Regras por Estado', icon: MapPin },

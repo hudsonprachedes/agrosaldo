@@ -17,22 +17,32 @@ function applyMask(value: string, mask: string, maskChar: string | null = null, 
   
   let maskedValue = '';
   let valueIndex = 0;
+  let maskIndex = 0;
   
-  for (let i = 0; i < mask.length && valueIndex < value.length; i++) {
-    const maskDigit = mask[i];
+  // Aplica a máscara enquanto houver caracteres
+  while (valueIndex < value.length) {
+    if (maskIndex >= mask.length) {
+      // Se a máscara acabou mas ainda há dígitos, apenas adiciona (para permitir transição)
+      maskedValue += value[valueIndex];
+      valueIndex++;
+      continue;
+    }
+    
+    const maskDigit = mask[maskIndex];
     
     if (maskDigit === '9') {
       // Aceita apenas dígitos
       if (/\d/.test(value[valueIndex])) {
         maskedValue += value[valueIndex];
         valueIndex++;
+        maskIndex++;
       } else {
         valueIndex++;
-        i--;
       }
     } else {
       // Caractere fixo da máscara (., -, /, etc)
       maskedValue += maskDigit;
+      maskIndex++;
       if (value[valueIndex] === maskDigit) {
         valueIndex++;
       }
@@ -64,20 +74,27 @@ const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
       applyMask(value, mask, maskChar, alwaysShowMask)
     );
 
+    // Atualizar quando mask ou value mudarem
     React.useEffect(() => {
       if (value !== undefined) {
-        setInternalValue(applyMask(value, mask, maskChar, alwaysShowMask));
+        const rawValue = value.replace(/\D/g, '');
+        const maskedValue = applyMask(rawValue, mask, maskChar, alwaysShowMask);
+        setInternalValue(maskedValue);
       }
     }, [value, mask, maskChar, alwaysShowMask]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const rawValue = removeMask(e.target.value);
-      const maskedValue = applyMask(rawValue, mask, maskChar);
+      // Remove tudo que não é número
+      const rawValue = e.target.value.replace(/\D/g, '');
+      
+      // Limita a 14 dígitos (CNPJ máximo)
+      const limitedValue = rawValue.slice(0, 14);
+      const maskedValue = applyMask(limitedValue, mask, maskChar);
       
       setInternalValue(maskedValue);
       
       if (onChange) {
-        // Criar um novo evento com o valor sem máscara
+        // Criar um novo evento com o valor mascarado
         const newEvent = {
           ...e,
           target: {
@@ -89,6 +106,13 @@ const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
         onChange(newEvent);
       }
     };
+    
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Bloqueia qualquer tecla que não seja número
+      if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault();
+      }
+    };
 
     return (
       <Input
@@ -96,6 +120,8 @@ const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
         ref={ref}
         value={internalValue}
         onChange={handleChange}
+        onKeyPress={handleKeyPress}
+        inputMode="numeric"
         className={cn(className)}
       />
     );

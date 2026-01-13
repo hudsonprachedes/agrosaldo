@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import AppLayout from '@/components/layout/AppLayout';
 
 const launchTypes = [
   {
@@ -230,5 +229,5 @@ export default function Lancamentos() {
     </div>
   );
 
-  return <AppLayout>{content}</AppLayout>;
+  return content;
 }

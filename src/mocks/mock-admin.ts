@@ -25,6 +25,64 @@ export interface PendingRequest {
   details: string;
 }
 
+export interface PendingSignup {
+  id: string;
+  nome: string;
+  cpfCnpj: string;
+  celular: string;
+  email: string;
+  numeroCabecas: number;
+  cupomIndicacao?: string;
+  cep: string;
+  municipio: string;
+  uf: string;
+  senha: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestDate: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  trialDays?: number;
+  trialPlan?: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
+}
+
+export interface StateRegulation {
+  id: string;
+  uf: string;
+  stateName: string;
+  reportingDeadline: number; // Dias após movimentação
+  requiredDocuments: string[];
+  saldoReportFrequency: 'monthly' | 'quarterly' | 'biannual' | 'annual';
+  saldoReportDay: number; // Dia do mês/período
+  gtaRequired: boolean;
+  observations: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface FinancialPayment {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  plan: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
+  amount: number;
+  paymentMethod: 'pix' | 'credit_card' | 'debit_card' | 'bank_slip' | 'cash';
+  paymentFrequency: 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  dueDate: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export interface PixConfig {
+  id: string;
+  pixKey: string;
+  pixKeyType: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+  qrCodeImage?: string; // URL ou base64
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AuditLog {
   id: string;
   userId: string;
@@ -215,3 +273,136 @@ export function getAdminKPIs() {
     overdueCount,
   };
 }
+
+// Mock de cadastros pendentes
+export const mockPendingSignups: PendingSignup[] = [];
+
+// Mock de regulamentações estaduais
+export const mockStateRegulations: StateRegulation[] = [
+  {
+    id: 'reg-mt',
+    uf: 'MT',
+    stateName: 'Mato Grosso',
+    reportingDeadline: 15,
+    requiredDocuments: ['GTA', 'Atestado Sanitário'],
+    saldoReportFrequency: 'monthly',
+    saldoReportDay: 10,
+    gtaRequired: true,
+    observations: 'Declaração de saldo obrigatória até o dia 10 de cada mês. GTA obrigatória para todas as movimentações.',
+    updatedAt: '2024-01-15T10:00:00Z',
+    updatedBy: 'Admin Master',
+  },
+  {
+    id: 'reg-ms',
+    uf: 'MS',
+    stateName: 'Mato Grosso do Sul',
+    reportingDeadline: 20,
+    requiredDocuments: ['GTA', 'Certificado Vacinação'],
+    saldoReportFrequency: 'monthly',
+    saldoReportDay: 15,
+    gtaRequired: true,
+    observations: 'Exigência de certificado de vacinação atualizado.',
+    updatedAt: '2024-01-15T10:00:00Z',
+    updatedBy: 'Admin Master',
+  },
+  {
+    id: 'reg-go',
+    uf: 'GO',
+    stateName: 'Goiás',
+    reportingDeadline: 10,
+    requiredDocuments: ['GTA'],
+    saldoReportFrequency: 'quarterly',
+    saldoReportDay: 5,
+    gtaRequired: true,
+    observations: 'Declaração trimestral do rebanho.',
+    updatedAt: '2024-01-15T10:00:00Z',
+    updatedBy: 'Admin Master',
+  },
+];
+
+// Mock de pagamentos financeiros
+export const mockFinancialPayments: FinancialPayment[] = [
+  {
+    id: 'pay-1',
+    tenantId: 't-1',
+    tenantName: 'Agropecuária São Jorge',
+    plan: 'estancia',
+    amount: 249.90,
+    paymentMethod: 'pix',
+    paymentFrequency: 'monthly',
+    status: 'paid',
+    dueDate: '2024-02-01',
+    paidAt: '2024-01-28T14:30:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'pay-2',
+    tenantId: 't-2',
+    tenantName: 'Fazenda Primavera',
+    plan: 'retiro',
+    amount: 129.90,
+    paymentMethod: 'credit_card',
+    paymentFrequency: 'monthly',
+    status: 'paid',
+    dueDate: '2024-02-01',
+    paidAt: '2024-01-30T10:15:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'pay-3',
+    tenantId: 't-3',
+    tenantName: 'Rancho Bela Vista',
+    plan: 'piquete',
+    amount: 69.90,
+    paymentMethod: 'pix',
+    paymentFrequency: 'monthly',
+    status: 'overdue',
+    dueDate: '2024-01-20',
+    createdAt: '2023-12-20T00:00:00Z',
+  },
+  {
+    id: 'pay-4',
+    tenantId: 't-4',
+    tenantName: 'Sítio Boa Esperança',
+    plan: 'porteira',
+    amount: 29.90,
+    paymentMethod: 'bank_slip',
+    paymentFrequency: 'monthly',
+    status: 'overdue',
+    dueDate: '2024-01-10',
+    createdAt: '2023-12-10T00:00:00Z',
+  },
+  {
+    id: 'pay-5',
+    tenantId: 't-5',
+    tenantName: 'Grupo Pecuária MT',
+    plan: 'barao',
+    amount: 3999.00, // Anual
+    paymentMethod: 'pix',
+    paymentFrequency: 'annual',
+    status: 'paid',
+    dueDate: '2025-03-01',
+    paidAt: '2024-02-28T18:00:00Z',
+    createdAt: '2024-03-01T00:00:00Z',
+  },
+];
+
+// Mock de configuração PIX
+export let mockPixConfig: PixConfig = {
+  id: 'pix-1',
+  pixKey: '00.000.000/0001-00',
+  pixKeyType: 'cnpj',
+  qrCodeImage: undefined,
+  active: true,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
+};
+
+export function updatePixConfig(config: Partial<PixConfig>) {
+  mockPixConfig = {
+    ...mockPixConfig,
+    ...config,
+    updatedAt: new Date().toISOString(),
+  };
+}
+

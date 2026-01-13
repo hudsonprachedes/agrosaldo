@@ -110,11 +110,16 @@ export default function Login() {
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 800));
-      const success = await login(data.cpfCnpj, data.password);
+      const { user: loggedUser, success } = await login(data.cpfCnpj, data.password);
 
-      if (success) {
+      if (success && loggedUser) {
         toast.success('Login realizado com sucesso!');
-        navigate('/selecionar-propriedade');
+        // Super admin vai direto para /admin sem precisar selecionar propriedade
+        if (loggedUser.role === 'super_admin') {
+          navigate('/admin');
+        } else {
+          navigate('/selecionar-propriedade');
+        }
       } else {
         toast.error('CPF/CNPJ ou senha inválidos');
       }
@@ -538,7 +543,7 @@ export default function Login() {
         <p className="text-center text-sm text-muted-foreground mt-8">
           Não tem conta?{' '}
           <button
-            onClick={() => setMode('register')}
+            onClick={() => navigate('/cadastro')}
             className="text-primary font-medium hover:underline cursor-pointer"
           >
             Criar conta agora

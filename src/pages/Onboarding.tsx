@@ -79,7 +79,8 @@ function StockInput({ species, sex, ageGroupId, label, control, errors }: StockI
               type="number"
               placeholder="0"
               {...field}
-              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+              value={field.value ?? 0}
+              onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
               className="text-center"
             />
           </FormControl>
@@ -160,9 +161,28 @@ const Onboarding: React.FC = () => {
   // Form para estoque inicial
   const stockForm = useForm<z.infer<typeof stockSchema>>({
     resolver: zodResolver(stockSchema),
-    defaultValues: Object.fromEntries(
-      Object.keys(stockSchema.shape).map(key => [key, 0])
-    ) as Record<string, number>,
+    defaultValues: {
+      bovino_male_0_4m: 0,
+      bovino_male_5_12m: 0,
+      bovino_male_13_24m: 0,
+      bovino_male_25_36m: 0,
+      bovino_male_36m: 0,
+      bovino_female_0_4m: 0,
+      bovino_female_5_12m: 0,
+      bovino_female_13_24m: 0,
+      bovino_female_25_36m: 0,
+      bovino_female_36m: 0,
+      bubalino_male_0_4m: 0,
+      bubalino_male_5_12m: 0,
+      bubalino_male_13_24m: 0,
+      bubalino_male_25_36m: 0,
+      bubalino_male_36m: 0,
+      bubalino_female_0_4m: 0,
+      bubalino_female_5_12m: 0,
+      bubalino_female_13_24m: 0,
+      bubalino_female_25_36m: 0,
+      bubalino_female_36m: 0,
+    },
   });
 
   // ========== STEP 1: BEM-VINDO ==========

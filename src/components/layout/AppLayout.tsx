@@ -48,7 +48,7 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, selectedProperty, logout, clearSelectedProperty } = useAuth();
+  const { user, selectedProperty, logout, clearSelectedProperty, selectProperty } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -60,6 +60,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleChangeProperty = () => {
     clearSelectedProperty();
+  };
+
+  const handleSelectProperty = (propertyId: string) => {
+    if (propertyId !== selectedProperty.id) {
+      selectProperty(propertyId);
+      // A página será re-renderizada automaticamente com os novos dados
+    }
   };
 
   return (
@@ -103,12 +110,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 {user.properties.map((prop) => (
                   <DropdownMenuItem
                     key={prop.id}
-                    onClick={() => {
-                      if (prop.id !== selectedProperty.id) {
-                        // For simplicity, just redirect to property selection
-                        handleChangeProperty();
-                      }
-                    }}
+                    onClick={() => handleSelectProperty(prop.id)}
                     className={cn(
                       prop.id === selectedProperty.id && 'bg-muted'
                     )}
@@ -119,12 +121,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         {prop.cattleCount.toLocaleString()} cabeças
                       </p>
                     </div>
+                    {prop.id === selectedProperty.id && (
+                      <span className="text-primary">✓</span>
+                    )}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleChangeProperty}>
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  Trocar propriedade
+                  Gerenciar propriedades
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

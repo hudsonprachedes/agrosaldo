@@ -1,10 +1,15 @@
+import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initializeAgeGroupMigration } from "./lib/age-group-migration";
 import { mockMovements } from "./mocks/mock-bovinos";
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
 
 // Inicializar migração automática de faixas etárias
 initializeAgeGroupMigration(mockMovements, (result) => {

@@ -19,6 +19,7 @@ import {
   Trash2,
   X,
   Download,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
@@ -75,7 +83,6 @@ const typeColors: Record<string, string> = {
   purchase: 'bg-primary text-primary-foreground',
 };
 
-import AppLayout from '@/components/layout/AppLayout';
 import { ArrowLeft } from 'lucide-react';
 
 const STORAGE_KEY = 'agrosaldo_extrato_filters';
@@ -113,6 +120,8 @@ export default function Extrato() {
   const [dateTo, setDateTo] = useState<Date | undefined>(savedFilters.dateTo);
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const itemsPerPage = 20;
 
   // Save filters to localStorage when they change
@@ -457,7 +466,7 @@ export default function Extrato() {
                       </div>
 
                       {/* Additional Info */}
-                      {(movement.destination || movement.gtaNumber || movement.cause) && (
+                      {(movement.destination || movement.gtaNumber || movement.cause || movement.photoUrl) && (
                         <div className="mt-3 pt-3 border-t border-border text-sm text-muted-foreground">
                           {movement.destination && (
                             <p>📍 {movement.destination}</p>
@@ -467,6 +476,20 @@ export default function Extrato() {
                           )}
                           {movement.cause && (
                             <p>⚠️ Causa: {movement.cause}</p>
+                          )}
+                          {movement.photoUrl && movement.type === 'death' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => {
+                                setSelectedPhoto(movement.photoUrl || null);
+                                setPhotoDialogOpen(true);
+                              }}
+                            >
+                              <ImageIcon className="w-4 h-4 mr-2" />
+                              Ver Foto
+                            </Button>
                           )}
                         </div>
                       )}
@@ -559,6 +582,24 @@ export default function Extrato() {
           </CardContent>
         </Card>
       )}
+
+      {/* Photo Dialog */}
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Foto da Mortalidade</DialogTitle>
+          </DialogHeader>
+          {selectedPhoto && (
+            <div className="mt-4">
+              <img 
+                src={selectedPhoto} 
+                alt="Foto da mortalidade" 
+                className="w-full rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 
@@ -578,5 +619,5 @@ export default function Extrato() {
     );
   }
 
-  return <AppLayout>{content}</AppLayout>;
+  return content;
 }

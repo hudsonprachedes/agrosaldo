@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import AppLayout from '@/components/layout/AppLayout';
 import { ApexOptions } from 'apexcharts';
 
 export default function Dashboard() {
@@ -411,5 +410,5 @@ export default function Dashboard() {
     </div>
   );
 
-  return isMobile ? content : <AppLayout>{content}</AppLayout>;
+  return content;
 }

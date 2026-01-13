@@ -13,6 +13,8 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowLeft,
+  FileText,
+  Share2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,13 +26,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import AppLayout from '@/components/layout/AppLayout';
 import { ApexOptions } from 'apexcharts';
+import { generatePDF, ReportData } from '@/lib/pdf-report';
+import { formatReportForWhatsApp, shareViaWhatsApp } from '@/lib/whatsapp-share';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Rebanho() {
-  const { selectedProperty } = useAuth();
+  const { selectedProperty, user } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   if (!selectedProperty) {
     navigate('/login');
@@ -56,6 +61,67 @@ export default function Rebanho() {
     }),
     { maleBalance: 0, femaleBalance: 0, maleEntries: 0, femaleEntries: 0, maleExits: 0, femaleExits: 0 }
   );
+
+  // Handlers para PDF e WhatsApp
+  const handleGeneratePDF = async () => {
+    try {
+      toast({ title: '⏳ Gerando PDF...', description: 'Aguarde alguns instantes' });
+
+      const reportData: ReportData = {
+        propertyName: selectedProperty.name,
+        ownerName: user?.name || 'Proprietário',
+        city: selectedProperty.city || 'N/A',
+        state: selectedProperty.state || 'N/A',
+        generatedAt: new Date().toLocaleString('pt-BR'),
+        totalCattle: totalCattle,
+        balances: balances.map(b => ({
+          ageGroup: getAgeGroupLabel(b.ageGroupId),
+          male: b.male.currentBalance,
+          female: b.female.currentBalance,
+          total: b.male.currentBalance + b.female.currentBalance,
+        })),
+      };
+
+      await generatePDF(reportData, `espelho-rebanho-${selectedProperty.name.toLowerCase().replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({ title: '✅ PDF Gerado', description: 'Download iniciado com sucesso' });
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({ 
+        title: '❌ Erro ao Gerar PDF', 
+        description: 'Tente novamente', 
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    try {
+      const ageDistribution = balances.map(b => ({
+        label: getAgeGroupLabel(b.ageGroupId),
+        total: b.male.currentBalance + b.female.currentBalance,
+      }));
+
+      const message = formatReportForWhatsApp({
+        propertyName: selectedProperty.name,
+        ownerName: user?.name || 'Proprietário',
+        state: selectedProperty.state || 'N/A',
+        totalCattle: totalCattle,
+        ageDistribution,
+      });
+
+      shareViaWhatsApp(message);
+      
+      toast({ title: '✅ WhatsApp Aberto', description: 'Compartilhe o relatório' });
+    } catch (error) {
+      console.error('Erro ao compartilhar via WhatsApp:', error);
+      toast({ 
+        title: '❌ Erro ao Compartilhar', 
+        description: 'Tente novamente', 
+        variant: 'destructive' 
+      });
+    }
+  };
 
   // Gráfico de Distribuição por Sexo
   const sexDistributionOptions: ApexOptions = {
@@ -152,6 +218,18 @@ export default function Rebanho() {
           <p className="text-muted-foreground">
             Controle de estoque por faixa etária
           </p>
+        </div>
+        
+        {/* Botões de Ação */}
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleGeneratePDF} variant="outline" size={isMobile ? 'default' : 'default'}>
+            <FileText className="w-4 h-4 mr-2" />
+            Gerar PDF
+          </Button>
+          <Button onClick={handleShareWhatsApp} variant="default" size={isMobile ? 'default' : 'default'}>
+            <Share2 className="w-4 h-4 mr-2" />
+            WhatsApp
+          </Button>
         </div>
       </div>
 
@@ -360,5 +438,5 @@ export default function Rebanho() {
     );
   }
 
-  return <AppLayout>{content}</AppLayout>;
+  return content;
 }

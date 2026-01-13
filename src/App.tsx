@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect, useState, ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,6 +36,13 @@ import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
 import AdminComunicacao from "./pages/admin/AdminComunicacao";
 import AdminAuditoria from "./pages/admin/AdminAuditoria";
 import AdminRegras from "./pages/admin/AdminRegras";
+import AdminCadastros from "./pages/admin/AdminCadastros";
+import AdminAnalises from "./pages/admin/AdminAnalises";
+import AdminRegulamentacoes from "./pages/admin/AdminRegulamentacoes";
+
+// Other Pages
+import Cadastro from "./pages/Cadastro";
+import Bloqueado from "./pages/Bloqueado";
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
@@ -49,16 +56,16 @@ function ProtectedRoute({
   requireAdmin = false,
   requireOnboarding = true 
 }: { 
-  children: React.ReactNode; 
+  children: ReactNode; 
   requireProperty?: boolean;
   requireAdmin?: boolean;
   requireOnboarding?: boolean;
 }) {
   const { user, selectedProperty, isLoading } = useAuth();
-  const [onboardingCompleted, setOnboardingCompleted] = React.useState<boolean | null>(null);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   // Carregar status do onboarding
-  React.useEffect(() => {
+  useEffect(() => {
     if (selectedProperty && requireOnboarding) {
       const checkOnboarding = async () => {
         try {
@@ -117,6 +124,8 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/bloqueado" element={<Bloqueado />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/contato" element={<Contact />} />
             <Route path="/selecionar-propriedade" element={<PropertySelection />} />
@@ -136,25 +145,25 @@ const App = () => (
               <ProtectedRoute><DashboardRoute /></ProtectedRoute>
             } />
             <Route path="/rebanho" element={
-              <ProtectedRoute><Rebanho /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><Rebanho /></AppLayout></ProtectedRoute>
             } />
             <Route path="/extrato" element={
-              <ProtectedRoute><Extrato /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><Extrato /></AppLayout></ProtectedRoute>
             } />
             <Route path="/lancamentos" element={
-              <ProtectedRoute><Lancamentos /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><Lancamentos /></AppLayout></ProtectedRoute>
             } />
             <Route path="/financeiro" element={
-              <ProtectedRoute><Financeiro /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><Financeiro /></AppLayout></ProtectedRoute>
             } />
             <Route path="/analises" element={
-              <ProtectedRoute><Analytics /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>
             } />
             <Route path="/minha-fazenda" element={
-              <ProtectedRoute><MinhaFazenda /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><MinhaFazenda /></AppLayout></ProtectedRoute>
             } />
             <Route path="/configuracoes" element={
-              <ProtectedRoute><MinhaFazenda /></ProtectedRoute>
+              <ProtectedRoute><AppLayout><MinhaFazenda /></AppLayout></ProtectedRoute>
             } />
             
             {/* Launch Forms */}
@@ -184,6 +193,15 @@ const App = () => (
             <Route path="/admin/dashboard" element={
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>
             } />
+            <Route path="/admin/cadastros" element={
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminCadastros /></ProtectedRoute>
+            } />
+            <Route path="/admin/analises" element={
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminAnalises /></ProtectedRoute>
+            } />
+            <Route path="/admin/regulamentacoes" element={
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminRegulamentacoes /></ProtectedRoute>
+            } />
             <Route path="/admin/solicitacoes" element={
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminSolicitacoes /></AdminLayout></ProtectedRoute>
             } />
@@ -197,7 +215,7 @@ const App = () => (
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminPlanos /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/financeiro" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminFinanceiro /></AdminLayout></ProtectedRoute>
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminFinanceiro /></ProtectedRoute>
             } />
             <Route path="/admin/comunicacao" element={
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminComunicacao /></AdminLayout></ProtectedRoute>

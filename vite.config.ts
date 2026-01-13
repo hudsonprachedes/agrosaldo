@@ -20,9 +20,6 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  optimizeDeps: {
-    exclude: ['react-input-mask'],
-  },
   build: {
     rollupOptions: {
       output: {

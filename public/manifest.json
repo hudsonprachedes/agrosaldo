@@ -16,13 +16,5 @@
       "purpose": "any"
     }
   ],
-  "categories": ["productivity", "agriculture"],
-  "screenshots": [
-    {
-      "src": "/placeholder.svg",
-      "sizes": "540x720",
-      "type": "image/svg+xml",
-      "form_factor": "narrow"
-    }
-  ]
+  "categories": ["productivity", "agriculture"]
 }
