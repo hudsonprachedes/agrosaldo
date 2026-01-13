@@ -50,11 +50,6 @@ export default function PropertySelection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
-
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
@@ -71,6 +66,11 @@ export default function PropertySelection() {
       bubalinoEnabled: false,
     },
   });
+
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   const handleSelectProperty = (property: Property) => {
     selectProperty(property);

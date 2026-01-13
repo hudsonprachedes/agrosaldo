@@ -5,11 +5,15 @@
 
 import { getDB, getSyncQueueItems, updateSyncQueueItem } from './indexeddb';
 
+interface ApiClient {
+  post: (path: string, data: unknown) => Promise<unknown>;
+}
+
 /**
  * Sincroniza movimentos pendentes com o servidor
  * Implementa retry com backoff exponencial
  */
-export async function syncMovements(apiClient?: any): Promise<{
+export async function syncMovements(apiClient?: ApiClient): Promise<{
   success: number;
   failed: number;
   errors: string[];
@@ -56,7 +60,7 @@ export async function syncMovements(apiClient?: any): Promise<{
 /**
  * Sincroniza fotos pendentes com o servidor
  */
-export async function syncPhotos(apiClient?: any): Promise<{
+export async function syncPhotos(apiClient?: ApiClient): Promise<{
   success: number;
   failed: number;
   errors: string[];
@@ -103,7 +107,7 @@ export async function syncPhotos(apiClient?: any): Promise<{
 /**
  * Sincroniza todos os itens pendentes
  */
-export async function syncAll(apiClient?: any): Promise<{
+export async function syncAll(apiClient?: ApiClient): Promise<{
   movements: { success: number; failed: number };
   photos: { success: number; failed: number };
   totalErrors: string[];
@@ -129,7 +133,7 @@ export async function syncAll(apiClient?: any): Promise<{
 /**
  * Agenda sincronização automática quando internet retorna
  */
-export function setupAutoSync(apiClient?: any): () => void {
+export function setupAutoSync(apiClient?: ApiClient): () => void {
   const handleOnline = async () => {
     console.log('🌐 Conexão restaurada, iniciando sincronização...');
     const results = await syncAll(apiClient);
@@ -156,12 +160,12 @@ export function setupAutoSync(apiClient?: any): () => void {
 /**
  * Obter itens pendentes de sincronização
  */
-export async function getPendingSyncItems(): Promise<any[]> {
+export async function getPendingSyncItems(): Promise<Record<string, unknown>[]> {
   const db = await import('./indexeddb').then(m => m.getDB());
   const dbInstance = await db;
   
   const syncQueue = await dbInstance.getAll('syncQueue');
-  return syncQueue.filter((item: any) => item.status === 'pending');
+  return syncQueue.filter((item: Record<string, unknown>) => item.status === 'pending');
 }
 
 /**
@@ -179,7 +183,7 @@ export async function getDatabaseStats(): Promise<{
   const movements = await dbInstance.getAll('movements');
   const photos = await dbInstance.getAll('photos');
   const syncQueue = await dbInstance.getAll('syncQueue');
-  const pendingItems = syncQueue.filter((item: any) => item.status === 'pending');
+  const pendingItems = syncQueue.filter((item: Record<string, unknown>) => item.status === 'pending');
   
   return {
     totalMovements: movements.length,

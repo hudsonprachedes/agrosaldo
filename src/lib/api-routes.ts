@@ -379,7 +379,7 @@ export const API_ROUTES = {
 /**
  * Construir URL completa
  */
-export function buildUrl(path: string, params?: Record<string, any>): string {
+export function buildUrl(path: string, params?: Record<string, unknown>): string {
   let url = path;
 
   // Substituir parâmetros dinâmicos

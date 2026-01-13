@@ -73,14 +73,14 @@ class ApiClient {
   /**
    * Interceptor de resposta bem-sucedida
    */
-  private onResponseFulfilled(response: any) {
+  private onResponseFulfilled(response: AxiosInstance) {
     return response;
   }
 
   /**
    * Interceptor de resposta com erro
    */
-  private async onResponseRejected(error: AxiosError<any>) {
+  private async onResponseRejected(error: AxiosError<Record<string, unknown>>) {
     const { config, response, status } = error;
 
     if (!config) {
@@ -185,7 +185,7 @@ class ApiClient {
   private async retryRequest(
     config: InternalAxiosRequestConfig,
     attempt: number = 0
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (attempt >= MAX_RETRIES) {
       return Promise.reject(new Error('Máximo de tentativas atingido'));
     }
@@ -226,7 +226,7 @@ class ApiClient {
   /**
    * Requisição POST genérica
    */
-  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.post<ApiResponse<T>>(url, data, config);
     return response.data.data as T;
   }
@@ -234,7 +234,7 @@ class ApiClient {
   /**
    * Requisição PUT genérica
    */
-  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.put<ApiResponse<T>>(url, data, config);
     return response.data.data as T;
   }
@@ -242,7 +242,7 @@ class ApiClient {
   /**
    * Requisição PATCH genérica
    */
-  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.instance.patch<ApiResponse<T>>(url, data, config);
     return response.data.data as T;
   }
@@ -261,7 +261,7 @@ class ApiClient {
   async uploadFile<T>(
     url: string,
     file: File,
-    additionalData?: Record<string, any>
+    additionalData?: Record<string, unknown>
   ): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);

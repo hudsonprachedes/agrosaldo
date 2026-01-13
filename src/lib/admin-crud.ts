@@ -138,15 +138,15 @@ export async function adminDelete<K extends keyof AdminDB>(
 /**
  * Buscar por índice
  */
-export async function adminGetByIndex<K extends keyof AdminDB>(
-  storeName: K,
+export async function adminGetByIndex(
+  storeName: 'plans' | 'clients' | 'requests',
   indexName: string,
   query: string
-): Promise<any[]> {
+): Promise<Record<string, unknown>[]> {
   const db = await getAdminDB();
-  return await db.getAllFromIndex(
-    storeName as any,
-    indexName as any,
+  return await (db as any).getAllFromIndex(
+    storeName,
+    indexName,
     query
   );
 }

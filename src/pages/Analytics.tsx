@@ -232,7 +232,7 @@ export default function Analytics() {
           </p>
         </div>
         
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as any)}>
+        <Tabs value={period} onValueChange={(v) => setPeriod(v as '30' | '180' | '365')}>
           <TabsList>
             <TabsTrigger value="30">30 dias</TabsTrigger>
             <TabsTrigger value="180">6 meses</TabsTrigger>

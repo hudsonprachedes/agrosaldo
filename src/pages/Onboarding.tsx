@@ -60,8 +60,8 @@ interface StockInputProps {
   sex: 'male' | 'female';
   ageGroupId: string;
   label: string;
-  control: any;
-  errors?: any;
+  control: unknown;
+  errors?: Record<string, unknown>;
 }
 
 function StockInput({ species, sex, ageGroupId, label, control, errors }: StockInputProps) {
@@ -92,8 +92,8 @@ function StockInput({ species, sex, ageGroupId, label, control, errors }: StockI
 
 interface SpeciesTableProps {
   species: SpeciesType;
-  control: any;
-  errors?: any;
+  control: unknown;
+  errors?: Record<string, unknown>;
   speciesLabel: string;
 }
 
@@ -162,7 +162,7 @@ const Onboarding: React.FC = () => {
     resolver: zodResolver(stockSchema),
     defaultValues: Object.fromEntries(
       Object.keys(stockSchema.shape).map(key => [key, 0])
-    ) as any,
+    ) as Record<string, number>,
   });
 
   // ========== STEP 1: BEM-VINDO ==========
@@ -176,10 +176,11 @@ const Onboarding: React.FC = () => {
 
   // ========== STEP 2: ESCOLHER ESPÉCIES ==========
   const handleStep2Next = (data: z.infer<typeof speciesSchema>) => {
-    setSelectedSpecies({
+    const newState: { bovino: boolean; bubalino: boolean } = {
       bovino: Boolean(data.bovino),
       bubalino: Boolean(data.bubalino),
-    });
+    };
+    setSelectedSpecies(newState);
     setStep(3);
   };
 

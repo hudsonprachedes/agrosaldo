@@ -302,7 +302,7 @@ export default function AdminComunicacao() {
                 </div>
                 <div className="space-y-2">
                   <Label>Destinatários</Label>
-                  <Select value={pushAudience} onValueChange={(v: any) => setPushAudience(v)}>
+                  <Select value={pushAudience} onValueChange={(v: 'all' | 'premium' | 'free') => setPushAudience(v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

@@ -25,6 +25,7 @@ export interface StoredMovement {
   syncStatus: 'pending' | 'syncing' | 'synced' | 'failed';
   syncError?: string;
   syncAttempts: number;
+  [key: string]: unknown;
 }
 
 export interface StoredPhoto {
@@ -36,6 +37,7 @@ export interface StoredPhoto {
   originalSize: number;
   createdAt: string;
   compressionRatio: number;
+  [key: string]: unknown;
 }
 
 export interface SyncQueueItem {
@@ -43,7 +45,7 @@ export interface SyncQueueItem {
   propertyId: string;
   type: 'movement' | 'photo' | 'delete';
   resourceId: string;
-  payload: any;
+  payload: Record<string, unknown>;
   status: 'pending' | 'syncing' | 'synced' | 'failed';
   createdAt: string;
   lastAttempt?: string;
@@ -136,7 +138,7 @@ export interface StoredEpidemiologySurvey {
   id: string;
   propertyId: string;
   version: number;
-  answers: Array<{ fieldId: string; value: any }>;
+  answers: Array<{ fieldId: string; value: unknown }>;
   submittedAt: string;
   nextDueAt: string;
 }
@@ -159,6 +161,8 @@ export interface StoredNotification {
   readAt?: string;
 }
 
+// Vazio - apenas estende IDBPDatabase com tipagem correta
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface AgroSaldoDB extends IDBPDatabase {
   // Store methods will be available via object notation
 }
@@ -305,7 +309,7 @@ export async function saveMovementOffline(
     ...movement,
     syncStatus: 'pending',
     syncAttempts: 0,
-  };
+  } as StoredMovement;
 
   await db.add('movements', stored);
 
@@ -313,7 +317,7 @@ export async function saveMovementOffline(
     propertyId: stored.propertyId,
     type: 'movement',
     resourceId: stored.id,
-    payload: stored,
+    payload: stored as Record<string, unknown>,
     status: 'pending',
   });
 
@@ -438,7 +442,7 @@ export async function savePhotoOffline(
     propertyId: movementId.split('-')[1] || 'unknown',
     type: 'photo',
     resourceId: photo.id,
-    payload: photo,
+    payload: photo as Record<string, unknown>,
     status: 'pending',
   });
 
@@ -487,7 +491,7 @@ export async function cleanSyncedData(daysToKeep: number = 30): Promise<void> {
 /**
  * Obter metadata de sincronização
  */
-export async function getSyncMetadata(key: string): Promise<any> {
+export async function getSyncMetadata(key: string): Promise<unknown> {
   const db = await getDB();
   const metadata = await db.get('syncMetadata', key);
   return metadata?.value;
@@ -496,7 +500,7 @@ export async function getSyncMetadata(key: string): Promise<any> {
 /**
  * Salvar metadata de sincronização
  */
-export async function setSyncMetadata(key: string, value: any): Promise<void> {
+export async function setSyncMetadata(key: string, value: unknown): Promise<void> {
   const db = await getDB();
   await db.put('syncMetadata', { key, value });
 }
@@ -535,7 +539,7 @@ export async function getSyncStats(): Promise<{
     totalPending: pendingMovements,
     totalFailed: failedQueue,
     totalSynced: syncedQueue,
-    lastSyncTime: lastSync,
+    lastSyncTime: lastSync as string | undefined,
     queueSize: queueItems.length,
   };
 }

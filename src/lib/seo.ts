@@ -125,7 +125,7 @@ export const PAGE_META_TAGS = {
  * Gera Schema.org estruturado em JSON-LD
  * Melhora SEO e aparência em resultados de busca
  */
-export function generateJsonLd(data: Record<string, any>) {
+export function generateJsonLd(data: Record<string, unknown>) {
   const script = document.createElement('script');
   script.type = 'application/ld+json';
   script.innerHTML = JSON.stringify(data);
@@ -229,12 +229,12 @@ export const localBusinessSchema = {
 };
 
 /**
- * Hook para React - usar em componentes de página
+ * Hook para usar em componentes de página
  * Exemplo:
  * usePageMeta(PAGE_META_TAGS.home)
  */
-export function usePageMeta(tags: (typeof PAGE_META_TAGS)[keyof typeof PAGE_META_TAGS]) {
+export const usePageMeta = (tags: (typeof PAGE_META_TAGS)[keyof typeof PAGE_META_TAGS]): void => {
   useEffect(() => {
     setMetaTags(tags as MetaTags);
   }, [tags]);
-}
+};

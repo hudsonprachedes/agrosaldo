@@ -180,10 +180,10 @@ const EPIDEMIOLOGY_QUESTIONS: EpidemiologyQuestion[] = [
 // SCHEMA ZOD
 // ============================================================================
 
-const questionSchemaFields: Record<string, any> = {};
+const questionSchemaFields: Record<string, z.ZodTypeAny> = {};
 EPIDEMIOLOGY_QUESTIONS.forEach(q => {
   if (q.type === 'checkbox' || q.type === 'select') {
-    questionSchemaFields[q.id] = z.any().optional();
+    questionSchemaFields[q.id] = z.unknown().optional();
   } else if (q.type === 'number') {
     questionSchemaFields[q.id] = z.number().optional();
   } else {
@@ -192,7 +192,7 @@ EPIDEMIOLOGY_QUESTIONS.forEach(q => {
 
   if (q.required) {
     if (q.type === 'checkbox' || q.type === 'select') {
-      questionSchemaFields[q.id] = z.any();
+      questionSchemaFields[q.id] = z.unknown();
     } else if (q.type === 'number') {
       questionSchemaFields[q.id] = z.number();
     } else {
@@ -210,7 +210,7 @@ const surveySchema = z.object(questionSchemaFields);
 const QuestionarioEpidemiologico: React.FC = () => {
   const { selectedProperty } = useAuth();
   const navigate = useNavigate();
-  const [lastSubmission, setLastSubmission] = useState<any>(null);
+  const [lastSubmission, setLastSubmission] = useState<Record<string, unknown> | null>(null);
   const [daysUntilDue, setDaysUntilDue] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -360,7 +360,7 @@ const QuestionarioEpidemiologico: React.FC = () => {
                     <FormField
                       key={question.id}
                       control={form.control}
-                      name={question.id as any}
+                      name={question.id as keyof z.infer<typeof surveySchema>}
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex items-start justify-between">

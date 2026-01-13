@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, X, ExternalLink, Trash2 } from 'lucide-react';
+import { Bell, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   markNotificationAsRead,
   getUnreadNotifications,
 } from '@/lib/indexeddb';
+import { formatTimeAgo } from '@/lib/notifications-utils';
 
 export interface NotificationItem {
   id: string;
@@ -190,7 +191,7 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
 
                       {/* DATA */}
                       <p className="text-xs text-gray-400 mt-1">
-                        {formatNotificationDate(notif.createdAt)}
+                        {formatTimeAgo(new Date(notif.createdAt))}
                       </p>
 
                       {/* AÇÕES */}
@@ -255,45 +256,4 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-/**
- * Formata a data de uma notificação de forma legível
- */
-function formatNotificationDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMinutes < 1) return 'agora';
-  if (diffMinutes < 60) return `${diffMinutes}m atrás`;
-  if (diffHours < 24) return `${diffHours}h atrás`;
-  if (diffDays < 7) return `${diffDays}d atrás`;
-
-  return date.toLocaleDateString('pt-BR');
-}
-
-/**
- * Utilitário para criar notificações do sistema
- */
-export async function createSystemNotification(
-  propertyId: string,
-  title: string,
-  message: string,
-  type: 'system' | 'reminder' | 'announcement' = 'system',
-  actionUrl?: string
-) {
-  const { saveNotification } = await import('@/lib/indexeddb');
-
-  return saveNotification({
-    propertyId,
-    type,
-    status: 'unread',
-    title,
-    message,
-    actionUrl,
-    createdAt: new Date().toISOString(),
-  });
 }

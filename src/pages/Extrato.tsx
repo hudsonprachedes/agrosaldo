@@ -156,7 +156,7 @@ export default function Extrato() {
     }
 
     return filtered;
-  }, [selectedProperty?.id, filterType, filterAgeGroup, dateFrom, dateTo]);
+  }, [selectedProperty, filterType, filterAgeGroup, dateFrom, dateTo]);
 
   if (!selectedProperty) {
     navigate('/login');

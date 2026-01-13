@@ -48,7 +48,7 @@ describe('Validações Críticas do AgroSaldo', () => {
       const estados = ['MS', 'MT', 'GO', 'SP', 'MG'];
       
       estados.forEach(estado => {
-        const resultado = validateGTA(`${estado}-1234567`, estado as any);
+        const resultado = validateGTA(`${estado}-1234567`, estado as 'MS' | 'MT' | 'GO' | 'SP' | 'MG');
         expect(typeof resultado.valid).toBe('boolean');
       });
     });

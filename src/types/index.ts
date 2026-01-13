@@ -350,7 +350,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string;
     message: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   };
   message?: string;
 }
@@ -369,7 +369,7 @@ export interface PaginatedResponse<T> {
 export interface ValidationError {
   field: string;
   message: string;
-  value?: any;
+  value?: unknown;
 }
 
 // ============================================================================

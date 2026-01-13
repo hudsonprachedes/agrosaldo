@@ -125,7 +125,7 @@ async function cacheFirstStrategy(request: Request): Promise<Response> {
 }
 
 // Sincronização em background
-self.addEventListener('sync', (event: any) => {
+self.addEventListener('sync', (event: SyncEvent) => {
   console.log('[ServiceWorker] Evento de sincronização:', event.tag);
 
   if (event.tag === 'sync-movements') {

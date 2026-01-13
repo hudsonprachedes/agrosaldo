@@ -123,10 +123,11 @@ test.describe('Lançamento de Nascimento', () => {
     
     // Verifica IndexedDB
     const queueSize = await page.evaluate(async () => {
-      const db = await (window as any).indexedDB.open('agrosaldo-db', 1);
-      return new Promise((resolve) => {
-        db.onsuccess = () => {
-          const transaction = db.result.transaction(['syncQueue'], 'readonly');
+      const db = (window as unknown as Window & { indexedDB: IDBFactory }).indexedDB.open('agrosaldo-db', 1);
+      return new Promise<number>((resolve) => {
+        (db as IDBOpenDBRequest).onsuccess = (event: Event) => {
+          const dbInstance = ((event.target as IDBOpenDBRequest).result as IDBDatabase);
+          const transaction = dbInstance.transaction(['syncQueue'], 'readonly');
           const store = transaction.objectStore('syncQueue');
           const request = store.count();
           request.onsuccess = () => resolve(request.result);

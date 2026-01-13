@@ -157,10 +157,11 @@ export function useSyncStatus() {
 
   // Tentar sincronizar automaticamente quando voltar online
   useEffect(() => {
-    if (navigator.onLine && syncData.pendingCount > 0 && !isSyncing) {
+    const isOnline = navigator.onLine;
+    if (isOnline && syncData.pendingCount > 0 && !isSyncing) {
       syncNow();
     }
-  }, [navigator.onLine, syncData.pendingCount, isSyncing, syncNow]);
+  }, [syncData.pendingCount, isSyncing, syncNow]);
 
   return {
     ...syncData,

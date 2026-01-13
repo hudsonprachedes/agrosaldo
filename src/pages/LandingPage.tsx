@@ -185,8 +185,9 @@ export default function LandingPage() {
       
       toast.success('Inscrição realizada! Você receberá novidades em breve.');
       setNewsletterEmail('');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao realizar inscrição');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erro ao realizar inscrição';
+      toast.error(message);
     }
   };
 

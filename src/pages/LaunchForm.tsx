@@ -308,7 +308,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
     setSaleItems(saleItems.filter(item => item.id !== id));
   };
 
-  const updateSaleItem = (id: string, field: keyof SaleItem, value: any) => {
+  const updateSaleItem = (id: string, field: keyof SaleItem, value: unknown) => {
     setSaleItems(saleItems.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));

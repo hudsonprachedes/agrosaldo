@@ -142,11 +142,11 @@ test.describe('Aprovação Admin', () => {
     await page.goto('http://localhost:8080/admin/solicitacoes');
     
     // Procura badge/número de pendências
-    const badge = page.locator('[role="status"]:has-text(/\d/), .badge:has-text(/\d/)');
+    const badge = page.locator('[role="status"]:has-text(/[0-9]/), .badge:has-text(/[0-9]/)');
     
     if (await badge.isVisible()) {
       const badgeText = await badge.textContent();
-      const numero = parseInt(badgeText?.match(/\d+/)?.[0] || '0');
+      const numero = parseInt(badgeText?.match(/[0-9]+/)?.[0] || '0');
       
       expect(numero).toBeGreaterThanOrEqual(0);
     }
@@ -210,12 +210,12 @@ test.describe('Aprovação Admin', () => {
     
     if (count > 0) {
       // Verifica que há coluna de data
-      const dateCell = page.locator('td:has-text(/\d{2}\/\d{2}\/\d{4}/)').first();
+      const dateCell = page.locator('td:has-text(/[0-9]{2}\\/[0-9]{2}\\/[0-9]{4}/)').first();
       
       if (await dateCell.isVisible()) {
         const dateText = await dateCell.textContent();
         // Valida formato de data brasileiro
-        expect(dateText).toMatch(/\d{2}\/\d{2}\/\d{4}/);
+        expect(dateText).toMatch(/[0-9]{2}\/[0-9]{2}\/[0-9]{4}/);
       }
     }
   });
