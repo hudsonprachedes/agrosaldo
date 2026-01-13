@@ -162,11 +162,13 @@ export default function PropertySelection() {
       <header className="bg-card border-b border-border px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-              <Beef className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img
+              src="/agrosaldo-logo.png"
+              alt="AgroSaldo"
+              className="h-8 w-auto object-contain"
+              loading="eager"
+            />
             <div>
-              <h1 className="font-display font-bold text-lg text-foreground">AgroSaldo</h1>
               <p className="text-sm text-muted-foreground">Olá, {user.name.split(' ')[0]}!</p>
             </div>
           </div>

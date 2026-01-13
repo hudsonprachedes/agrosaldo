@@ -8,20 +8,21 @@ import {
   LayoutDashboard,
   Beef,
   FileText,
+  Menu,
+  X,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  Cloud,
+  CloudOff,
+  Loader2,
+  BarChart3,
+  ClipboardList,
+  Plus,
   Wallet,
   Settings,
   ChevronDown,
   LogOut,
-  RefreshCw,
-  Menu,
-  X,
-  Plus,
-    Wifi,
-    WifiOff,
-    Cloud,
-    CloudOff,
-    Loader2,
-    BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,6 +45,7 @@ const navItems = [
   { path: '/extrato', label: 'Extrato', icon: FileText },
   { path: '/financeiro', label: 'Financeiro', icon: Wallet },
   { path: '/analises', label: 'Análises', icon: BarChart3 },
+  { path: '/questionario-epidemiologico', label: 'Questionário', icon: ClipboardList },
   { path: '/configuracoes', label: 'Minha Fazenda', icon: Settings },
 ];
 
@@ -51,7 +53,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { user, selectedProperty, logout, clearSelectedProperty, selectProperty } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const { status, pendingCount, isOnline, isSyncing, syncNow } = useSyncStatus();
 
   if (!user || !selectedProperty) {
@@ -77,13 +78,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {/* Logo */}
           <div className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-                <Beef className="w-5 h-5 text-sidebar-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-display font-bold text-sidebar-foreground">AgroSaldo</h1>
-                <p className="text-xs text-sidebar-muted">Gestão Pecuária</p>
-              </div>
+              <img
+                src="/agrosaldo-logo.png"
+                alt="AgroSaldo"
+                className="h-8 w-auto object-contain"
+                loading="eager"
+              />
             </div>
           </div>
 
@@ -260,114 +260,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       )}
 
       {/* Mobile Header + Sidebar Overlay */}
-      {isMobile && (
-        <>
-          <header className="fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-40 flex items-center justify-between px-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-
-            <div className="flex items-center gap-2">
-              <Beef className="w-5 h-5 text-primary" />
-              <span className="font-display font-bold">{selectedProperty.name}</span>
-            </div>
-
-              {/* Badge de sincronização */}
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={syncNow}
-                disabled={isSyncing || !isOnline}
-                title={
-                  !isOnline 
-                    ? 'Offline - aguardando conexão' 
-                    : status === 'synced' 
-                    ? 'Sincronizado' 
-                    : `${pendingCount} itens pendentes`
-                }
-              >
-                {isSyncing ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-warning" />
-                ) : !isOnline ? (
-                  <WifiOff className="w-5 h-5 text-error" />
-                ) : status === 'synced' ? (
-                  <Cloud className="w-5 h-5 text-success" />
-                ) : status === 'error' ? (
-                  <CloudOff className="w-5 h-5 text-error" />
-                ) : (
-                  <RefreshCw className="w-5 h-5 text-warning" />
-                )}
-              </Button>
-          </header>
-
-          {/* Mobile Sidebar Overlay */}
-          {sidebarOpen && (
-            <div className="fixed inset-0 z-50">
-              <div
-                className="absolute inset-0 bg-black/50"
-                onClick={() => setSidebarOpen(false)}
-              />
-              <aside className="absolute left-0 top-0 bottom-0 w-72 bg-sidebar animate-slide-in-left">
-                <div className="p-4 flex items-center justify-between border-b border-sidebar-border">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-                      <Beef className="w-5 h-5 text-sidebar-primary-foreground" />
-                    </div>
-                    <span className="font-display font-bold text-sidebar-foreground">AgroSaldo</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSidebarOpen(false)}
-                    className="text-sidebar-foreground"
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
-                </div>
-
-                <nav className="p-4 space-y-1">
-                  {navItems.map((item) => (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setSidebarOpen(false)}
-                      className={({ isActive }) =>
-                        cn(
-                          'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors',
-                          isActive
-                            ? 'bg-sidebar-accent text-sidebar-primary'
-                            : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
-                        )
-                      }
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.label}
-                    </NavLink>
-                  ))}
-                </nav>
-
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start gap-3"
-                    onClick={() => {
-                      logout();
-                      setSidebarOpen(false);
-                    }}
-                  >
-                    <LogOut className="w-5 h-5" />
-                    Sair
-                  </Button>
-                </div>
-              </aside>
-            </div>
-          )}
-        </>
-      )}
 
       {/* Main Content */}
       <main

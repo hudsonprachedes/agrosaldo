@@ -12,8 +12,10 @@ import {
   ChevronDown,
   LogOut,
   BarChart3,
+  Wallet,
   Settings,
   X,
+  ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,12 +49,13 @@ const bottomNavItems = [
 
 const menuItems = [
   { path: '/analises', label: 'Análises', icon: BarChart3 },
+  { path: '/questionario-epidemiologico', label: 'Questionário', icon: ClipboardList },
   { path: '/minha-fazenda', label: 'Minha Fazenda', icon: Settings },
-  { path: '/extrato', label: 'Extrato Completo', icon: FileText },
+  { path: '/financeiro', label: 'Financeiro', icon: Wallet },
 ];
 
 export default function MobileLayout({ children, showBottomNav = true }: MobileLayoutProps) {
-  const { user, selectedProperty, logout, clearSelectedProperty } = useAuth();
+  const { user, selectedProperty, logout, clearSelectedProperty, selectProperty } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -87,8 +90,9 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
                 <DropdownMenuItem
                   key={prop.id}
                   onClick={() => {
-                    clearSelectedProperty();
-                    navigate('/selecionar-propriedade');
+                    if (prop.id !== selectedProperty.id) {
+                      selectProperty(prop.id);
+                    }
                   }}
                   className={cn(
                     prop.id === selectedProperty.id && 'bg-muted'

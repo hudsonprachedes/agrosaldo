@@ -18,6 +18,7 @@ import {
   getOnboardingStatus 
 } from '@/lib/indexeddb';
 import { AlertCircle, CheckCircle } from 'lucide-react';
+import type { StoredEpidemiologySurvey } from '@/lib/indexeddb';
 
 // ============================================================================
 // DEFINIÇÃO DO QUESTIONÁRIO
@@ -210,7 +211,7 @@ const surveySchema = z.object(questionSchemaFields);
 const QuestionarioEpidemiologico: React.FC = () => {
   const { selectedProperty } = useAuth();
   const navigate = useNavigate();
-  const [lastSubmission, setLastSubmission] = useState<Record<string, unknown> | null>(null);
+  const [lastSubmission, setLastSubmission] = useState<StoredEpidemiologySurvey | null>(null);
   const [daysUntilDue, setDaysUntilDue] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -315,6 +316,15 @@ const QuestionarioEpidemiologico: React.FC = () => {
           <p className="text-gray-600">
             Avaliação semestral de saúde animal e biossegurança da propriedade
           </p>
+        </div>
+
+        <div className="mb-6 flex justify-end">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/questionario-epidemiologico/historico')}
+          >
+            Ver histórico
+          </Button>
         </div>
 
         {/* INFORMAÇÃO DE ÚLTIMA SUBMISSÃO */}

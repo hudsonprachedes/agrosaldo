@@ -36,7 +36,6 @@ const navItems = [
   { path: '/admin/regulamentacoes', label: 'Regulamentações', icon: FileText },
   { path: '/admin/comunicacao', label: 'Comunicação', icon: Megaphone },
   { path: '/admin/auditoria', label: 'Auditoria', icon: Shield },
-  { path: '/admin/regras', label: 'Regras por Estado', icon: MapPin },
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {

@@ -194,11 +194,15 @@ export default function Login() {
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4">
-            <Beef className="w-8 h-8 text-primary-foreground" />
+          <div className="flex justify-center mb-4">
+            <img
+              src="/agrosaldo-logo.png"
+              alt="AgroSaldo"
+              className="h-16 w-auto object-contain"
+              loading="eager"
+            />
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">AgroSaldo</h1>
-          <p className="text-muted-foreground mt-1">Controle oficial do seu rebanho, sem planilha.</p>
+          <p className="text-muted-foreground">Controle oficial do seu rebanho, sem planilha.</p>
         </div>
 
         {/* Login Card */}

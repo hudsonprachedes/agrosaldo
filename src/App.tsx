@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import PropertySelection from "./pages/PropertySelection";
 import Onboarding from "./pages/Onboarding";
 import QuestionarioEpidemiologico from "./pages/QuestionarioEpidemiologico";
+import QuestionarioEpidemiologicoHistorico from "./pages/QuestionarioEpidemiologicoHistorico";
 import Dashboard from "./pages/Dashboard";
 import MobileHome from "./pages/MobileHome";
 import Rebanho from "./pages/Rebanho";
@@ -35,7 +36,6 @@ import AdminPlanos from "./pages/admin/AdminPlanos";
 import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
 import AdminComunicacao from "./pages/admin/AdminComunicacao";
 import AdminAuditoria from "./pages/admin/AdminAuditoria";
-import AdminRegras from "./pages/admin/AdminRegras";
 import AdminCadastros from "./pages/admin/AdminCadastros";
 import AdminAnalises from "./pages/admin/AdminAnalises";
 import AdminRegulamentacoes from "./pages/admin/AdminRegulamentacoes";
@@ -46,6 +46,7 @@ import Bloqueado from "./pages/Bloqueado";
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
+import MobileLayout from "./components/layout/MobileLayout";
 import AdminLayout from "./components/layout/AdminLayout";
 
 const queryClient = new QueryClient();
@@ -113,6 +114,11 @@ function DashboardRoute() {
   return isMobile ? <MobileHome /> : <AppLayout><Dashboard /></AppLayout>;
 }
 
+function LayoutRoute({ children }: { children: ReactNode }) {
+  const isMobile = useIsMobile();
+  return isMobile ? <MobileLayout>{children}</MobileLayout> : <AppLayout>{children}</AppLayout>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -137,7 +143,10 @@ const App = () => (
             
             {/* Questionário Route */}
             <Route path="/questionario-epidemiologico" element={
-              <ProtectedRoute><QuestionarioEpidemiologico /></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologico /></LayoutRoute></ProtectedRoute>
+            } />
+            <Route path="/questionario-epidemiologico/historico" element={
+              <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoHistorico /></LayoutRoute></ProtectedRoute>
             } />
             
             {/* Protected Routes */}
@@ -145,25 +154,25 @@ const App = () => (
               <ProtectedRoute><DashboardRoute /></ProtectedRoute>
             } />
             <Route path="/rebanho" element={
-              <ProtectedRoute><AppLayout><Rebanho /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><Rebanho /></LayoutRoute></ProtectedRoute>
             } />
             <Route path="/extrato" element={
-              <ProtectedRoute><AppLayout><Extrato /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><Extrato /></LayoutRoute></ProtectedRoute>
             } />
             <Route path="/lancamentos" element={
-              <ProtectedRoute><AppLayout><Lancamentos /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><Lancamentos /></LayoutRoute></ProtectedRoute>
             } />
             <Route path="/financeiro" element={
-              <ProtectedRoute><AppLayout><Financeiro /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><Financeiro /></LayoutRoute></ProtectedRoute>
             } />
             <Route path="/analises" element={
-              <ProtectedRoute><AppLayout><Analytics /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><Analytics /></LayoutRoute></ProtectedRoute>
             } />
             <Route path="/minha-fazenda" element={
-              <ProtectedRoute><AppLayout><MinhaFazenda /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>
             } />
             <Route path="/configuracoes" element={
-              <ProtectedRoute><AppLayout><MinhaFazenda /></AppLayout></ProtectedRoute>
+              <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>
             } />
             
             {/* Launch Forms */}
@@ -222,9 +231,6 @@ const App = () => (
             } />
             <Route path="/admin/auditoria" element={
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAuditoria /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/regras" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminRegras /></AdminLayout></ProtectedRoute>
             } />
             
             {/* Catch-all */}

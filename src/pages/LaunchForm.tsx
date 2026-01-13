@@ -207,7 +207,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       } else if (type === 'mortalidade') {
         toast.success(`${quantity} animal(is) baixado(s) do estoque`, {
           description: deathType === 'natural' ? `Causa: ${deathCause}` : 'Consumo interno registrado',
-          icon: '⚫',
+          icon: '💀',
         });
       } else if (type === 'venda') {
         const totalValue = saleItems.reduce((sum, item) => sum + (item.quantity * item.unitValue), 0);
@@ -279,7 +279,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const getIcon = () => {
     switch (type) {
       case 'nascimento': return '🐮';
-      case 'mortalidade': return '⚫';
+      case 'mortalidade': return '💀';
       case 'venda': return '🚚';
       case 'vacina': return '💉';
       case 'outras': return '🐴';

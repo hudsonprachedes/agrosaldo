@@ -18,6 +18,7 @@ import {
   Check,
   Search,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,31 @@ export default function MinhaFazenda() {
     notificacaoMorte: true,
     notificacaoVacina: true,
   });
+
+  // Password form (local-only mock)
+  const [passwordForm, setPasswordForm] = useState({
+    current: '',
+    next: '',
+    confirm: '',
+  });
+
+  const handleChangePassword = () => {
+    if (!passwordForm.current || !passwordForm.next || !passwordForm.confirm) {
+      toast.error('Preencha todos os campos de senha');
+      return;
+    }
+    if (passwordForm.next.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (passwordForm.next !== passwordForm.confirm) {
+      toast.error('As senhas não conferem');
+      return;
+    }
+    // Em produção: chamar API para alterar senha
+    setPasswordForm({ current: '', next: '', confirm: '' });
+    toast.success('Senha alterada com sucesso');
+  };
 
   if (!user || !selectedProperty) {
     navigate('/login');
@@ -251,12 +277,12 @@ export default function MinhaFazenda() {
         {/* ABA PROPRIEDADE - CRUD */}
         <TabsContent value="propriedade" className="space-y-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Minhas Propriedades</CardTitle>
                 <CardDescription>Gerencie todas as suas propriedades</CardDescription>
               </div>
-              <Button onClick={handleAddProperty}>
+              <Button onClick={handleAddProperty} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Propriedade
               </Button>
@@ -433,6 +459,46 @@ export default function MinhaFazenda() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-4 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-primary" />
+                  Alterar Senha
+                </h4>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Senha Atual</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.current}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.next}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                      placeholder="Mín. 6 caracteres"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmar Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.confirm}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                      placeholder="Repita a nova senha"
+                    />
+                  </div>
+                </div>
+                <Button className="w-full mt-4" onClick={handleChangePassword}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Atualizar Senha
+                </Button>
               </div>
 
               <DialogFooter>

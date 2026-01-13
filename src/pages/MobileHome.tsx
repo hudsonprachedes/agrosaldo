@@ -36,7 +36,7 @@ const actionItems = [
     icon: Skull, 
     color: 'bg-gradient-to-br from-death to-death/80', 
     textColor: 'text-white',
-    emoji: '⚫',
+    emoji: '💀',
     path: '/lancamento/mortalidade'
   },
   { 

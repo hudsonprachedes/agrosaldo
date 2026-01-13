@@ -62,6 +62,17 @@ export default function AdminFinanceiro() {
     setShowPaymentDialog(true);
   };
 
+  const handleMarkAsPending = (paymentId: string) => {
+    const updated = payments.map(p =>
+      p.id === paymentId ? { ...p, status: 'pending' as const, paidAt: undefined } : p
+    );
+    setPayments(updated);
+    toast({
+      title: 'Pagamento revertido',
+      description: 'O pagamento foi marcado como pendente.',
+    });
+  };
+
   const handlePaymentConfirmation = () => {
     if (!selectedPayment) return;
 
@@ -299,6 +310,16 @@ export default function AdminFinanceiro() {
                                 Registrar Pagamento
                               </Button>
                             )}
+                            {payment.status === 'paid' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkAsPending(payment.id)}
+                              >
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Marcar como pendente
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -390,6 +411,7 @@ export default function AdminFinanceiro() {
                       <TableHead>Valor</TableHead>
                       <TableHead>Método</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -422,6 +444,19 @@ export default function AdminFinanceiro() {
                           )}
                           {payment.status === 'overdue' && (
                             <Badge className="bg-red-100 text-red-800">Atrasado</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {payment.status === 'paid' ? (
+                            <Button size="sm" variant="outline" onClick={() => handleMarkAsPending(payment.id)}>
+                              <Calendar className="w-3 h-3 mr-1" />
+                              Marcar como pendente
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={() => openPaymentDialog(payment)}>
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Confirmar
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>

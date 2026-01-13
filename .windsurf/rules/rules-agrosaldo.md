@@ -1,3 +1,7 @@
+---
+trigger: manual
+---
+
 # AgroSaldo - Instruções para Agentes de IA
 
 sempre responda em Português do Brasil - PT-BR

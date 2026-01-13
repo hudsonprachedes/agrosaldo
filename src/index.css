@@ -16,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 20 14% 10%;
 
-    /* Primary - Forest Green (Agricultural) */
-    --primary: 142 76% 22%;
+    /* Primary - Brand Green (#047e45) */
+    --primary: 152 94% 26%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary - Warm Earth */
@@ -52,29 +52,29 @@
     /* UI Elements */
     --border: 40 20% 88%;
     --input: 40 20% 88%;
-    --ring: 142 76% 22%;
+    --ring: 152 94% 26%;
     --radius: 0.75rem;
 
     /* Sidebar */
     --sidebar-background: 142 30% 15%;
     --sidebar-foreground: 40 20% 95%;
-    --sidebar-primary: 142 76% 45%;
+    --sidebar-primary: 152 94% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 142 30% 22%;
     --sidebar-accent-foreground: 40 20% 95%;
     --sidebar-border: 142 20% 25%;
-    --sidebar-ring: 142 76% 45%;
+    --sidebar-ring: 152 94% 36%;
     --sidebar-muted: 142 15% 40%;
 
     /* Charts */
-    --chart-1: 142 76% 36%;
+    --chart-1: 152 94% 36%;
     --chart-2: 43 96% 56%;
     --chart-3: 200 80% 50%;
     --chart-4: 0 84% 60%;
     --chart-5: 280 60% 50%;
 
     /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(142 76% 22%) 0%, hsl(142 50% 30%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(152 94% 26%) 0%, hsl(152 60% 34%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 33% 97%) 100%);
     --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 60% 45%) 100%);
     --gradient-warning: linear-gradient(135deg, hsl(43 96% 56%) 0%, hsl(43 80% 60%) 100%);
@@ -91,7 +91,7 @@
     --popover: 20 14% 12%;
     --popover-foreground: 40 20% 95%;
 
-    --primary: 142 60% 45%;
+    --primary: 152 70% 40%;
     --primary-foreground: 0 0% 100%;
     
     --secondary: 20 14% 18%;
@@ -108,16 +108,16 @@
 
     --border: 20 14% 22%;
     --input: 20 14% 22%;
-    --ring: 142 60% 45%;
+    --ring: 152 70% 40%;
 
     --sidebar-background: 20 14% 6%;
     --sidebar-foreground: 40 20% 95%;
-    --sidebar-primary: 142 60% 45%;
+    --sidebar-primary: 152 70% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 20 14% 15%;
     --sidebar-accent-foreground: 40 20% 95%;
     --sidebar-border: 20 14% 18%;
-    --sidebar-ring: 142 60% 45%;
+    --sidebar-ring: 152 70% 40%;
   }
 }
 
