@@ -54,6 +54,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Ignorar requisições que não são GET (ex.: POST/PUT não podem ser colocadas em cache)
+  if (request.method !== 'GET') {
+    return;
+  }
+
   // Ignorar requisições de extensões do navegador
   if (url.protocol === 'chrome-extension:' || url.protocol === 'moz-extension:') {
     return;
