@@ -33,42 +33,9 @@ export default defineConfig(async ({ mode }) => {
       },
     },
     build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id: string) {
-            // Separar node_modules em vendor chunks
-            if (id.includes('node_modules')) {
-              // React e bibliotecas principais
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-                return 'vendor-react';
-              }
-              // ApexCharts (gráficos)
-              if (id.includes('apexcharts')) {
-                return 'vendor-charts';
-              }
-              // UI libs (Radix, etc)
-              if (id.includes('@radix-ui') || id.includes('lucide-react')) {
-                return 'vendor-ui';
-              }
-              // Outras dependências
-              return 'vendor';
-            }
-            
-            // Separar páginas admin em chunk separado
-            if (id.includes('/src/pages/admin/')) {
-              return 'admin';
-            }
-            
-            // Separar lib de indexeddb e db em chunk separado
-            if (id.includes('/src/lib/indexeddb') || id.includes('/src/lib/db')) {
-              return 'db';
-            }
-          },
-        },
-      },
-      // Aumentar limite de aviso para chunks grandes
+      // Use Rollup's default chunking to avoid circular init ordering issues
       chunkSizeWarningLimit: 1000,
-      // Habilitar sourcemaps apenas em dev
+      // Enable sourcemaps only in dev
       sourcemap: mode === 'development',
     },
   };

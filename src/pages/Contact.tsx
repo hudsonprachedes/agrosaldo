@@ -163,7 +163,7 @@ export default function Contact() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Sábado</span>
-                    <span className="font-medium">9h - 13h</span>
+                    <span className="font-medium">Fechado</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Domingo</span>

@@ -4,16 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Beef, Eye, EyeOff, Loader2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Beef, Eye, EyeOff, Leaf, LineChart, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { fetchViaCepWithCache } from '@/lib/cep';
 import { MaskedInput } from '@/components/ui/masked-input';
+import heroBackground from '@/assets/hero-background.jpg';
 
 // ============================================================================
 // SCHEMAS ZOD
@@ -30,82 +29,23 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 });
 
-const registerSchema = z.object({
-  name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  cpfCnpj: z
-    .string()
-    .min(1, 'CPF/CNPJ é obrigatório')
-    .refine((value) => {
-      const digits = value.replace(/\D/g, '');
-      return digits.length === 11 || digits.length === 14;
-    }, 'CPF/CNPJ inválido'),
-  email: z.string().email('Email inválido'),
-  phone: z
-    .string()
-    .min(1, 'Telefone é obrigatório')
-    .refine((value) => value.replace(/\D/g, '').length >= 10, 'Telefone inválido'),
-  nickname: z.string().optional(),
-  cep: z
-    .string()
-    .min(1, 'CEP é obrigatório')
-    .refine((value) => value.replace(/\D/g, '').length === 8, 'CEP deve ter 8 dígitos'),
-  address: z.string().min(5, 'Endereço inválido'),
-  city: z.string().min(2, 'Cidade inválida'),
-  uf: z.string().length(2, 'UF inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  passwordConfirm: z.string().min(6),
-}).refine(data => data.password === data.passwordConfirm, {
-  message: 'Senhas não conferem',
-  path: ['passwordConfirm'],
-});
-
 type LoginFormData = z.infer<typeof loginSchema>;
-type RegisterFormData = z.infer<typeof registerSchema>;
-
-// ============================================================================
-// PÁGINA LOGIN
-// ============================================================================
 
 export default function Login() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [cepLoading, setCepLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const supportWhatsAppNumber = '5567999999999';
 
-  // Login form
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { cpfCnpj: '', password: '' },
   });
 
-  // Register form
-  const registerForm = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      name: '',
-      cpfCnpj: '',
-      email: '',
-      phone: '',
-      nickname: '',
-      cep: '',
-      address: '',
-      city: '',
-      uf: '',
-      password: '',
-      passwordConfirm: '',
-    },
-  });
-
   const isCnpjLogin = loginForm.watch('cpfCnpj').replace(/\D/g, '').length > 11;
   const loginMask = isCnpjLogin ? '99.999.999/9999-99' : '999.999.999-99';
 
-  const isCnpjRegister = registerForm.watch('cpfCnpj').replace(/\D/g, '').length > 11;
-  const registerMask = isCnpjRegister ? '99.999.999/9999-99' : '999.999.999-99';
-
-  // Handle login
   const onLoginSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
@@ -128,420 +68,230 @@ export default function Login() {
     }
   };
 
-  // Handle register
-  const onRegisterSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Chamar register no contexto
-      const success = await register({
-        name: data.name,
-        cpfCnpj: data.cpfCnpj,
-        email: data.email,
-        phone: data.phone,
-        nickname: data.nickname,
-        cep: data.cep,
-        address: data.address,
-        city: data.city,
-        uf: data.uf,
-        password: data.password,
-      });
-
-      if (success) {
-        toast.success('Cadastro realizado! Aguardando aprovação do SuperAdmin.');
-        setMode('login');
-        registerForm.reset();
-        loginForm.setValue('cpfCnpj', data.cpfCnpj);
-      } else {
-        toast.error('Erro ao realizar cadastro');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle CEP lookup
-  const handleCepChange = async (cep: string) => {
-    const clean = cep.replace(/\D/g, '');
-    if (clean.length !== 8) return;
-
-    setCepLoading(true);
-    try {
-      const result = await fetchViaCepWithCache(cep);
-      if (result.found) {
-        registerForm.setValue('address', result.address);
-        registerForm.setValue('city', result.city);
-        registerForm.setValue('uf', result.uf);
-      } else {
-        toast.warning('CEP não encontrado. Preencha manualmente.');
-      }
-    } catch (error) {
-      toast.error('Erro ao buscar CEP');
-    } finally {
-      setCepLoading(false);
-    }
+  const handleForgotPassword = () => {
+    const message = encodeURIComponent('Olá! Esqueci minha senha e preciso de ajuda para acessar o AgroSaldo.');
+    window.open(`https://wa.me/${supportWhatsAppNumber}?text=${message}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-      {/* Background decoration */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
+    <div className="relative min-h-screen overflow-hidden bg-[#04130b] text-white">
+      {/* Immersive background */}
+      <div className="absolute inset-0">
+        <img
+          src={heroBackground}
+          alt="Produtor cuidando do rebanho"
+          className="h-full w-full object-cover opacity-30"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#04130c] via-[#0b3a20] to-[#0f5f2e] opacity-95" />
+        <div className="absolute -top-20 -right-20 w-96 h-96 bg-emerald-400/30 blur-[140px]" />
+        <div className="absolute -bottom-32 -left-16 w-[28rem] h-[28rem] bg-lime-500/20 blur-[160px]" />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo */}
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="flex justify-center mb-4">
+      <div className="relative z-10 px-4 py-8 lg:px-10">
+        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
             <img
               src="/agrosaldo-logo.png"
               alt="AgroSaldo"
-              className="h-16 w-auto object-contain"
-              loading="eager"
+              className="h-12 w-12 rounded-full border border-white/20 object-cover"
             />
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60">AgroSaldo</p>
+              <p className="text-lg font-semibold">Controle oficial do seu rebanho</p>
+            </div>
           </div>
-          <p className="text-muted-foreground">Controle oficial do seu rebanho, sem planilha.</p>
-        </div>
 
-        {/* Login Card */}
-        {mode === 'login' && (
-          <Card className="animate-scale-in shadow-card">
-            <CardHeader className="text-center pb-4">
-              <CardTitle className="font-display text-xl">Entrar</CardTitle>
-              <CardDescription>
-                Acesse sua conta para gerenciar seu rebanho
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                  <FormField
-                    control={loginForm.control}
-                    name="cpfCnpj"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CPF ou CNPJ</FormLabel>
-                        <FormControl>
-                          <MaskedInput
-                            mask={loginMask}
-                            value={field.value}
-                            onChange={field.onChange}
-                            onBlur={field.onBlur}
-                            placeholder={isCnpjLogin ? '00.000.000/0000-00' : '000.000.000-00'}
-                            className="h-12"
-                            autoComplete="username"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/10 border border-white/10"
+              onClick={() => navigate('/')}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar ao site
+            </Button>
+            <Button
+              className="bg-white/15 text-white hover:bg-white/25 border border-white/20 backdrop-blur"
+              onClick={() => navigate('/contato')}
+            >
+              Falar com especialista
+            </Button>
+          </div>
+        </header>
 
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Senha</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="••••••"
-                              className="h-12 pr-12"
-                              autoComplete="current-password"
-                              {...field}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="w-4 h-4 text-muted-foreground" />
-                              ) : (
-                                <Eye className="w-4 h-4 text-muted-foreground" />
-                              )}
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+        <main className="mt-10 grid max-w-6xl mx-auto items-start gap-12 pb-12 lg:grid-cols-[1.1fr_0.9fr]">
+          <section className="order-2 space-y-8 animate-slide-in-left lg:order-1">
+            <Badge className="bg-white/10 border border-white/20 text-white w-fit uppercase tracking-widest">
+              Nova experiência 2025
+            </Badge>
+            <div className="space-y-4">
+              <h1 className="text-4xl md:text-5xl font-display leading-tight">
+                Acesse o AgroSaldo com uma atmosfera que inspira bons resultados todos os dias.
+              </h1>
+              <p className="text-lg text-white/70 max-w-2xl">
+                Um portal com textura natural, animações sutis e informação no ponto certo para você começar
+                a rotina com orgulho de cuidar do seu rebanho digital.
+              </p>
+            </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full h-12 font-semibold text-base"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Entrando...
-                      </>
-                    ) : (
-                      'Entrar'
-                    )}
-                  </Button>
-                </form>
-              </Form>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  icon: Beef,
+                  title: 'Rebanho no comando',
+                  description: 'Visualize lotes, pesos e sanidade em segundos.',
+                },
+                {
+                  icon: LineChart,
+                  title: 'Indicadores vivos',
+                  description: 'Alertas inteligentes sobre custos, margem e abate.',
+                },
+                {
+                  icon: ShieldCheck,
+                  title: 'Dados blindados',
+                  description: 'Segurança nivel banco e auditoria completa.',
+                },
+                {
+                  icon: Leaf,
+                  title: 'Operação sustentável',
+                  description: 'Gestão ambiental e rastreabilidade integrada.',
+                },
+              ].map(({ icon: Icon, title, description }) => (
+                <div
+                  key={title}
+                  className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-md transition-transform duration-300 hover:-translate-y-1 hover:bg-white/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-emerald-400/15 p-2">
+                      <Icon className="h-5 w-5 text-emerald-200" />
+                    </div>
+                    <p className="font-semibold">{title}</p>
+                  </div>
+                  <p className="mt-2 text-sm text-white/70">{description}</p>
+                </div>
+              ))}
+            </div>
 
-              <div className="mt-6 text-center">
-                <a href="#" className="text-sm text-primary hover:underline">
-                  Esqueci minha senha
-                </a>
+            <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+              <div className="rounded-full bg-white/10 p-3 animate-bounce-gentle">
+                <Sparkles className="h-5 w-5 text-amber-200" />
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div>
+                <p className="text-lg font-semibold">+2.500 propriedades confiam no AgroSaldo</p>
+                <p className="text-sm text-white/70">
+                  Todos os acessos passam por aprovação para manter a comunidade segura.
+                </p>
+              </div>
+            </div>
+          </section>
 
-        {/* Register Dialog */}
-        <Dialog open={mode === 'register'} onOpenChange={(open) => !open && setMode('login')}>
-          <DialogContent className="max-w-2xl max-h-96 overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-display text-xl">Criar Conta</DialogTitle>
-              <DialogDescription>
-                Preencha seus dados para se cadastrar no AgroSaldo
-              </DialogDescription>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-4 top-4"
-                onClick={() => setMode('login')}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </DialogHeader>
+          <section className="order-1 animate-slide-in-right w-full lg:order-2">
+            <div className="rounded-[32px] border border-white/25 bg-white/95 p-1 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+              <div className="rounded-[28px] bg-white p-6 md:p-8 space-y-6 text-foreground">
+                <div className="text-center space-y-1">
+                  <CardTitle className="text-2xl font-display">Bem-vindo de volta</CardTitle>
+                  <CardDescription>
+                    Entre para acompanhar indicadores, lotes e alertas do AgroSaldo.
+                  </CardDescription>
+                </div>
 
-            <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                {/* Nome */}
-                <FormField
-                  control={registerForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                    <FormField
+                      control={loginForm.control}
+                      name="cpfCnpj"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CPF ou CNPJ</FormLabel>
+                          <FormControl>
+                            <MaskedInput
+                              mask={loginMask}
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              placeholder={isCnpjLogin ? '00.000.000/0000-00' : '000.000.000-00'}
+                              className="h-12"
+                              autoComplete="username"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* CPF/CNPJ */}
-                <FormField
-                  control={registerForm.control}
-                  name="cpfCnpj"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CPF ou CNPJ</FormLabel>
-                      <FormControl>
-                        <MaskedInput
-                          mask={registerMask}
-                          value={field.value}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          placeholder={isCnpjRegister ? '00.000.000/0000-00' : '000.000.000-00'}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Senha</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                className="h-12 pr-12"
+                                autoComplete="current-password"
+                                {...field}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground"
+                                onClick={() => setShowPassword(!showPassword)}
+                              >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {/* Email */}
-                <FormField
-                  control={registerForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <Button
+                      type="submit"
+                      className="w-full h-12 text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 hover:shadow-lg"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Entrando...
+                        </>
+                      ) : (
+                        <>
+                          Entrar no painel
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
 
-                {/* Telefone */}
-                <FormField
-                  control={registerForm.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone (WhatsApp)</FormLabel>
-                      <FormControl>
-                        <MaskedInput
-                          mask="(99) 99999-9999"
-                          value={field.value}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          placeholder="(11) 99999-9999"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="text-center text-sm text-muted-foreground">
+                  <button className="text-primary font-medium hover:underline" onClick={handleForgotPassword}>
+                    Esqueci minha senha
+                  </button>
+                </div>
 
-                {/* Apelido */}
-                <FormField
-                  control={registerForm.control}
-                  name="nickname"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Apelido (opcional)</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="João" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* CEP */}
-                <FormField
-                  control={registerForm.control}
-                  name="cep"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CEP</FormLabel>
-                      <FormControl>
-                        <MaskedInput
-                          mask="99999-999"
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="12345-678"
-                          disabled={cepLoading}
-                          onBlur={() => {
-                            field.onBlur();
-                            handleCepChange(field.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Endereço */}
-                <FormField
-                  control={registerForm.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Endereço</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Cidade */}
-                <FormField
-                  control={registerForm.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cidade</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* UF */}
-                <FormField
-                  control={registerForm.control}
-                  name="uf"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>UF</FormLabel>
-                      <FormControl>
-                        <Input {...field} maxLength={2} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Senha */}
-                <FormField
-                  control={registerForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Senha</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Confirmar Senha */}
-                <FormField
-                  control={registerForm.control}
-                  name="passwordConfirm"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirmar Senha</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex gap-3">
+                <div className="rounded-2xl border border-muted bg-muted/30 p-4 text-sm text-muted-foreground space-y-3">
+                  <p className="font-medium text-foreground">Ainda não tem acesso?</p>
+                  
                   <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setMode('login')}
+                    className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                    onClick={() => navigate('/cadastro')}
                   >
-                    Cancelar
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Cadastrando...
-                      </>
-                    ) : (
-                      'Cadastrar'
-                    )}
+                    Solicitar minha conta
                   </Button>
                 </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+              </div>
+            </div>
+          </section>
+        </main>
 
-        {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Não tem conta?{' '}
-          <button
-            onClick={() => navigate('/cadastro')}
-            className="text-primary font-medium hover:underline cursor-pointer"
-          >
-            Criar conta agora
-          </button>
-        </p>
+        
       </div>
     </div>
   );

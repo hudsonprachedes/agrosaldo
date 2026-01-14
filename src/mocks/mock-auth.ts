@@ -130,11 +130,11 @@ export const mockCredentials = [
 ];
 
 export const plans = [
-  { id: 'porteira', name: 'Porteira', price: 29.90, maxCattle: 500, color: 'hsl(142, 76%, 36%)' },
-  { id: 'piquete', name: 'Piquete', price: 69.90, maxCattle: 1500, color: 'hsl(200, 80%, 50%)' },
-  { id: 'retiro', name: 'Retiro', price: 129.90, maxCattle: 3000, color: 'hsl(43, 96%, 56%)' },
-  { id: 'estancia', name: 'Estância', price: 249.90, maxCattle: 6000, color: 'hsl(280, 60%, 50%)' },
-  { id: 'barao', name: 'Barão', price: 399.90, maxCattle: Infinity, color: 'hsl(20, 80%, 50%)' },
+  { id: 'porteira', name: 'Porteira', price: 49.90, maxCattle: 500, color: 'hsl(142, 76%, 36%)' },
+  { id: 'piquete', name: 'Piquete', price: 99.90, maxCattle: 1000, color: 'hsl(200, 80%, 50%)' },
+  { id: 'retiro', name: 'Retiro', price: 149.90, maxCattle: 2000, color: 'hsl(43, 96%, 56%)' },
+  { id: 'estancia', name: 'Estância', price: 249.90, maxCattle: 3000, color: 'hsl(280, 60%, 50%)' },
+  { id: 'barao', name: 'Barão', price: 499.90, maxCattle: Infinity, color: 'hsl(20, 80%, 50%)' },
 ];
 
 export function authenticateUser(cpfCnpj: string, password: string): User | null {

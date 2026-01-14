@@ -83,9 +83,9 @@ export default function AdminCadastros() {
     setSelectedSignup(signup);
     // Sugere plano baseado no número de cabeças
     if (signup.numeroCabecas <= 500) setTrialPlan('porteira');
-    else if (signup.numeroCabecas <= 1500) setTrialPlan('piquete');
-    else if (signup.numeroCabecas <= 3000) setTrialPlan('retiro');
-    else if (signup.numeroCabecas <= 6000) setTrialPlan('estancia');
+    else if (signup.numeroCabecas <= 1000) setTrialPlan('piquete');
+    else if (signup.numeroCabecas <= 2000) setTrialPlan('retiro');
+    else if (signup.numeroCabecas <= 3000) setTrialPlan('estancia');
     else setTrialPlan('barao');
     
     setShowApprovalDialog(true);
@@ -273,9 +273,9 @@ export default function AdminCadastros() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="porteira">Porteira (até 500 cabeças)</SelectItem>
-                    <SelectItem value="piquete">Piquete (até 1500 cabeças)</SelectItem>
-                    <SelectItem value="retiro">Retiro (até 3000 cabeças)</SelectItem>
-                    <SelectItem value="estancia">Estância (até 6000 cabeças)</SelectItem>
+                    <SelectItem value="piquete">Piquete (até 1000 cabeças)</SelectItem>
+                    <SelectItem value="retiro">Retiro (até 2000 cabeças)</SelectItem>
+                    <SelectItem value="estancia">Estância (até 3000 cabeças)</SelectItem>
                     <SelectItem value="barao">Barão (ilimitado)</SelectItem>
                   </SelectContent>
                 </Select>

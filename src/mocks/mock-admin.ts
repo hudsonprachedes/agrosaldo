@@ -124,7 +124,7 @@ export const mockTenants: Tenant[] = [
     appVersion: '2.1.0',
     financialStatus: 'ok',
     createdAt: '2023-08-20',
-    monthlyRevenue: 129.90,
+    monthlyRevenue: 149.90,
   },
   {
     id: 't-3',
@@ -140,7 +140,7 @@ export const mockTenants: Tenant[] = [
     appVersion: '2.0.8',
     financialStatus: 'late',
     createdAt: '2023-10-05',
-    monthlyRevenue: 69.90,
+    monthlyRevenue: 99.90,
   },
   {
     id: 't-4',
@@ -156,7 +156,7 @@ export const mockTenants: Tenant[] = [
     appVersion: '2.0.5',
     financialStatus: 'overdue',
     createdAt: '2023-11-12',
-    monthlyRevenue: 29.90,
+    monthlyRevenue: 49.90,
   },
   {
     id: 't-5',
@@ -172,7 +172,7 @@ export const mockTenants: Tenant[] = [
     appVersion: '2.1.0',
     financialStatus: 'ok',
     createdAt: '2023-03-01',
-    monthlyRevenue: 399.90,
+    monthlyRevenue: 499.90,
   },
 ];
 
@@ -340,7 +340,7 @@ export const mockFinancialPayments: FinancialPayment[] = [
     tenantId: 't-2',
     tenantName: 'Fazenda Primavera',
     plan: 'retiro',
-    amount: 129.90,
+    amount: 149.90,
     paymentMethod: 'credit_card',
     paymentFrequency: 'monthly',
     status: 'paid',
@@ -353,7 +353,7 @@ export const mockFinancialPayments: FinancialPayment[] = [
     tenantId: 't-3',
     tenantName: 'Rancho Bela Vista',
     plan: 'piquete',
-    amount: 69.90,
+    amount: 99.90,
     paymentMethod: 'pix',
     paymentFrequency: 'monthly',
     status: 'overdue',
@@ -365,7 +365,7 @@ export const mockFinancialPayments: FinancialPayment[] = [
     tenantId: 't-4',
     tenantName: 'Sítio Boa Esperança',
     plan: 'porteira',
-    amount: 29.90,
+    amount: 49.90,
     paymentMethod: 'bank_slip',
     paymentFrequency: 'monthly',
     status: 'overdue',
@@ -377,7 +377,7 @@ export const mockFinancialPayments: FinancialPayment[] = [
     tenantId: 't-5',
     tenantName: 'Grupo Pecuária MT',
     plan: 'barao',
-    amount: 3999.00, // Anual
+    amount: 4999.00, // Anual
     paymentMethod: 'pix',
     paymentFrequency: 'annual',
     status: 'paid',

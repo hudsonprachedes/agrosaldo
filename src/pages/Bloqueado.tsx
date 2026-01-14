@@ -32,14 +32,15 @@ export default function Bloqueado() {
 
   // Valor fictício baseado no plano do usuário
   const planPrices: Record<string, number> = {
-    porteira: 29.90,
-    piquete: 69.90,
-    retiro: 129.90,
+    porteira: 49.90,
+    piquete: 99.90,
+    retiro: 149.90,
     estancia: 249.90,
-    barao: 399.90,
+    barao: 499.90,
   };
 
-  const amountDue = 69.90; // Valor exemplo
+  const userPlan = user?.properties?.[0]?.plan || 'porteira';
+  const amountDue = planPrices[userPlan] || planPrices.porteira;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center p-4">
