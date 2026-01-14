@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { plans, Plan } from '@/mocks/mock-auth';
+import { plans } from '@/mocks/mock-auth';
 import { savePlan, adminGetAll, adminDelete } from '@/lib/admin-crud';
 import {
   CreditCard,
@@ -39,6 +39,16 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+
+// Tipagem local para planos usados nesta página (com campos opcionais usados no Admin)
+type Plan = {
+  id: string;
+  name: string;
+  price: number;
+  maxCattle: number | typeof Infinity;
+  features?: string[];
+  active?: boolean;
+};
 
 const planSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -93,7 +103,7 @@ export default function AdminPlanos() {
           features: p.features,
           active: p.active,
         }));
-        setPlansData(convertedPlans);
+        setPlansData([...convertedPlans].sort((a, b) => a.price - b.price));
       } else {
         // Se não há planos salvos, usar os padrões e salvá-los
         for (const plan of plans) {
@@ -106,7 +116,7 @@ export default function AdminPlanos() {
             active: plan.active !== false,
           });
         }
-        setPlansData(plans);
+        setPlansData([...plans].sort((a, b) => a.price - b.price));
       }
     } catch (error) {
       console.error('Erro ao carregar planos:', error);
@@ -255,7 +265,7 @@ export default function AdminPlanos() {
 
       {/* Plans Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plansData.map((plan) => (
+        {plansData.slice().sort((a, b) => a.price - b.price).map((plan) => (
           <Card 
             key={plan.id}
             className={`relative ${plan.active === false ? 'opacity-60' : ''}`}

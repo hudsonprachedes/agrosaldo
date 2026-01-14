@@ -132,7 +132,13 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    overflow: hidden;
     font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Ensure app uses full viewport height so only the main container scrolls */
+  html, body, #root {
+    height: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {

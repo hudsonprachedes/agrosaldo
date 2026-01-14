@@ -666,10 +666,9 @@ export default function MinhaFazenda() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-2xl font-bold text-primary font-display">{currentPlan?.name}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{currentPlan?.description}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-foreground">R$ {currentPlan?.price}</p>
+                    <p className="text-3xl font-bold text-foreground">R$ {currentPlan?.price && typeof currentPlan.price === 'number' ? currentPlan.price.toFixed(2).replace('.', ',') : currentPlan?.price}</p>
                     <p className="text-sm text-muted-foreground">/mês</p>
                   </div>
                 </div>
@@ -700,7 +699,7 @@ export default function MinhaFazenda() {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Planos Disponíveis</h3>
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {plans.map((plan) => (
+                  {plans.slice().sort((a, b) => a.price - b.price).map((plan) => (
                     <Card 
                       key={plan.id}
                       className={plan.id === currentPlan?.id ? 'border-2 border-primary' : ''}
@@ -709,7 +708,7 @@ export default function MinhaFazenda() {
                         <div className="flex items-start justify-between">
                           <div>
                             <CardTitle className="text-lg">{plan.name}</CardTitle>
-                            <p className="text-2xl font-bold mt-2">R$ {plan.price}</p>
+                            <p className="text-2xl font-bold mt-2">R$ {plan.price.toFixed(2).replace('.', ',')}</p>
                             <p className="text-xs text-muted-foreground">/mês</p>
                           </div>
                           {plan.id === currentPlan?.id && (
@@ -721,7 +720,6 @@ export default function MinhaFazenda() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
                         <div className="flex items-center gap-2 text-sm">
                           <Beef className="w-4 h-4 text-muted-foreground" />
                           <span>Até {plan.maxCattle === -1 ? '∞' : plan.maxCattle.toLocaleString()} cabeças</span>

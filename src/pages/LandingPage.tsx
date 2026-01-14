@@ -563,7 +563,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {plans.map((plan, index) => (
+            {[...plans].sort((a, b) => a.price - b.price).map((plan, index) => (
               <Card 
                 key={plan.id}
                 className={`relative animate-fade-in ${plan.id === 'retiro' ? 'border-primary border-2 shadow-lg' : ''}`}

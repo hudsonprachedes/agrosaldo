@@ -296,17 +296,6 @@ export default function Login() {
                   Esqueci minha senha
                 </a>
               </div>
-
-              {/* Demo credentials */}
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground text-center mb-2">
-                  Credenciais de demonstração:
-                </p>
-                <div className="text-xs text-center space-y-1">
-                  <p><strong>Produtor:</strong> 123.456.789-00 / 123456</p>
-                  <p><strong>Admin:</strong> 00.000.000/0001-00 / admin123</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         )}
