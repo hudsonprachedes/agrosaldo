@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, ExternalLink } from 'lucide-react';
+import { Bell, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +13,8 @@ import {
   getPropertyNotifications,
   markNotificationAsRead,
   getUnreadNotifications,
+  deleteNotification,
+  deleteNotifications,
 } from '@/lib/indexeddb';
 import { formatTimeAgo } from '@/lib/notifications-utils';
 
@@ -46,6 +48,59 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const getMockNotifications = (): NotificationItem[] => {
+    const now = Date.now();
+    const base = {
+      propertyId,
+      userId,
+    };
+
+    return [
+      {
+        ...base,
+        id: 'mock-notif-1',
+        type: 'announcement',
+        status: 'unread',
+        title: 'Atualização do sistema',
+        message: 'Nova versão disponível com melhorias de desempenho.',
+        actionUrl: '/dashboard',
+        icon: '📢',
+        createdAt: new Date(now - 2 * 60 * 1000).toISOString(),
+      },
+      {
+        ...base,
+        id: 'mock-notif-2',
+        type: 'reminder',
+        status: 'unread',
+        title: 'Lembrete',
+        message: 'Revise os lançamentos pendentes antes de sincronizar.',
+        icon: '📅',
+        createdAt: new Date(now - 45 * 60 * 1000).toISOString(),
+      },
+      {
+        ...base,
+        id: 'mock-notif-3',
+        type: 'system',
+        status: 'unread',
+        title: 'Atenção',
+        message: 'Conexão instável detectada. Alguns recursos podem ficar offline.',
+        icon: '⚠️',
+        createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        ...base,
+        id: 'mock-notif-4',
+        type: 'announcement',
+        status: 'read',
+        title: 'Bem-vindo!',
+        message: 'Seu ambiente está pronto. Explore os relatórios e o extrato.',
+        icon: '🎉',
+        createdAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        readAt: new Date(now - 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
+      },
+    ];
+  };
+
   // Carregar notificações
   useEffect(() => {
     const loadNotifications = async () => {
@@ -64,6 +119,13 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
 
         // Ordenar por data (mais recentes primeiro)
         notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        const shouldUseMock = import.meta.env.DEV && notifs.length === 0 && (propertyId || userId);
+        if (shouldUseMock) {
+          notifs = getMockNotifications().sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        }
 
         setNotifications(notifs);
         setUnreadCount(notifs.filter(n => n.status === 'unread').length);
@@ -92,12 +154,28 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
     }
   };
 
-  // Navegar para ação
-  const handleAction = (notification: NotificationItem) => {
-    if (notification.actionUrl) {
-      window.location.href = notification.actionUrl;
+  const handleDelete = async (notification: NotificationItem) => {
+    try {
+      await deleteNotification(notification.id);
+    } catch (error) {
+      console.error('Erro ao excluir notificação:', error);
+    } finally {
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+      if (notification.status === 'unread') {
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
     }
-    handleMarkAsRead(notification.id);
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+      await deleteNotifications({ propertyId, userId });
+    } catch (error) {
+      console.error('Erro ao excluir todas as notificações:', error);
+    } finally {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
   };
 
   // Badge de notificação
@@ -121,7 +199,10 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-96 max-h-96 overflow-y-auto">
+      <DropdownMenuContent
+        align="end"
+        className="w-[calc(100vw-1rem)] max-w-96 sm:w-96 max-h-[70vh] overflow-y-auto"
+      >
         {/* HEADER */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h3 className="font-semibold text-sm">Notificações</h3>
@@ -196,21 +277,6 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
 
                       {/* AÇÕES */}
                       <div className="flex items-center gap-2 mt-2">
-                        {notif.actionUrl && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs h-6 gap-1"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleAction(notif);
-                            }}
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            Ver
-                          </Button>
-                        )}
-
                         {notif.status === 'unread' && (
                           <Button
                             size="sm"
@@ -224,6 +290,19 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
                             Marcar como lida
                           </Button>
                         )}
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs h-6 text-red-600"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleDelete(notif);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Excluir
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -243,12 +322,10 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-xs text-gray-500"
-                onClick={() => {
-                  // TODO: Implementar página de histórico completo
-                }}
+                className="text-xs text-red-600"
+                onClick={handleDeleteAll}
               >
-                Ver todas as notificações →
+                Excluir tudo
               </Button>
             </div>
           </>

@@ -3,30 +3,20 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 // https://vitejs.dev/config/
-export default defineConfig(async ({ mode }) => {
-  const plugins = [react()];
-  if (mode === "development") {
-    try {
-      const mod = await import("lovable-tagger");
-      if (mod?.componentTagger) {
-        plugins.push(mod.componentTagger());
-      }
-    } catch {
-      console.warn("lovable-tagger not installed; proceeding without it");
-    }
-  }
-
+export default defineConfig(({ mode }) => {
   return {
     server: {
-      host: "::",
+      host: "localhost",
       port: 8080,
+      strictPort: true,
       hmr: {
         protocol: 'ws',
         host: 'localhost',
         port: 8080,
+        clientPort: 8080,
       },
     },
-    plugins,
+    plugins: [react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

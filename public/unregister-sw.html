@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Desregistrar Service Worker</title>
+</head>
+<body>
+  <h1>Desregistrando Service Worker...</h1>
+  <p id="status">Aguarde...</p>
+  
+  <script>
+    (async () => {
+      const statusEl = document.getElementById('status');
+      
+      if ('serviceWorker' in navigator) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          
+          if (registrations.length === 0) {
+            statusEl.textContent = 'Nenhum Service Worker registrado.';
+            setTimeout(() => window.location.href = '/', 2000);
+            return;
+          }
+          
+          for (const registration of registrations) {
+            await registration.unregister();
+            console.log('Service Worker desregistrado:', registration.scope);
+          }
+          
+          statusEl.innerHTML = `
+            <strong>✓ Service Worker desregistrado com sucesso!</strong><br>
+            Redirecionando para a página inicial em 2 segundos...
+          `;
+          
+          setTimeout(() => window.location.href = '/', 2000);
+        } catch (error) {
+          statusEl.textContent = 'Erro ao desregistrar: ' + error.message;
+          console.error(error);
+        }
+      } else {
+        statusEl.textContent = 'Service Worker não suportado neste navegador.';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -306,8 +306,7 @@ const QuestionarioEpidemiologico: React.FC = () => {
   }, {} as Record<string, EpidemiologyQuestion[]>);
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="max-w-3xl mx-auto">
+    <div className="py-8 px-4 max-w-3xl mx-auto">
         {/* HEADER */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-green-700 mb-2">
@@ -388,8 +387,8 @@ const QuestionarioEpidemiologico: React.FC = () => {
                           <FormControl>
                             {question.type === 'checkbox' ? (
                               <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
+                                checked={Boolean(field.value)}
+                                onCheckedChange={(next) => field.onChange(next === true)}
                               />
                             ) : question.type === 'select' ? (
                               <select
@@ -459,7 +458,6 @@ const QuestionarioEpidemiologico: React.FC = () => {
             </div>
           </form>
         </Form>
-      </div>
     </div>
   );
 };

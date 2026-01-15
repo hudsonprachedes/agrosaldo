@@ -3,13 +3,15 @@
  * Artigos sobre gestão pecuária, dicas e tutoriais
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Clock, ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import usePageMeta from '@/hooks/usePageMeta';
+import { getBlogCollectionSchema } from '@/lib/seo';
 
 interface BlogPost {
   id: string;
@@ -84,6 +86,24 @@ const blogPosts: BlogPost[] = [
 export default function Blog() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
+
+  const blogSchema = useMemo(
+    () =>
+      getBlogCollectionSchema(
+        blogPosts.map(post => ({
+          title: post.title,
+          description: post.excerpt,
+          date: post.date,
+          url: `https://agrosaldo.com/blog/${post.id}`,
+        }))
+      ),
+    []
+  );
+
+  usePageMeta({
+    page: 'blog',
+    structuredData: { id: 'blog-collection-schema', data: blogSchema },
+  });
 
   const categories = Array.from(new Set(blogPosts.map(post => post.category)));
 

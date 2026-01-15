@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Property } from '@/mocks/mock-auth';
-import { plans } from '@/mocks/mock-auth';
+import { Property, plans, getUserPlan } from '@/mocks/mock-auth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -81,9 +80,9 @@ export default function PropertySelection() {
     navigate('/dashboard');
   };
 
-  const getPlanInfo = (planId: string) => {
-    return plans.find(p => p.id === planId);
-  };
+  // Get unified user plan information
+  const userPlan = getUserPlan(user);
+  const totalCattle = user.properties.reduce((total, property) => total + property.cattleCount, 0);
 
   // Handle CEP lookup
   const handleCepChange = async (cep: string) => {
@@ -157,56 +156,95 @@ export default function PropertySelection() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="bg-card border-b border-border px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="bg-card border-b border-border px-3 md:px-4 py-3 md:py-4 shrink-0">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <img
               src="/agrosaldo-logo.png"
               alt="AgroSaldo"
-              className="h-8 w-auto object-contain"
+              className="h-6 md:h-8 w-auto object-contain shrink-0"
               loading="eager"
             />
-            <div>
-              <p className="text-sm text-muted-foreground">Olá, {user.name.split(' ')[0]}!</p>
+            <div className="min-w-0">
+              <p className="text-xs md:text-sm text-muted-foreground truncate">Olá, {user.name.split(' ')[0]}!</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={logout}>
+          <Button variant="ghost" size="sm" onClick={logout} className="shrink-0">
             Sair
           </Button>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-8">
           <div>
-            <h2 className="font-display text-2xl font-bold text-foreground mb-2">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground mb-1 md:mb-2">
               Selecione uma Propriedade
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-sm md:text-base text-muted-foreground">
               Escolha a fazenda que deseja gerenciar
             </p>
           </div>
-          <Button onClick={() => setOpenDialog(true)} className="gap-2">
+          <Button onClick={() => setOpenDialog(true)} className="gap-2 w-full md:w-auto">
             <Plus className="w-4 h-4" />
             Nova Propriedade
           </Button>
         </div>
 
+        {/* User Plan Summary */}
+        <Card className="mb-6 md:mb-8 border-2 border-primary/20 bg-primary/5">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="text-base md:text-lg font-semibold text-foreground mb-2">
+                  Seu Plano Atual
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                  <Badge 
+                    variant="secondary"
+                    className="text-xs md:text-sm font-medium px-2 md:px-3 py-1"
+                    style={{ backgroundColor: userPlan.color + '20', color: userPlan.color }}
+                  >
+                    {userPlan.name}
+                  </Badge>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl md:text-2xl font-bold text-foreground">
+                      R$ {userPlan.price.toFixed(2).replace('.', ',')}
+                    </span>
+                    <span className="text-xs md:text-sm text-muted-foreground">/mês</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-left md:text-right border-t md:border-t-0 pt-3 md:pt-0">
+                <p className="text-xs md:text-sm text-muted-foreground mb-1">
+                  Total de cabeças em todas as propriedades
+                </p>
+                <p className="text-2xl md:text-3xl font-bold text-primary">
+                  {totalCattle.toLocaleString('pt-BR')}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Capacidade: {userPlan.maxCattle === -1 ? '∞ cabeças' : `${userPlan.maxCattle.toLocaleString()} cabeças`}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {user.properties.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {user.properties.map((property, index) => {
-              const plan = getPlanInfo(property.plan);
               return (
                 <Card 
                   key={property.id}
-                  className="cursor-pointer hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02] animate-fade-in border-2 border-transparent hover:border-primary/20"
+                  className="cursor-pointer hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02] animate-fade-in border-2 border-transparent hover:border-primary/20 active:scale-[0.98]"
                   style={{ animationDelay: `${index * 100}ms` }}
                   onClick={() => handleSelectProperty(property)}
                 >
-                  <CardContent className="p-6">
+                  <CardContent className="p-4 md:p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                         <Beef className="w-6 h-6 text-primary" />
@@ -214,9 +252,9 @@ export default function PropertySelection() {
                       <Badge 
                         variant="secondary"
                         className="text-xs font-medium"
-                        style={{ backgroundColor: plan?.color + '20', color: plan?.color }}
+                        style={{ backgroundColor: userPlan.color + '20', color: userPlan.color }}
                       >
-                        {plan?.name}
+                        {userPlan.name}
                       </Badge>
                     </div>
                     
@@ -255,6 +293,7 @@ export default function PropertySelection() {
             </Button>
           </div>
         )}
+        </div>
       </main>
 
       {/* Dialog de cadastro de propriedade */}
@@ -437,8 +476,8 @@ export default function PropertySelection() {
                     <FormItem className="flex items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox 
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={(next) => field.onChange(next === true)}
                         />
                       </FormControl>
                       <FormLabel className="font-normal cursor-pointer">
@@ -455,8 +494,8 @@ export default function PropertySelection() {
                     <FormItem className="flex items-center space-x-2 space-y-0">
                       <FormControl>
                         <Checkbox 
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
+                          checked={Boolean(field.value)}
+                          onCheckedChange={(next) => field.onChange(next === true)}
                         />
                       </FormControl>
                       <FormLabel className="font-normal cursor-pointer">

@@ -15,6 +15,7 @@ export function formatReportForWhatsApp(data: {
   state: string;
   totalCattle: number;
   ageDistribution?: Array<{ label: string; total: number }>;
+  otherSpecies?: Array<{ name: string; balance: number; unit: string }>;
   monthlyBirths?: number;
   monthlyDeaths?: number;
 }): string {
@@ -23,12 +24,19 @@ export function formatReportForWhatsApp(data: {
   message += `👤 Responsável: ${data.ownerName}\n`;
   message += `📅 ${new Date().toLocaleDateString('pt-BR')}\n\n`;
   
-  message += `*Total de Cabeças: ${data.totalCattle}*\n`;
+  message += `*Total de Bovinos: ${data.totalCattle}*\n`;
   
   if (data.ageDistribution && data.ageDistribution.length > 0) {
     message += `\n*Distribuição por Faixa Etária:*\n`;
     for (const age of data.ageDistribution) {
       message += `• ${age.label}: ${age.total} cabeças\n`;
+    }
+  }
+
+  if (data.otherSpecies && data.otherSpecies.length > 0) {
+    message += `\n🐾 *Outras Espécies:*\n`;
+    for (const species of data.otherSpecies) {
+      message += `• ${species.name}: ${species.balance} ${species.unit}\n`;
     }
   }
   

@@ -302,11 +302,12 @@ export async function getDB(): Promise<AgroSaldoDB> {
  * Salvar um movimento offline
  */
 export async function saveMovementOffline(
-  movement: Omit<StoredMovement, 'syncStatus' | 'syncAttempts'>
+  movement: Omit<StoredMovement, 'id' | 'syncStatus' | 'syncAttempts'>
 ): Promise<StoredMovement> {
   const db = await getDB();
   const stored: StoredMovement = {
     ...movement,
+    id: `mov-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     syncStatus: 'pending',
     syncAttempts: 0,
   } as StoredMovement;
@@ -886,6 +887,32 @@ export async function getAllNotifications(
   const all = await db.getAll('notifications');
   return all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(offset, offset + limit);
+}
+
+/**
+ * Excluir notificação
+ */
+export async function deleteNotification(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('notifications', id);
+}
+
+/**
+ * Excluir todas as notificações (opcionalmente filtrando por propriedade e/ou usuário)
+ */
+export async function deleteNotifications(
+  filter: { propertyId?: string; userId?: string } = {}
+): Promise<void> {
+  const db = await getDB();
+  const all = await db.getAll('notifications');
+
+  const toDelete = all.filter((n) => {
+    if (filter.propertyId && n.propertyId !== filter.propertyId) return false;
+    if (filter.userId && n.userId !== filter.userId) return false;
+    return true;
+  });
+
+  await Promise.all(toDelete.map((n) => db.delete('notifications', n.id)));
 }
 
 // ============================================================================

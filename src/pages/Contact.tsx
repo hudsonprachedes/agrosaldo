@@ -16,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { MaskedInput } from '@/components/ui/masked-input';
+import usePageMeta from '@/hooks/usePageMeta';
+import { organizationSchema } from '@/lib/seo';
 import {
   Form,
   FormControl,
@@ -46,6 +48,23 @@ export default function Contact() {
       phone: '',
       subject: '',
       message: '',
+    },
+  });
+
+  usePageMeta({
+    page: 'contact',
+    structuredData: {
+      id: 'contact-organization-schema',
+      data: {
+        ...organizationSchema,
+        contactPoint: {
+          '@type': 'ContactPoint',
+          contactType: 'customer support',
+          telephone: '+55-67-99999-9999',
+          areaServed: 'BR',
+          availableLanguage: 'pt-BR',
+        },
+      },
     },
   });
 

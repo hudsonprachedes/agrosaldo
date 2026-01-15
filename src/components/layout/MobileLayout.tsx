@@ -16,6 +16,10 @@ import {
   Settings,
   X,
   ClipboardList,
+  Cloud,
+  CloudOff,
+  WifiOff,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,8 +35,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetDescription,
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
+import { useSyncStatus } from '@/hooks/useSyncStatus';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -58,21 +64,23 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
   const { user, selectedProperty, logout, clearSelectedProperty, selectProperty } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const { isOnline, isSyncing, pendingCount, syncNow } = useSyncStatus();
 
   if (!user || !selectedProperty) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-primary text-primary-foreground">
-        <div className="flex items-center justify-between p-3">
+        <div className="flex items-center justify-between p-3 gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
                 className="text-primary-foreground hover:bg-primary-foreground/10 h-auto py-2 px-3 -ml-2"
+                style={{ minWidth: 0 }}
               >
                 <div className="text-left">
                   <p className="font-display font-bold text-base leading-tight">
@@ -114,14 +122,36 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 min-w-0">
             <Button 
               variant="ghost" 
               size="icon" 
               className="text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={syncNow}
+              disabled={isSyncing}
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className={cn('w-5 h-5', isSyncing && 'animate-spin')} />
             </Button>
+
+            <div className="flex items-center gap-1 rounded-full bg-primary-foreground/10 px-2 py-1 text-[11px] font-medium min-w-0">
+              {isSyncing ? (
+                <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+              ) : isOnline ? (
+                <Cloud className="w-4 h-4 shrink-0 text-emerald-200" />
+              ) : (
+                <WifiOff className="w-4 h-4 shrink-0 text-red-200" />
+              )}
+              <span className="sr-only">
+                {isSyncing ? 'Sincronizando' : isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
+            {pendingCount > 0 && (
+              <div className="flex items-center gap-1 rounded-full bg-yellow-200/80 text-yellow-900 px-2 py-1 text-[10px] font-semibold shrink-0">
+                <span className="leading-none">{pendingCount}</span>
+                <span className="leading-none whitespace-nowrap">pendente{pendingCount !== 1 ? 's' : ''}</span>
+              </div>
+            )}
 
             <NotificationsPanel 
               propertyId={selectedProperty?.id}
@@ -132,7 +162,7 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
       </header>
 
       {/* Content */}
-      <main className="flex-1 overflow-auto pb-24">
+      <main className="flex-1 min-h-0 overflow-y-auto pb-24">
         {children}
       </main>
 
@@ -151,6 +181,7 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
                       </button>
                     </SheetTrigger>
                     <SheetContent side="bottom" className="rounded-t-3xl">
+                      <SheetDescription className="sr-only">Menu principal</SheetDescription>
                       <SheetHeader className="pb-4">
                         <SheetTitle className="text-left font-display">Menu</SheetTitle>
                       </SheetHeader>

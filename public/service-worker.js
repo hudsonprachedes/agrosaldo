@@ -64,6 +64,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Ignorar WebSockets do Vite HMR (desenvolvimento)
+  if (url.protocol === 'ws:' || url.protocol === 'wss:' || url.searchParams.has('token')) {
+    return;
+  }
+
   // Strategy: Network First para APIs, Cache First para assets
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request));

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -126,8 +126,13 @@ export default function LaunchForm({ type }: LaunchFormProps) {
     Object.fromEntries(otherSpecies.map(s => [s.id, s.count]))
   );
 
+  useEffect(() => {
+    if (!selectedProperty) {
+      navigate('/login');
+    }
+  }, [selectedProperty, navigate]);
+
   if (!selectedProperty) {
-    navigate('/login');
     return null;
   }
 
@@ -168,7 +173,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         : notes || 'Ajuste manual';
 
       // Salvar movimento no IndexedDB
-      const movementId = await saveMovement({
+      const movement = await saveMovement({
         propertyId: selectedProperty.id,
         type: movementType,
         date,
@@ -182,19 +187,16 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         photoUrl: photoDataUrl || undefined,
         cause: deathCause || undefined,
         birthDate: type === 'nascimento' ? date : undefined,
+        createdAt: new Date().toISOString(),
       });
+      const movementId = movement.id;
 
       // Salvar foto se existir
       if (photoDataUrl) {
-        const originalSize = photoDataUrl.length;
-        const compressed = await compressImage(photoDataUrl, { 
-          maxWidth: 1920, 
-          maxHeight: 1080, 
-          quality: 0.8 
-        });
-        const compressedSize = compressed.length;
-
-        await savePhoto(movementId, compressed, originalSize, compressedSize);
+        const response = await fetch(photoDataUrl);
+        const blob = await response.blob();
+        
+        await savePhoto(movementId, blob, blob.size);
       }
 
       // Toast de sucesso
@@ -237,8 +239,8 @@ export default function LaunchForm({ type }: LaunchFormProps) {
               species: species.id,
               previousCount,
               newCount,
+              quantityChanged: newCount - previousCount,
               reason: notes || 'Ajuste manual de saldo',
-              createdAt: new Date(),
             });
             
             // Atualizar saldo
@@ -246,7 +248,6 @@ export default function LaunchForm({ type }: LaunchFormProps) {
               propertyId: selectedProperty.id,
               species: species.id,
               count: newCount,
-              lastUpdated: new Date(),
             });
           }
         }
@@ -825,10 +826,8 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                 </p>
                 <div className="space-y-2">
                   {ageGroups.map((group) => (
-                    <button
+                    <div
                       key={group.id}
-                      type="button"
-                      onClick={() => toggleAgeGroupSelection(group.id)}
                       className={cn(
                         'w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all',
                         selectedAgeGroups.includes(group.id)
@@ -836,17 +835,18 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                           : 'border-border hover:border-chart-3/50'
                       )}
                     >
-                      <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-3 cursor-pointer flex-1">
                         <Checkbox 
                           checked={selectedAgeGroups.includes(group.id)}
+                          onCheckedChange={() => toggleAgeGroupSelection(group.id)}
                           className="data-[state=checked]:bg-chart-3 data-[state=checked]:border-chart-3"
                         />
                         <span className="font-medium">{group.label}</span>
-                      </div>
+                      </label>
                       {selectedAgeGroups.includes(group.id) && (
                         <Check className="w-5 h-5 text-chart-3" />
                       )}
-                    </button>
+                    </div>
                   ))}
                 </div>
               </CardContent>

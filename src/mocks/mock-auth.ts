@@ -36,6 +36,8 @@ export interface Property {
   status: 'active' | 'pending' | 'suspended';
   plan: 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
   speciesEnabled?: { bovino: boolean; bubalino: boolean };
+  stateRegistration?: string; // Inscrição Estadual
+  propertyCode?: string; // Código da Propriedade
 }
 
 export const mockUsers: User[] = [
@@ -147,4 +149,28 @@ export function authenticateUser(cpfCnpj: string, password: string): User | null
     return mockUsers.find(u => u.id === credential.userId) || null;
   }
   return null;
+}
+
+export function determineUserPlan(totalCattle: number): typeof plans[0] {
+  // Find the appropriate plan based on total cattle count
+  // Plans are ordered by maxCattle capacity, so we find the first one that fits
+  const sortedPlans = [...plans].sort((a, b) => a.maxCattle - b.maxCattle);
+  
+  for (const plan of sortedPlans) {
+    if (totalCattle <= plan.maxCattle) {
+      return plan;
+    }
+  }
+  
+  // If no plan fits, return the highest tier plan
+  return sortedPlans[sortedPlans.length - 1];
+}
+
+export function getUserTotalCattle(user: User): number {
+  return user.properties.reduce((total, property) => total + property.cattleCount, 0);
+}
+
+export function getUserPlan(user: User): typeof plans[0] {
+  const totalCattle = getUserTotalCattle(user);
+  return determineUserPlan(totalCattle);
 }

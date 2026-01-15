@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -35,6 +35,8 @@ import { toast } from 'sonner';
 import { plans } from '@/mocks/mock-auth';
 import { addNewsletterSubscriber, getNewsletterCount, isEmailSubscribed } from '@/lib/indexeddb';
 import heroBackground from '@/assets/hero-background.jpg';
+import usePageMeta from '@/hooks/usePageMeta';
+import { getFaqPageSchema, getSoftwareApplicationSchema, organizationSchema } from '@/lib/seo';
 
 const heroHighlights = [
   {
@@ -212,6 +214,23 @@ export default function LandingPage() {
     getNewsletterCount().then(setSubscriberCount).catch(() => setSubscriberCount(0));
   }, []);
 
+  const structuredData = useMemo(
+    () => [
+      { id: 'organization-schema', data: organizationSchema },
+      { id: 'software-schema', data: getSoftwareApplicationSchema() },
+      {
+        id: 'landing-faq-schema',
+        data: getFaqPageSchema(faqs, {
+          url: 'https://agrosaldo.com/#faq',
+          name: 'Perguntas frequentes AgroSaldo',
+        }),
+      },
+    ],
+    []
+  );
+
+  usePageMeta({ page: 'home', structuredData });
+
   const handleNewsletterSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!newsletterEmail.trim()) {
@@ -249,8 +268,14 @@ export default function LandingPage() {
         <nav className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-black/30 backdrop-blur-xl">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <img src="/agrosaldo-logo.png" alt="AgroSaldo" className="h-8 w-auto object-contain" />
-              <span className="font-display text-lg font-semibold tracking-wide text-white/90">AgroSaldo</span>
+              <img
+                src="/agrosaldo-logo.png"
+                alt="AgroSaldo"
+                className="h-10 w-10 rounded-full border border-white/20 object-cover shrink-0"
+              />
+              <span className="hidden font-display text-lg font-semibold tracking-wide text-white/90 sm:inline">
+                AgroSaldo
+              </span>
             </div>
 
             <div className="hidden items-center gap-8 md:flex">
@@ -279,10 +304,35 @@ export default function LandingPage() {
               </Link>
             </div>
 
+            <div className="flex items-center gap-2 md:hidden">
+              <Link to="/login">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 border-white/40 bg-transparent px-3 text-xs text-white hover:bg-white/10"
+                >
+                  Entrar
+                </Button>
+              </Link>
+              <Link to="/cadastro">
+                <Button size="sm" className="h-9 bg-white px-3 text-xs text-emerald-900 hover:bg-white/90">
+                  Criar
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white"
+                onClick={() => setMobileMenuOpen(prev => !prev)}
+              >
+                {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+            </div>
+
             <Button
               variant="ghost"
               size="icon"
-              className="text-white md:hidden"
+              className="text-white md:hidden hidden"
               onClick={() => setMobileMenuOpen(prev => !prev)}
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -313,19 +363,6 @@ export default function LandingPage() {
                 >
                   Depoimentos
                 </a>
-                <div className="flex gap-2 pt-2">
-                  <Link to="/login" className="flex-1">
-                    <Button
-                      variant="outline"
-                      className="w-full border-white/40 bg-transparent text-white hover:bg-white/10"
-                    >
-                      Entrar
-                    </Button>
-                  </Link>
-                  <Link to="/cadastro" className="flex-1">
-                    <Button className="w-full bg-white text-emerald-900 hover:bg-white/90">Criar Conta</Button>
-                  </Link>
-                </div>
               </div>
             </div>
           )}
@@ -450,7 +487,7 @@ export default function LandingPage() {
                 <div className="space-y-4">
                   {[
                     { title: 'Missão', description: 'Simplificar a gestão pecuária e garantir compliance sanitário.' },
-                    { title: 'Visão', description: 'Ser a plataforma nº1 de gestão pecuária do Brasil até 2026.' },
+                    { title: 'Visão', description: 'Ser a plataforma nº1 de gestão pecuária do Brasil até 2030.' },
                     { title: 'Valores', description: 'Simplicidade, transparência e foco no produtor.' },
                   ].map(item => (
                     <div key={item.title} className="flex gap-4">

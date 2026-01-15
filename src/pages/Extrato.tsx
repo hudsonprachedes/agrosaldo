@@ -20,6 +20,7 @@ import {
   X,
   Download,
   Image as ImageIcon,
+  Printer,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +55,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { format, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { generatePDF } from '@/lib/pdf-report';
+import { printExtract, ExtractData } from '@/lib/pdf-report-final';
 
 const typeIcons: Record<string, React.ElementType> = {
   birth: Baby,
@@ -88,7 +89,7 @@ import { ArrowLeft } from 'lucide-react';
 const STORAGE_KEY = 'agrosaldo_extrato_filters';
 
 export default function Extrato() {
-  const { selectedProperty } = useAuth();
+  const { selectedProperty, user } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
@@ -202,9 +203,61 @@ export default function Extrato() {
     toast.success(`Lançamento ${movement.id} excluído`);
   };
 
-  const handleExportPDF = async () => {
-    toast.info('Gerando relatório PDF...');
-    // TODO: Integrate with generatePDF from pdf-report.ts
+  const handlePrintExtract = () => {
+    if (!selectedProperty) return;
+
+    try {
+      // Calcular resumo
+      const totalEntries = filteredMovements
+        .filter(m => m.quantity > 0 && (m.type === 'birth' || m.type === 'purchase'))
+        .reduce((sum, m) => sum + m.quantity, 0);
+      
+      const totalExits = filteredMovements
+        .filter(m => m.quantity > 0 && (m.type === 'death' || m.type === 'sale'))
+        .reduce((sum, m) => sum + m.quantity, 0);
+
+      // Calcular saldo (simplificado para o período)
+      const balance = totalEntries - totalExits;
+
+      // Formatar filtros ativos para exibição
+      const activeFilters: string[] = [];
+      if (filterType !== 'all') activeFilters.push(`Tipo: ${typeLabels[filterType]}`);
+      if (filterAgeGroup !== 'all') activeFilters.push(`Faixa: ${filterAgeGroup}`);
+      if (dateFrom || dateTo) {
+        const from = dateFrom ? format(dateFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'Início';
+        const to = dateTo ? format(dateTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Hoje';
+        activeFilters.push(`Período: ${from} a ${to}`);
+      }
+      if (activeFilters.length === 0) activeFilters.push('Todos os registros');
+
+      const reportData: ExtractData = {
+        propertyName: selectedProperty.name,
+        ownerName: user?.name || 'Proprietário',
+        period: dateFrom && dateTo 
+          ? `${format(dateFrom, 'dd/MM/yyyy', { locale: ptBR })} a ${format(dateTo, 'dd/MM/yyyy', { locale: ptBR })}`
+          : 'Todo o período',
+        filters: activeFilters.join(' | '),
+        generatedAt: new Date().toLocaleString('pt-BR'),
+        movements: filteredMovements.map(m => ({
+          date: m.date,
+          type: m.type,
+          typeLabel: typeLabels[m.type] || m.type,
+          description: m.description,
+          quantity: (m.type === 'death' || m.type === 'sale') ? -m.quantity : m.quantity,
+          value: m.value
+        })),
+        summary: {
+          totalEntries,
+          totalExits,
+          balance
+        }
+      };
+
+      printExtract(reportData);
+    } catch (error) {
+      console.error('Erro ao imprimir extrato:', error);
+      toast.error('Erro ao gerar relatório de extrato');
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -244,9 +297,10 @@ export default function Extrato() {
             )}
           </Button>
           
-          <Button variant="outline" size="sm" onClick={handleExportPDF}>
-            <Download className="w-4 h-4 mr-2" />
-            {isMobile ? 'PDF' : 'Exportar PDF'}
+          <Button variant="outline" size="sm" onClick={handlePrintExtract}>
+            {/* Botão de impressão oficial */}
+            <Printer className="w-4 h-4 mr-2" />
+            {isMobile ? 'Imprimir' : 'Imprimir Oficial / Salvar PDF'}
           </Button>
         </div>
       </div>

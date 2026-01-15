@@ -92,32 +92,44 @@ function updateOrCreateMetaTag(
  */
 export const PAGE_META_TAGS = {
   home: {
-    title: 'AgroSaldo - Gestão Pecuária Inteligente',
+    title: 'AgroSaldo | Plataforma de Gestão Pecuária e Compliance Sanitário',
     description:
-      'O AgroSaldo é o sistema de gestão pecuária que garante que seu saldo físico bata com o oficial. Offline-first, mobile-first e compliance garantida.',
-    keywords: 'gestão pecuária, controle rebanho, GTA, INDEA, IAGRO, app rural',
+      'Controle nascimentos, vendas, GTA e indicadores do rebanho em tempo real com o AgroSaldo. Operação offline-first, relatórios oficiais e conformidade automática com INDEA, IAGRO e demais órgãos.',
+    keywords:
+      'gestão pecuária, controle de rebanho, GTA digital, aplicativo agro offline, compliance sanitário, INDEA, IAGRO, software rural',
     image: 'https://agrosaldo.com/og-image.png',
-    author: 'AgroSaldo',
+    ogImage: 'https://agrosaldo.com/og-image.png',
+    author: 'AgroSaldo Tecnologia Rural',
+    url: 'https://agrosaldo.com/',
+    type: 'website',
   },
   blog: {
-    title: 'Blog AgroSaldo - Dicas de Gestão Pecuária',
+    title: 'Blog AgroSaldo | Conteúdos sobre Gestão Pecuária Inteligente',
     description:
-      'Leia artigos sobre gestão pecuária, dicas de compliance sanitária e tutoriais para usar o AgroSaldo.',
-    keywords: 'blog pecuária, gestão rebanho, compliance, tutorial AgroSaldo',
+      'Artigos, tutoriais e guias práticos sobre controle de rebanho, compliance sanitário, evolução automática e tecnologia para o campo.',
+    keywords: 'blog pecuária, dicas de gestão rural, compliance agro, tutoriais AgroSaldo',
     type: 'article',
+    url: 'https://agrosaldo.com/blog',
+    image: 'https://agrosaldo.com/og-image.png',
   },
   contact: {
-    title: 'Contato - AgroSaldo',
-    description: 'Entre em contato conosco para dúvidas sobre o AgroSaldo. Suporte via WhatsApp.',
-    keywords: 'contato, suporte AgroSaldo, WhatsApp',
+    title: 'Contato AgroSaldo | Suporte especializado via WhatsApp e E-mail',
+    description:
+      'Fale com especialistas do AgroSaldo para tirar dúvidas sobre o app, planos, implantação assistida e suporte ao produtor.',
+    keywords: 'contato AgroSaldo, suporte pecuária, WhatsApp AgroSaldo, atendimento produtor rural',
+    url: 'https://agrosaldo.com/contato',
+    image: 'https://agrosaldo.com/og-image.png',
+    type: 'website',
   },
   login: {
-    title: 'Login - AgroSaldo',
-    description: 'Acesse sua conta do AgroSaldo para gerenciar sua propriedade.',
+    title: 'Login | Acesse sua conta AgroSaldo',
+    description: 'Entre no painel AgroSaldo para acompanhar estoque oficial, indicadores e lançar eventos.',
+    url: 'https://agrosaldo.com/login',
   },
   app: {
-    title: 'Dashboard - AgroSaldo',
-    description: 'Seu dashboard de gestão pecuária com controle em tempo real.',
+    title: 'Dashboard AgroSaldo | Indicadores em tempo real',
+    description: 'Painel completo para controlar lotes, evoluções e documentação do rebanho em qualquer dispositivo.',
+    url: 'https://agrosaldo.com/dashboard',
   },
 } as const;
 
@@ -125,9 +137,21 @@ export const PAGE_META_TAGS = {
  * Gera Schema.org estruturado em JSON-LD
  * Melhora SEO e aparência em resultados de busca
  */
-export function generateJsonLd(data: Record<string, unknown>) {
+export function generateJsonLd(data: Record<string, unknown>, id?: string) {
+  if (typeof document === 'undefined') return;
+
+  if (id) {
+    const existing = document.querySelector<HTMLScriptElement>(`script[data-json-ld-id="${id}"]`);
+    if (existing) {
+      existing.remove();
+    }
+  }
+
   const script = document.createElement('script');
   script.type = 'application/ld+json';
+  if (id) {
+    script.dataset.jsonLdId = id;
+  }
   script.innerHTML = JSON.stringify(data);
   document.head.appendChild(script);
 }
@@ -156,6 +180,44 @@ export const organizationSchema = {
     availableLanguage: 'pt-BR',
   },
 };
+
+export function getFaqPageSchema(
+  faqs: { question: string; answer: string }[],
+  options?: { url?: string; name?: string }
+) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    name: options?.name || 'Perguntas frequentes AgroSaldo',
+    url: options?.url || 'https://agrosaldo.com/',
+    mainEntity: faqs.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
+export function getBlogCollectionSchema(posts: { title: string; description: string; date: string; url: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Blog AgroSaldo',
+    url: 'https://agrosaldo.com/blog',
+    description:
+      'Conteúdos sobre gestão pecuária inteligente, compliance sanitário e automação para produtores rurais.',
+    mainEntity: posts.map(post => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      description: post.description,
+      datePublished: new Date(post.date).toISOString(),
+      url: post.url,
+    })),
+  };
+}
 
 /**
  * Schema para SoftwareApplication (App)

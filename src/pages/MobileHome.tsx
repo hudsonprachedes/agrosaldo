@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -82,14 +82,18 @@ export default function MobileHome() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  if (!user || !selectedProperty) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user || !selectedProperty) {
+      navigate('/login');
+      return;
+    }
 
-  // If not mobile, redirect to dashboard
-  if (!isMobile) {
-    navigate('/dashboard');
+    if (!isMobile) {
+      navigate('/dashboard');
+    }
+  }, [user, selectedProperty, isMobile, navigate]);
+
+  if (!user || !selectedProperty || !isMobile) {
     return null;
   }
 
@@ -149,10 +153,10 @@ export default function MobileHome() {
 
         {/* Quick Stats Row */}
         <div className="grid grid-cols-2 gap-3 mt-2">
-          <div className="bg-primary-foreground/10 rounded-xl p-3 text-center">
+          <div className="bg-white/10 border border-white/10 rounded-xl p-3 text-center">
             <div className="flex items-center justify-center gap-1">
-              <TrendingUp className="w-4 h-4 text-success" />
-              <span className="text-2xl font-bold text-success">+{monthlyBirths}</span>
+              <TrendingUp className="w-4 h-4 text-white" />
+              <span className="text-2xl font-bold text-white drop-shadow">+{monthlyBirths}</span>
             </div>
             <p className="text-xs opacity-80 mt-1">Nascimentos</p>
           </div>
@@ -196,63 +200,8 @@ export default function MobileHome() {
         </Card>
       </div>
 
-      {/* Quick Access Cards */}
+      {/* Compliance Cards */}
       <div className="px-4 space-y-3 pb-4">
-        <Card 
-          className="cursor-pointer active:scale-[0.98] transition-transform border-0 shadow-card" 
-          onClick={() => navigate('/financeiro')}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                <span className="text-2xl">💰</span>
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">Financeiro</p>
-                <p className="text-sm text-muted-foreground">Receitas e despesas</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer active:scale-[0.98] transition-transform border-0 shadow-card" 
-          onClick={() => navigate('/analises')}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-chart-3/10 flex items-center justify-center">
-                <span className="text-2xl">📊</span>
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">Análises</p>
-                <p className="text-sm text-muted-foreground">Ver gráficos e relatórios</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="cursor-pointer active:scale-[0.98] transition-transform border-0 shadow-card" 
-          onClick={() => navigate('/minha-fazenda')}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <span className="text-2xl">🏡</span>
-              </div>
-              <div>
-                <p className="font-semibold text-foreground">Minha Fazenda</p>
-                <p className="text-sm text-muted-foreground">Dados e configurações</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        {/* Compliance Cards */}
         <div className="grid grid-cols-2 gap-3 pt-2">
           {compliance.slice(0, 4).map((item, index) => (
             <Card 

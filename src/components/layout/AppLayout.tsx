@@ -74,7 +74,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
+        <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
           {/* Logo */}
           <div className="p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-3">

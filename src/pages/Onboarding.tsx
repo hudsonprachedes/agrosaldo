@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, type Control, type FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,7 @@ interface StockInputProps {
   sex: 'male' | 'female';
   ageGroupId: string;
   label: string;
-  control: unknown;
+  control: Control<FieldValues>;
   errors?: Record<string, unknown>;
 }
 
@@ -93,7 +93,7 @@ function StockInput({ species, sex, ageGroupId, label, control, errors }: StockI
 
 interface SpeciesTableProps {
   species: SpeciesType;
-  control: unknown;
+  control: Control<FieldValues>;
   errors?: Record<string, unknown>;
   speciesLabel: string;
 }
@@ -318,7 +318,10 @@ const Onboarding: React.FC = () => {
                       render={({ field }) => (
                         <FormItem className="flex items-start space-x-3 border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
                           <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            <Checkbox
+                              checked={Boolean(field.value)}
+                              onCheckedChange={(next) => field.onChange(next === true)}
+                            />
                           </FormControl>
                           <div className="space-y-1 flex-1">
                             <FormLabel className="text-lg font-semibold cursor-pointer">
@@ -337,7 +340,10 @@ const Onboarding: React.FC = () => {
                       render={({ field }) => (
                         <FormItem className="flex items-start space-x-3 border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
                           <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            <Checkbox
+                              checked={Boolean(field.value)}
+                              onCheckedChange={(next) => field.onChange(next === true)}
+                            />
                           </FormControl>
                           <div className="space-y-1 flex-1">
                             <FormLabel className="text-lg font-semibold cursor-pointer">

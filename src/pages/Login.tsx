@@ -87,34 +87,36 @@ export default function Login() {
         <div className="absolute -bottom-32 -left-16 w-[28rem] h-[28rem] bg-lime-500/20 blur-[160px]" />
       </div>
 
-      <div className="relative z-10 px-4 py-8 lg:px-10">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
+      <div className="relative z-10 px-4 py-4 lg:px-10 lg:py-8">
+        <header className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <img
               src="/agrosaldo-logo.png"
               alt="AgroSaldo"
-              className="h-12 w-12 rounded-full border border-white/20 object-cover"
+              className="h-10 w-10 rounded-full border border-white/20 object-cover shrink-0"
             />
-            <div>
+            <div className="min-w-0">
               <p className="text-xs uppercase tracking-[0.35em] text-white/60">AgroSaldo</p>
-              <p className="text-lg font-semibold">Controle oficial do seu rebanho</p>
+              <p className="text-base font-semibold leading-tight">Controle oficial do seu rebanho</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="ghost"
-              className="text-white hover:bg-white/10 border border-white/10"
+              size="sm"
+              className="h-9 px-3 text-xs text-white hover:bg-white/10 border border-white/10"
               onClick={() => navigate('/')}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar ao site
+              Voltar
             </Button>
             <Button
-              className="bg-white/15 text-white hover:bg-white/25 border border-white/20 backdrop-blur"
+              size="sm"
+              className="h-9 px-3 text-xs bg-white/15 text-white hover:bg-white/25 border border-white/20 backdrop-blur"
               onClick={() => navigate('/contato')}
             >
-              Falar com especialista
+              Ajuda
             </Button>
           </div>
         </header>
