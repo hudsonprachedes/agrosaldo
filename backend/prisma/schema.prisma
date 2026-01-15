@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  super_admin
+  owner
+  manager
+  operator
+}
+
+enum UserStatus {
+  active
+  pending_approval
+  suspended
+}
+
+enum PropertyStatus {
+  active
+  pending
+  suspended
+}
+
+enum PlanType {
+  porteira
+  piquete
+  retiro
+  estancia
+  barao
+}
+
+enum MovementType {
+  birth
+  death
+  sale
+  purchase
+  vaccine
+  adjustment
+}
+
+enum SexType {
+  male
+  female
+}
+
+model User {
+  id         String         @id @default(uuid())
+  name       String
+  email      String         @unique
+  cpfCnpj    String         @unique
+  phone      String?
+  password   String
+  role       UserRole       @default(operator)
+  status     UserStatus     @default(pending_approval)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  properties UserProperty[]
+}
+
+model Property {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  city            String
+  state           String
+  totalArea       Float
+  cultivatedArea  Float
+  naturalArea     Float
+  cattleCount     Int
+  status          PropertyStatus @default(active)
+  plan            PlanType       @default(porteira)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  users           UserProperty[]
+  livestock       Livestock[]
+  movements       Movement[]
+}
+
+model UserProperty {
+  id         String   @id @default(uuid())
+  userId     String
+  propertyId String
+  user       User     @relation(fields: [userId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId])
+}
+
+model Livestock {
+  id          String   @id @default(uuid())
+  propertyId  String
+  species     String
+  ageGroup    String
+  sex         SexType
+  headcount   Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  property    Property @relation(fields: [propertyId], references: [id])
+}
+
+model Movement {
+  id          String       @id @default(uuid())
+  propertyId  String
+  type        MovementType
+  date        DateTime
+  quantity    Int
+  sex         SexType?
+  ageGroup    String?
+  description String
+  destination String?
+  value       Float?
+  gtaNumber   String?
+  photoUrl    String?
+  cause       String?
+  createdAt   DateTime     @default(now())
+  property    Property     @relation(fields: [propertyId], references: [id])
+}

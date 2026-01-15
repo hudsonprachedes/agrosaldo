@@ -1,12 +1,8 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { 
-  getTotalCattle, 
-  getMonthlyBirths, 
-  getMonthlyDeaths,
-} from '@/mocks/mock-bovinos';
-import { mockComplianceData } from '@/mocks/mock-analytics';
+import { apiClient } from '@/lib/api-client';
+import { MovementDTO } from '@/types';
 import ReactApexChart from 'react-apexcharts';
 import {
   Beef,
@@ -24,17 +20,47 @@ import { ApexOptions } from 'apexcharts';
 export default function Dashboard() {
   const { selectedProperty } = useAuth();
   const isMobile = useIsMobile();
+  const [movements, setMovements] = useState<MovementDTO[]>([]);
+  const [livestockTotal, setLivestockTotal] = useState(0);
 
   if (!selectedProperty) return null;
 
-  const totalCattle = getTotalCattle(selectedProperty.id);
-  const monthlyBirths = getMonthlyBirths(selectedProperty.id);
-  const monthlyDeaths = getMonthlyDeaths(selectedProperty.id);
-  const compliance = mockComplianceData[selectedProperty.id] || [];
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        const [movementData, livestockData] = await Promise.all([
+          apiClient.get<MovementDTO[]>('/lancamentos'),
+          apiClient.get<Array<{ headcount: number }>>('/rebanho'),
+        ]);
+        setMovements(movementData);
+        setLivestockTotal(livestockData.reduce((sum, item) => sum + item.headcount, 0));
+      } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
+      }
+    };
 
-  const overallCompliance = compliance.length > 0
-    ? Math.round(compliance.reduce((sum, c) => sum + c.percentage, 0) / compliance.length)
-    : 100;
+    void loadDashboard();
+  }, [selectedProperty.id]);
+
+  const { monthlyBirths, monthlyDeaths, overallCompliance } = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const births = movements.filter(m => {
+      const date = new Date(m.date);
+      return m.type === 'birth' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    });
+    const deaths = movements.filter(m => {
+      const date = new Date(m.date);
+      return m.type === 'death' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    });
+
+    return {
+      monthlyBirths: births.reduce((sum, m) => sum + m.quantity, 0),
+      monthlyDeaths: deaths.reduce((sum, m) => sum + m.quantity, 0),
+      overallCompliance: 100,
+    };
+  }, [movements]);
 
   // Gráfico de Evolução do Rebanho (últimos 6 meses)
   const evolutionChartOptions: ApexOptions = {
@@ -86,7 +112,7 @@ export default function Dashboard() {
   const evolutionChartSeries = [
     {
       name: 'Total',
-      data: [2140, 2198, 2245, 2301, 2350, totalCattle]
+      data: [2140, 2198, 2245, 2301, 2350, livestockTotal]
     },
   ];
 

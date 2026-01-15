@@ -1,100 +1,81 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Property, authenticateUser, mockUsers } from '@/mocks/mock-auth';
+import { apiClient } from '@/lib/api-client';
+import { CreateUserRequest, UserDTO, PropertyDTO } from '@/types';
 
-interface RegisterData {
-  name: string;
-  cpfCnpj: string;
-  email: string;
-  phone: string;
-  nickname?: string;
-  cep: string;
-  address: string;
-  city: string;
-  uf: string;
-  password: string;
-}
+type RegisterData = CreateUserRequest & { password: string };
 
 interface AuthContextType {
-  user: User | null;
-  selectedProperty: Property | null;
+  user: UserDTO | null;
+  selectedProperty: PropertyDTO | null;
   isLoading: boolean;
-  login: (cpfCnpj: string, password: string) => Promise<{ success: boolean; user: User | null }>;
+  login: (cpfCnpj: string, password: string) => Promise<{ success: boolean; user: UserDTO | null }>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
-  selectProperty: (propertyOrId: Property | string) => void;
+  selectProperty: (propertyOrId: PropertyDTO | string) => void;
   clearSelectedProperty: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [user, setUser] = useState<UserDTO | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored session
-    const storedUserId = localStorage.getItem('agrosaldo_user_id');
-    const storedPropertyId = localStorage.getItem('agrosaldo_property_id');
-    
-    if (storedUserId) {
-      const foundUser = mockUsers.find(u => u.id === storedUserId);
-      if (foundUser) {
-        setUser(foundUser);
-        if (storedPropertyId) {
-          const foundProperty = foundUser.properties.find(p => p.id === storedPropertyId);
-          if (foundProperty) {
-            setSelectedProperty(foundProperty);
+    const loadSession = async () => {
+      const storedPropertyId = localStorage.getItem('agrosaldo_property_id');
+      const token = localStorage.getItem('auth_token');
+
+      if (token) {
+        apiClient.setAuthToken(token);
+        try {
+          const me = await apiClient.get<UserDTO>('/auth/me');
+          setUser(me);
+          if (storedPropertyId) {
+            const foundProperty = me.properties?.find(p => p.id === storedPropertyId);
+            if (foundProperty) {
+              setSelectedProperty(foundProperty);
+            }
           }
+        } catch (error) {
+          console.error('Erro ao recuperar sessão:', error);
+          apiClient.clearAuth();
+          localStorage.removeItem('agrosaldo_user_id');
+          localStorage.removeItem('agrosaldo_property_id');
         }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    void loadSession();
   }, []);
 
-  const login = async (cpfCnpj: string, password: string): Promise<{ success: boolean; user: User | null }> => {
-    const foundUser = authenticateUser(cpfCnpj, password);
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('agrosaldo_user_id', foundUser.id);
-      return { success: true, user: foundUser };
+  const login = async (cpfCnpj: string, password: string): Promise<{ success: boolean; user: UserDTO | null }> => {
+    try {
+      const response = await apiClient.post<{ user: UserDTO; token: string }>('/auth/login', {
+        cpfCnpj,
+        password,
+      });
+      apiClient.setAuthToken(response.token);
+      setUser(response.user);
+      localStorage.setItem('agrosaldo_user_id', response.user.id);
+      return { success: true, user: response.user };
+    } catch (error) {
+      console.error('Erro ao autenticar:', error);
+      return { success: false, user: null };
     }
-    return { success: false, user: null };
   };
 
   const register = async (data: RegisterData): Promise<boolean> => {
     try {
-      // Verificar se usuário já existe
-      const exists = mockUsers.some(u => u.cpfCnpj === data.cpfCnpj);
-      if (exists) {
-        return false;
-      }
-
-      // Criar novo usuário com status pending_approval
-      const newUser: User = {
-        id: `user_${Date.now()}`,
+      await apiClient.post<UserDTO>('/auth/register', {
         name: data.name,
         cpfCnpj: data.cpfCnpj,
         email: data.email,
         phone: data.phone,
-        nickname: data.nickname,
-        cep: data.cep,
-        address: data.address,
-        city: data.city,
-        uf: data.uf,
         password: data.password,
-        role: 'operator',
-        status: 'pending_approval',
-        properties: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      // Adicionar ao mock (em produção, seria enviado via API)
-      mockUsers.push(newUser);
-
-      // Aqui seria criado um PendingRequest no IndexedDB para aprovação do SuperAdmin
-      // Por enquanto apenas retorna sucesso
+      });
       return true;
     } catch (error) {
       console.error('Erro ao registrar usuário:', error);
@@ -109,12 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('agrosaldo_property_id');
   };
 
-  const selectProperty = (propertyOrId: Property | string) => {
-    let property: Property | undefined;
-    
+  const selectProperty = (propertyOrId: PropertyDTO | string) => {
+    let property: PropertyDTO | undefined;
+
     if (typeof propertyOrId === 'string') {
-      // Se é um ID, buscar a propriedade no array de propriedades do usuário
-      property = user?.properties.find(p => p.id === propertyOrId);
+      property = user?.properties?.find(p => p.id === propertyOrId);
       if (!property) {
         console.error('Propriedade não encontrada');
         return;
@@ -122,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       property = propertyOrId;
     }
-    
+
     setSelectedProperty(property);
     localStorage.setItem('agrosaldo_property_id', property.id);
   };
