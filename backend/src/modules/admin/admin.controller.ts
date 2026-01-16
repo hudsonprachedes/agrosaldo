@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -22,6 +22,13 @@ export class AdminController {
   @Get('dashboard/stats')
   getDashboardStats() {
     return this.adminService.getDashboardStats();
+  }
+
+  @Roles('super_admin')
+  @Get('dashboard/mrr-series')
+  getMrrSeries(@Query('months') months?: string) {
+    const parsed = months ? Number(months) : undefined;
+    return this.adminService.getMrrSeries(parsed);
   }
 
   // --- User Management ---
@@ -100,6 +107,75 @@ export class AdminController {
   @Get('financeiro')
   getFinancialReport() {
     return this.adminService.getFinancialReport();
+  }
+
+  @Roles('super_admin')
+  @Get('planos')
+  listPlans() {
+    return this.adminService.listPlans();
+  }
+
+  @Roles('super_admin')
+  @Post('planos')
+  createPlan(@Body() dto: any) {
+    return this.adminService.createPlan(dto);
+  }
+
+  @Roles('super_admin')
+  @Patch('planos/:id')
+  updatePlan(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updatePlan(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Delete('planos/:id')
+  deletePlan(@Param('id') id: string) {
+    return this.adminService.deletePlan(id);
+  }
+
+  @Roles('super_admin')
+  @Get('indicacao/cupons')
+  listCoupons() {
+    return this.adminService.listCoupons();
+  }
+
+  @Roles('super_admin')
+  @Post('indicacao/cupons')
+  createCoupon(@Body() dto: any, @Req() req: any) {
+    return this.adminService.createCoupon({
+      ...dto,
+      createdBy: dto?.createdBy ?? req.user?.name ?? 'Admin',
+    });
+  }
+
+  @Roles('super_admin')
+  @Get('indicacao/indicadores')
+  listReferrers() {
+    return this.adminService.listReferrers();
+  }
+
+  @Roles('super_admin')
+  @Get('comunicacao')
+  listCommunications() {
+    return this.adminService.listCommunications();
+  }
+
+  @Roles('super_admin')
+  @Post('comunicacao')
+  createCommunication(@Body() dto: any) {
+    return this.adminService.createCommunication(dto);
+  }
+
+  @Roles('super_admin')
+  @Patch('comunicacao/:id')
+  updateCommunication(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateCommunication(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Delete('comunicacao/:id')
+  deleteCommunication(@Param('id') id: string) {
+    return this.adminService.deleteCommunication(id);
   }
 
   // --- Audit Logs ---

@@ -12,15 +12,29 @@ import {
   TrendingDown,
   Calendar,
   Activity,
+  MessageCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ApexOptions } from 'apexcharts';
 
 export default function Dashboard() {
-  const { selectedProperty } = useAuth();
+  const { selectedProperty, user } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardAnalyticsDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const whatsappUrl = useMemo(() => {
+    const producerName = user?.name ?? 'Não informado';
+    const cpfCnpj = user?.cpfCnpj ?? 'Não informado';
+    const propertyName = selectedProperty?.name ?? 'Não informada';
+    const message =
+      `Olá! Preciso de ajuda no AgroSaldo.%0A` +
+      `Produtor: ${producerName}%0A` +
+      `CPF/CNPJ: ${cpfCnpj}%0A` +
+      `Propriedade: ${propertyName}`;
+    return `https://wa.me/5544991147084?text=${message}`;
+  }, [user?.name, user?.cpfCnpj, selectedProperty?.name]);
 
   useEffect(() => {
     if (!selectedProperty) {
@@ -275,14 +289,27 @@ export default function Dashboard() {
             {selectedProperty?.name} • {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
           </p>
         </div>
-        
-        <Badge 
-          variant={(compliance?.overall ?? 0) >= 95 ? 'default' : 'secondary'}
-          className="text-sm py-1.5 px-3"
-        >
-          <Activity className="w-4 h-4 mr-2" />
-          Compliance: {compliance?.overall ?? 0}%
-        </Badge>
+
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Ajuda
+            </a>
+          </Button>
+
+          <Badge 
+            variant={(compliance?.overall ?? 0) >= 95 ? 'default' : 'secondary'}
+            className="text-sm py-1.5 px-3"
+          >
+            <Activity className="w-4 h-4 mr-2" />
+            Compliance: {compliance?.overall ?? 0}%
+          </Badge>
+        </div>
       </div>
 
       {/* KPI Cards */}

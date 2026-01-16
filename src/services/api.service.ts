@@ -232,6 +232,82 @@ export interface AdminDashboardStats {
   overdueCount: number;
 }
 
+export interface AdminMrrSeriesPoint {
+  month: string;
+  value: number;
+}
+
+export interface AdminPlan {
+  id: string;
+  nome?: string;
+  name?: string;
+  preco?: number;
+  price?: number;
+  maxCabecas?: number | null;
+  maxCattle?: number | null;
+  recursos?: string[];
+  features?: string[];
+  ativo?: boolean;
+  active?: boolean;
+}
+
+export interface AdminCoupon {
+  id: string;
+  codigo?: string;
+  code?: string;
+  tipo?: string;
+  type?: string;
+  valor?: number;
+  value?: number;
+  quantidadeUso?: number;
+  usageCount?: number;
+  maxUso?: number | null;
+  maxUsage?: number | null;
+  comissao?: number;
+  commission?: number;
+  criadoPor?: string;
+  createdBy?: string;
+  status: string;
+}
+
+export interface AdminReferrer {
+  id: string;
+  nome?: string;
+  name?: string;
+  codigo?: string;
+  code?: string;
+  indicacoes?: number;
+  referrals?: number;
+  comissaoTotal?: number;
+  totalCommission?: number;
+  comissaoPendente?: number;
+  pendingCommission?: number;
+  status: string;
+}
+
+export interface AdminCommunication {
+  id: string;
+  tipo?: string;
+  type?: string;
+  titulo?: string;
+  title?: string;
+  mensagem?: string;
+  message?: string;
+  enviadoEm?: string;
+  sentAt?: string;
+  destinatarios?: number;
+  recipients?: number;
+  status: string;
+  publicoAlvo?: string;
+  targetAudience?: string;
+  cor?: string | null;
+  color?: string | null;
+  inicioEm?: string | null;
+  startDate?: string | null;
+  fimEm?: string | null;
+  endDate?: string | null;
+}
+
 export interface StateRegulation {
   id: string;
   uf: string;
@@ -297,6 +373,11 @@ export const adminService = {
     return apiClient.get<AdminDashboardStats>(API_ROUTES.ADMIN.DASHBOARD_STATS);
   },
 
+  async getMrrSeries(months = 12): Promise<AdminMrrSeriesPoint[]> {
+    const params = months ? `?months=${months}` : '';
+    return apiClient.get<AdminMrrSeriesPoint[]>(`${API_ROUTES.ADMIN.DASHBOARD_MRR_SERIES}${params}`);
+  },
+
   async getPendingUsers(): Promise<User[]> {
     return apiClient.get<User[]>(API_ROUTES.ADMIN.PENDING_USERS);
   },
@@ -348,5 +429,61 @@ export const adminService = {
       ...log,
       timestamp: log.dataHora || log.timestamp
     }));
+  },
+
+  async getRequests(): Promise<any[]> {
+    return apiClient.get<any[]>(API_ROUTES.ADMIN.GET_SOLICITATIONS);
+  },
+
+  async approveRequest(id: string, reason?: string): Promise<any> {
+    return apiClient.patch<any>(API_ROUTES.ADMIN.APPROVE_SOLICITATION.replace(':id', id), { reason });
+  },
+
+  async rejectRequest(id: string, reason: string): Promise<any> {
+    return apiClient.patch<any>(API_ROUTES.ADMIN.REJECT_SOLICITATION.replace(':id', id), { reason });
+  },
+
+  async listAdminPlans(): Promise<AdminPlan[]> {
+    return apiClient.get<AdminPlan[]>(API_ROUTES.ADMIN.PLANS);
+  },
+
+  async createAdminPlan(data: { name: string; price: number; maxCattle?: number | null; features?: string[]; active?: boolean }): Promise<AdminPlan> {
+    return apiClient.post<AdminPlan>(API_ROUTES.ADMIN.PLANS, data);
+  },
+
+  async updateAdminPlan(id: string, data: Partial<{ name: string; price: number; maxCattle?: number | null; features?: string[]; active?: boolean }>): Promise<AdminPlan> {
+    return apiClient.patch<AdminPlan>(API_ROUTES.ADMIN.PLANS_ID.replace(':id', id), data);
+  },
+
+  async deleteAdminPlan(id: string): Promise<void> {
+    await apiClient.delete(API_ROUTES.ADMIN.PLANS_ID.replace(':id', id));
+  },
+
+  async listCoupons(): Promise<AdminCoupon[]> {
+    return apiClient.get<AdminCoupon[]>(API_ROUTES.ADMIN.COUPONS);
+  },
+
+  async createCoupon(data: { code: string; type: string; value: number; maxUsage?: number | null; commission?: number; createdBy?: string; status?: string }): Promise<AdminCoupon> {
+    return apiClient.post<AdminCoupon>(API_ROUTES.ADMIN.COUPONS, data);
+  },
+
+  async listReferrers(): Promise<AdminReferrer[]> {
+    return apiClient.get<AdminReferrer[]>(API_ROUTES.ADMIN.REFERRERS);
+  },
+
+  async listCommunications(): Promise<AdminCommunication[]> {
+    return apiClient.get<AdminCommunication[]>(API_ROUTES.ADMIN.COMMUNICATION);
+  },
+
+  async createCommunication(data: { type: string; title: string; message: string; sentAt?: string; recipients: number; status: string; targetAudience: string; color?: string; startDate?: string; endDate?: string }): Promise<AdminCommunication> {
+    return apiClient.post<AdminCommunication>(API_ROUTES.ADMIN.COMMUNICATION, data);
+  },
+
+  async deleteCommunication(id: string): Promise<void> {
+    await apiClient.delete(API_ROUTES.ADMIN.COMMUNICATION_ID.replace(':id', id));
+  },
+
+  async updateCommunication(id: string, data: Partial<{ type: string; title: string; message: string; sentAt?: string; recipients: number; status: string; targetAudience: string; color?: string | null; startDate?: string | null; endDate?: string | null }>): Promise<AdminCommunication> {
+    return apiClient.patch<AdminCommunication>(API_ROUTES.ADMIN.COMMUNICATION_ID.replace(':id', id), data);
   },
 };

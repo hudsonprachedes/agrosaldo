@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { adminService, AdminDashboardStats } from '@/services/api.service';
+import { adminService, AdminDashboardStats, AdminMrrSeriesPoint } from '@/services/api.service';
 import { toast } from 'sonner';
 import {
   Users,
@@ -13,16 +13,23 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import ReactApexChart from 'react-apexcharts';
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState<AdminDashboardStats | null>(null);
+  const [mrrSeries, setMrrSeries] = useState<AdminMrrSeriesPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const stats = await adminService.getDashboardStats();
+        const [stats, series] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminService.getMrrSeries(12),
+        ]);
+
         setKpis(stats);
+        setMrrSeries(series);
       } catch (error) {
         console.error('Erro ao carregar estatísticas:', error);
         toast.error('Erro ao carregar dados do dashboard');
@@ -37,6 +44,51 @@ export default function AdminDashboard() {
   if (isLoading || !kpis) {
     return <div className="flex items-center justify-center h-screen">Carregando...</div>;
   }
+
+  const mrrChartOptions: ApexCharts.ApexOptions = {
+    chart: {
+      type: 'area',
+      height: 240,
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+    },
+    colors: ['#10b981'],
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.35,
+        opacityTo: 0.08,
+      },
+    },
+    xaxis: {
+      categories: mrrSeries.map((p) => p.month),
+      labels: {
+        rotate: -45,
+        style: { fontSize: '11px' },
+      },
+    },
+    yaxis: {
+      labels: {
+        formatter: (val: number) => `R$ ${val.toLocaleString('pt-BR')}`,
+      },
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val: number) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      },
+    },
+  };
+
+  const mrrChartSeries = [
+    {
+      name: 'MRR',
+      data: mrrSeries.map((p) => p.value),
+    },
+  ];
 
   const kpiCards = [
     {
@@ -145,9 +197,13 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">Evolução MRR</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-48 flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
-              📊 Gráfico de MRR (últimos 12 meses)
-            </div>
+            {mrrSeries.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                Sem dados de MRR para exibir
+              </div>
+            ) : (
+              <ReactApexChart options={mrrChartOptions} series={mrrChartSeries} type="area" height={240} />
+            )}
           </CardContent>
         </Card>
 

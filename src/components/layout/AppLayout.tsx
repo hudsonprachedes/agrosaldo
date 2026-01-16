@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSyncStatus } from '@/hooks/useSyncStatus';
@@ -8,11 +8,7 @@ import {
   LayoutDashboard,
   Beef,
   FileText,
-  Menu,
-  X,
   RefreshCw,
-  Wifi,
-  WifiOff,
   Cloud,
   CloudOff,
   Loader2,
@@ -51,9 +47,8 @@ const navItems = [
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { user, selectedProperty, logout, clearSelectedProperty, selectProperty } = useAuth();
-  const location = useLocation();
   const isMobile = useIsMobile();
-  const { status, pendingCount, isOnline, isSyncing, syncNow } = useSyncStatus();
+  const { pendingCount, isOnline, isSyncing } = useSyncStatus();
 
   if (!user || !selectedProperty) {
     return null;
@@ -76,17 +71,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
     <div className="h-screen bg-background flex overflow-hidden">
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 sticky top-0 h-screen overflow-y-auto">
+        <aside
+          className={cn(
+            'bg-sidebar border-r border-sidebar-border flex flex-col shrink-0 sticky top-0 h-screen overflow-y-auto transition-[width] duration-200 relative',
+            'w-64'
+          )}
+        >
           {/* Logo */}
           <div className="p-4 border-b border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <img
-                src="/agrosaldo-logo.png"
-                alt="AgroSaldo"
-                className="h-8 w-auto object-contain"
-                loading="eager"
-              />
-              <span className="font-semibold text-sidebar-foreground">AgroSaldo</span>
+            <div className={cn('flex items-center gap-3')}>
+              <div className={cn('flex items-center gap-3 min-w-0')}>
+                <img
+                  src="/agrosaldo-logo.png"
+                  alt="AgroSaldo"
+                  className="h-8 w-auto object-contain"
+                  loading="eager"
+                />
+                <span className="font-semibold text-sidebar-foreground">AgroSaldo</span>
+              </div>
             </div>
           </div>
 
@@ -96,17 +98,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-between text-left h-auto py-3 px-3 bg-sidebar-accent hover:bg-sidebar-accent/80"
+                  className={cn(
+                    'w-full justify-between text-left h-auto py-3 px-3 bg-sidebar-accent hover:bg-sidebar-accent/80',
+                    'justify-between'
+                  )}
+                  title={selectedProperty.name}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-sidebar-foreground truncate">
-                      {selectedProperty.name}
-                    </p>
-                    <p className="text-xs text-sidebar-muted">
-                      {selectedProperty.city}, {selectedProperty.state}
-                    </p>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-sidebar-muted shrink-0 ml-2" />
+                  <>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-sidebar-foreground truncate">
+                        {selectedProperty.name}
+                      </p>
+                      <p className="text-xs text-sidebar-muted">
+                        {selectedProperty.city}, {selectedProperty.state}
+                      </p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-sidebar-muted shrink-0 ml-2" />
+                  </>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
@@ -162,8 +170,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           {/* User Menu & Sync Status */}
           <div className="p-4 border-t border-sidebar-border space-y-2">
             {/* Sync Status */}
-            <div className="flex items-center justify-between px-3 py-2 text-xs">
-              <div className="flex items-center gap-2">
+            <div className={cn('flex items-center justify-between px-3 py-2 text-xs')}>
+              <div className={cn('flex items-center gap-2')}>
                 {isSyncing ? (
                   <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                 ) : isOnline ? (
@@ -183,14 +191,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
 
             {/* Notifications + User */}
-            <div className="flex items-center justify-between">
+            <div className={cn('flex items-center justify-between')}>
               <NotificationsPanel propertyId={selectedProperty?.id} />
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="w-full justify-start gap-3 h-auto py-2"
+                  className={cn(
+                    'w-full justify-start gap-3 h-auto py-2',
+                    'justify-start'
+                  )}
                 >
                   <div className="w-8 h-8 rounded-full bg-sidebar-primary flex items-center justify-center">
                     <span className="text-xs font-semibold text-sidebar-primary-foreground">

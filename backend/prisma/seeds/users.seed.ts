@@ -9,7 +9,7 @@ export async function seedUsers(prisma: PrismaClient) {
     {
       nome: 'João Silva',
       email: 'joao@fazendaexemplo.com',
-      cpfCnpj: '529.982.247-25',
+      cpfCnpj: '52998224725',
       telefone: '(65) 98765-4321',
       senha: passwordHash,
       papel: 'proprietario' as const,
@@ -18,7 +18,7 @@ export async function seedUsers(prisma: PrismaClient) {
     {
       nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
-      cpfCnpj: '04.252.011/0001-10',
+      cpfCnpj: '04252011000110',
       telefone: '(65) 90000-0000',
       senha: adminPasswordHash,
       papel: 'super_admin' as const,
@@ -28,7 +28,7 @@ export async function seedUsers(prisma: PrismaClient) {
 
   for (const user of users) {
     await (prisma as any).usuario.upsert({
-      where: { cpfCnpj: user.cpfCnpj },
+      where: { email: user.email },
       update: user,
       create: user,
     });

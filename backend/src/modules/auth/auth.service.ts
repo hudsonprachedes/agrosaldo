@@ -12,6 +12,16 @@ export class AuthService {
     private readonly jwtService: JwtService
   ) {}
 
+  private formatCpfCnpj(digits: string): string | null {
+    if (digits.length === 11) {
+      return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    if (digits.length === 14) {
+      return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    return null;
+  }
+
   private mapPropertyToDto(property: any, userId: string) {
     return {
       id: property.id,
@@ -40,8 +50,15 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await (this.prisma as any).usuario.findUnique({
-      where: { cpfCnpj: dto.cpfCnpj },
+    const cpfCnpj = dto.cpfCnpj.replace(/\D/g, '');
+    const cpfCnpjFormatted = this.formatCpfCnpj(cpfCnpj);
+
+    const candidates = [dto.cpfCnpj, cpfCnpj, cpfCnpjFormatted].filter(Boolean);
+
+    const user = await (this.prisma as any).usuario.findFirst({
+      where: {
+        OR: candidates.map((value) => ({ cpfCnpj: value })),
+      },
       include: { propriedades: { include: { propriedade: true } } },
     });
 
@@ -71,11 +88,12 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const cpfCnpj = dto.cpfCnpj.replace(/\D/g, '');
     const user = await (this.prisma as any).usuario.create({
       data: {
         nome: dto.name,
         email: dto.email,
-        cpfCnpj: dto.cpfCnpj,
+        cpfCnpj,
         telefone: dto.phone,
         senha: passwordHash,
         status: 'pendente_aprovacao',

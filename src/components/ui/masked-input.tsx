@@ -53,10 +53,6 @@ function applyMask(value: string, mask: string, maskChar: string | null = null, 
 }
 
 // Função auxiliar para remover máscara
-function removeMask(value: string): string {
-  return value.replace(/[^\d]/g, '');
-}
-
 const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
   (
     {
@@ -99,7 +95,7 @@ const MaskedInput = React.forwardRef<HTMLInputElement, MaskedInputProps>(
           ...e,
           target: {
             ...e.target,
-            value: maskedValue,
+            value: limitedValue,
           },
         } as React.ChangeEvent<HTMLInputElement>;
         

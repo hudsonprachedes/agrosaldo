@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { getEpidemiologySurveyById } from '@/lib/epidemiology-survey-storage';
+import { apiClient } from '@/lib/api-client';
+import { EpidemiologySurveyDTO } from '@/types';
 import { ArrowLeft, ClipboardList } from 'lucide-react';
 
 function formatPtBrDateTime(iso: string) {
@@ -66,10 +67,29 @@ export default function QuestionarioEpidemiologicoDetalhe() {
   const navigate = useNavigate();
   const params = useParams();
 
-  const survey = useMemo(() => {
-    if (!selectedProperty?.id) return null;
-    if (!params.id) return null;
-    return getEpidemiologySurveyById(selectedProperty.id, params.id);
+  const [survey, setSurvey] = useState<EpidemiologySurveyDTO | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!selectedProperty?.id || !params.id) {
+        setSurvey(null);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await apiClient.get<EpidemiologySurveyDTO>(`/questionario-epidemiologico/${params.id}`);
+        setSurvey(data);
+      } catch (error) {
+        console.error('Erro ao carregar detalhe do questionário:', error);
+        setSurvey(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, [params.id, selectedProperty?.id]);
 
   const status = useMemo(() => {
@@ -82,6 +102,20 @@ export default function QuestionarioEpidemiologicoDetalhe() {
       label: isOverdue ? 'Vencido' : 'Em dia',
     };
   }, [survey]);
+
+  if (loading) {
+    return (
+      <div className="p-4 md:p-6 lg:p-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Carregando...</h1>
+          <Button variant="outline" onClick={() => navigate('/questionario-epidemiologico/historico')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!survey) {
     return (

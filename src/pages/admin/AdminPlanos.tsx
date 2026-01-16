@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '@/services/api.service';
+import { adminService, AdminPlan } from '@/services/api.service';
 import { toast } from 'sonner';
 import {
   CreditCard,
@@ -59,16 +59,8 @@ const planSchema = z.object({
 
 type PlanFormData = z.infer<typeof planSchema>;
 
-const DEFAULT_PLANS: Plan[] = [
-  { id: '1', name: 'Porteira', price: 29.90, maxCattle: 500, active: true },
-  { id: '2', name: 'Piquete', price: 69.90, maxCattle: 1500, active: true },
-  { id: '3', name: 'Retiro', price: 129.90, maxCattle: 3000, active: true },
-  { id: '4', name: 'Estância', price: 249.90, maxCattle: 6000, active: true },
-  { id: '5', name: 'Barão', price: 399.90, maxCattle: Infinity, active: true },
-];
-
 export default function AdminPlanos() {
-  const [plansData, setPlansData] = useState<Plan[]>(DEFAULT_PLANS);
+  const [plansData, setPlansData] = useState<Plan[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [deletingPlan, setDeletingPlan] = useState<Plan | null>(null);
@@ -93,8 +85,27 @@ export default function AdminPlanos() {
   });
 
   useEffect(() => {
-    // Planos padrão já carregados
-    setPlansData(DEFAULT_PLANS);
+    const loadPlans = async () => {
+      try {
+        const rows = await adminService.listAdminPlans();
+        const mapped: Plan[] = rows.map((p: AdminPlan) => {
+          const name = p.name ?? p.nome ?? '';
+          const price = p.price ?? p.preco ?? 0;
+          const maxCattleRaw = p.maxCattle ?? p.maxCabecas;
+          const maxCattle = maxCattleRaw === null || maxCattleRaw === undefined ? Infinity : maxCattleRaw;
+          const features = p.features ?? p.recursos ?? [];
+          const active = p.active ?? p.ativo ?? true;
+          return { id: p.id, name, price, maxCattle, features, active };
+        });
+        setPlansData(mapped.sort((a, b) => a.price - b.price));
+      } catch (error) {
+        console.error('Erro ao carregar planos:', error);
+        toast.error('Erro ao carregar planos');
+        setPlansData([]);
+      }
+    };
+
+    void loadPlans();
   }, []);
 
   const openCreateDialog = () => {
@@ -125,26 +136,50 @@ export default function AdminPlanos() {
     setLoading(true);
     try {
       if (editingPlan) {
-        const updated: Plan = {
-          ...editingPlan,
+        const updated = await adminService.updateAdminPlan(editingPlan.id, {
           name: data.name,
           price: data.price,
-          maxCattle: data.maxCattle,
+          maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
           features: data.features.split('\n').map(f => f.trim()).filter(f => f),
           active: data.active,
+        });
+
+        const normalized: Plan = {
+          id: updated.id,
+          name: updated.name ?? updated.nome ?? data.name,
+          price: updated.price ?? updated.preco ?? data.price,
+          maxCattle:
+            (updated.maxCattle ?? updated.maxCabecas) === null || (updated.maxCattle ?? updated.maxCabecas) === undefined
+              ? Infinity
+              : (updated.maxCattle ?? updated.maxCabecas) as number,
+          features: updated.features ?? updated.recursos ?? data.features.split('\n').map(f => f.trim()).filter(f => f),
+          active: updated.active ?? updated.ativo ?? data.active,
         };
-        setPlansData(plansData.map(p => p.id === editingPlan.id ? updated : p));
+
+        setPlansData(plansData.map(p => p.id === editingPlan.id ? normalized : p));
         toast.success('Plano atualizado com sucesso');
       } else {
-        const newPlan: Plan = {
-          id: `plan-${Date.now()}`,
+        const created = await adminService.createAdminPlan({
           name: data.name,
           price: data.price,
-          maxCattle: data.maxCattle,
+          maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
           features: data.features.split('\n').map(f => f.trim()).filter(f => f),
           active: data.active,
+        });
+
+        const normalized: Plan = {
+          id: created.id,
+          name: created.name ?? created.nome ?? data.name,
+          price: created.price ?? created.preco ?? data.price,
+          maxCattle:
+            (created.maxCattle ?? created.maxCabecas) === null || (created.maxCattle ?? created.maxCabecas) === undefined
+              ? Infinity
+              : (created.maxCattle ?? created.maxCabecas) as number,
+          features: created.features ?? created.recursos ?? data.features.split('\n').map(f => f.trim()).filter(f => f),
+          active: created.active ?? created.ativo ?? data.active,
         };
-        setPlansData([...plansData, newPlan].sort((a, b) => a.price - b.price));
+
+        setPlansData([...plansData, normalized].sort((a, b) => a.price - b.price));
         toast.success('Plano criado com sucesso');
       }
       setDialogOpen(false);
@@ -160,6 +195,7 @@ export default function AdminPlanos() {
   const handleDelete = async () => {
     if (!deletingPlan) return;
     try {
+      await adminService.deleteAdminPlan(deletingPlan.id);
       setPlansData(plansData.filter(p => p.id !== deletingPlan.id));
       toast.success('Plano deletado com sucesso');
       setDeletingPlan(null);
@@ -171,8 +207,9 @@ export default function AdminPlanos() {
 
   const togglePlanStatus = async (plan: Plan) => {
     try {
-      const updated = { ...plan, active: !plan.active };
-      setPlansData(plansData.map(p => p.id === plan.id ? updated : p));
+      const updated = await adminService.updateAdminPlan(plan.id, { active: !(plan.active ?? true) });
+      const normalizedActive = updated.active ?? updated.ativo ?? !(plan.active ?? true);
+      setPlansData(plansData.map(p => p.id === plan.id ? { ...p, active: normalizedActive } : p));
       toast.success(`Plano "${plan.name}" ${updated.active ? 'ativado' : 'desativado'}`);
     } catch (error) {
       console.error('Erro ao alterar status do plano:', error);

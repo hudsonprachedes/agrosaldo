@@ -15,6 +15,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { PreferencesModule } from './modules/preferences/preferences.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { QuestionarioEpidemiologicoModule } from './modules/questionario-epidemiologico/questionario-epidemiologico.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     FinanceModule,
     PreferencesModule,
     SubscriptionsModule,
+    QuestionarioEpidemiologicoModule,
     AdminModule,
     AnalyticsModule,
     HealthModule,

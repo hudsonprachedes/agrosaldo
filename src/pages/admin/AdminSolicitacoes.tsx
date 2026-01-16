@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '@/services/api.service';
-import { toast } from 'sonner';
 import {
+  Bell,
+  Clock,
   CheckCircle,
   XCircle,
-  Clock,
+  Eye,
+  Search,
+  Filter,
   User,
   Building,
+  Calendar,
+  MoreHorizontal,
   CreditCard,
-  Eye,
   Send,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -58,7 +63,7 @@ export default function AdminSolicitacoes() {
   useEffect(() => {
     const loadRequests = async () => {
       try {
-        const data = await adminService.getPendingUsers();
+        const data = await adminService.getRequests();
         setRequests(data as unknown as PendingRequest[]);
       } catch (error) {
         console.error('Erro ao carregar solicitações:', error);
@@ -75,30 +80,38 @@ export default function AdminSolicitacoes() {
   const [viewDialog, setViewDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedRequest) return;
 
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
-    
-    // TODO: Send notification email/WhatsApp to user
-    toast.success(`Solicitação de ${selectedRequest.name} aprovada com sucesso!`);
-    setApproveDialog(false);
-    setSelectedRequest(null);
+    try {
+      await adminService.approveRequest(selectedRequest.id);
+      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      toast.success(`Solicitação de ${selectedRequest.name} aprovada com sucesso!`);
+      setApproveDialog(false);
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('Erro ao aprovar solicitação:', error);
+      toast.error('Erro ao aprovar solicitação');
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedRequest || !rejectionReason.trim()) {
       toast.error('Informe o motivo da rejeição');
       return;
     }
 
-    setRequests(requests.filter(r => r.id !== selectedRequest.id));
-    
-    // TODO: Send rejection notification with reason to user
-    toast.success(`Solicitação de ${selectedRequest.name} rejeitada. Usuário será notificado.`);
-    setRejectDialog(false);
-    setRejectionReason('');
-    setSelectedRequest(null);
+    try {
+      await adminService.rejectRequest(selectedRequest.id, rejectionReason.trim());
+      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      toast.success(`Solicitação de ${selectedRequest.name} rejeitada.`);
+      setRejectDialog(false);
+      setRejectionReason('');
+      setSelectedRequest(null);
+    } catch (error) {
+      console.error('Erro ao rejeitar solicitação:', error);
+      toast.error('Erro ao rejeitar solicitação');
+    }
   };
 
   const openApproveDialog = (request: PendingRequest) => {
@@ -138,6 +151,10 @@ export default function AdminSolicitacoes() {
   const getPendingCount = () => {
     return requests.filter(r => r.status === 'pending').length;
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando solicitações...</div>;
+  }
 
   return (
     <div className="space-y-6">

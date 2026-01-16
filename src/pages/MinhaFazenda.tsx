@@ -211,6 +211,13 @@ export default function MinhaFazenda() {
   const hasSubscription = Boolean(subscription?.id);
   const isSubscriptionActive = hasSubscription && subscriptionStatus === 'ativa';
 
+  const planRank = (planId: PlanId | null | undefined) => {
+    const order: PlanId[] = ['porteira', 'piquete', 'retiro', 'estancia', 'barao'];
+    if (!planId) return 0;
+    const idx = order.indexOf(planId);
+    return idx === -1 ? 0 : idx;
+  };
+
   const handleSubscribeOrUpgrade = async (planId: PlanId) => {
     try {
       const updated = await apiClient.post<SubscriptionDTO>('/assinaturas/minha', {
@@ -224,6 +231,16 @@ export default function MinhaFazenda() {
         'Não foi possível atualizar o plano. Tente novamente.';
       toast.error(message);
     }
+  };
+
+  const handlePlanChangeClick = async (planId: PlanId) => {
+    const current = subscription?.plano ?? null;
+    const isUpgrade = planRank(planId) > planRank(current);
+    if (!isUpgrade && current) {
+      toast.info('Downgrade não é automático. Solicite pelo suporte/WhatsApp.');
+      return;
+    }
+    await handleSubscribeOrUpgrade(planId);
   };
 
   // Property CRUD handlers
@@ -888,7 +905,7 @@ export default function MinhaFazenda() {
                             </div>
                             <Button
                               className="w-full mt-4"
-                              onClick={() => void handleSubscribeOrUpgrade(plan.id)}
+                              onClick={() => void handlePlanChangeClick(plan.id)}
                             >
                               Assinar {plan.name}
                             </Button>
@@ -1004,9 +1021,11 @@ export default function MinhaFazenda() {
                               <Button
                                 className="w-full mt-4"
                                 variant="outline"
-                                onClick={() => void handleSubscribeOrUpgrade(plan.id)}
+                                onClick={() => void handlePlanChangeClick(plan.id)}
                               >
-                                {plan.maxCattle > (currentPlan?.maxCattle || 0) ? 'Fazer Upgrade' : 'Alterar Plano'}
+                                {planRank(plan.id) > planRank(currentPlan?.id ?? null)
+                                  ? 'Fazer Upgrade'
+                                  : 'Solicitar Downgrade'}
                               </Button>
                             )}
                           </CardContent>

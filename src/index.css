@@ -129,7 +129,7 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
-    overflow-y: hidden;
+    overflow-y: auto;
   }
 
   body {
@@ -139,14 +139,14 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
-    overflow-y: hidden;
+    overflow-y: auto;
   }
 
   /* Ensure app uses full viewport height so only the main container scrolls */
   html, body, #root {
     height: 100%;
     min-height: 100vh;
-    overflow-y: hidden;
+    overflow-y: auto;
   }
 
   h1, h2, h3, h4, h5, h6 {

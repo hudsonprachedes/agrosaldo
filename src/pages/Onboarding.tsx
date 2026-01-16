@@ -135,7 +135,7 @@ function SpeciesTable({ species, control, errors, speciesLabel }: SpeciesTablePr
       {sexes.map(sex => (
         <div key={sex.key}>
           <h4 className="text-sm font-medium text-gray-700 mb-2">{sex.label}</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {AGE_GROUP_BRACKETS.map(bracket => (
               <StockInput
                 key={`${species}-${sex.key}-${bracket.id}`}
@@ -273,8 +273,8 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-start justify-center p-4 sm:p-6 lg:p-10">
+      <div className="w-full max-w-2xl lg:max-w-5xl">
         {/* ===== STEP 1: BEM-VINDO ===== */}
         {step === 1 && (
           <Card className="border-green-200 shadow-lg">
@@ -415,9 +415,9 @@ const Onboarding: React.FC = () => {
               <Form {...stockForm}>
                 <form
                   onSubmit={stockForm.handleSubmit(handleStep3Submit)}
-                  className="flex flex-col max-h-[75vh]"
+                  className="flex flex-col max-h-[75vh] lg:max-h-none"
                 >
-                  <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-1">
+                  <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-1 lg:overflow-visible lg:pr-0">
                     {selectedSpecies.bovino && (
                       <SpeciesTable
                         species="bovino"

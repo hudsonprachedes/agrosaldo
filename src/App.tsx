@@ -121,6 +121,11 @@ function LayoutRoute({ children }: { children: ReactNode }) {
   return isMobile ? <MobileLayout>{children}</MobileLayout> : <AppLayout>{children}</AppLayout>;
 }
 
+function WebLayoutRoute({ children }: { children: ReactNode }) {
+  const isMobile = useIsMobile();
+  return isMobile ? <>{children}</> : <AppLayout>{children}</AppLayout>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -185,22 +190,22 @@ const App = () => (
               <ProtectedRoute><Navigate to="/lancamentos" replace /></ProtectedRoute>
             } />
             <Route path="/lancamento/nascimento" element={
-              <ProtectedRoute><LaunchForm type="nascimento" /></ProtectedRoute>
+              <ProtectedRoute><WebLayoutRoute><LaunchForm type="nascimento" /></WebLayoutRoute></ProtectedRoute>
             } />
             <Route path="/lancamento/mortalidade" element={
-              <ProtectedRoute><LaunchForm type="mortalidade" /></ProtectedRoute>
+              <ProtectedRoute><WebLayoutRoute><LaunchForm type="mortalidade" /></WebLayoutRoute></ProtectedRoute>
             } />
             <Route path="/lancamento/venda" element={
-              <ProtectedRoute><LaunchForm type="venda" /></ProtectedRoute>
+              <ProtectedRoute><WebLayoutRoute><LaunchForm type="venda" /></WebLayoutRoute></ProtectedRoute>
             } />
             <Route path="/lancamento/compra" element={
-              <ProtectedRoute><LaunchForm type="compra" /></ProtectedRoute>
+              <ProtectedRoute><WebLayoutRoute><LaunchForm type="compra" /></WebLayoutRoute></ProtectedRoute>
             } />
             <Route path="/lancamento/vacina" element={
-              <ProtectedRoute><LaunchForm type="vacina" /></ProtectedRoute>
+              <ProtectedRoute><WebLayoutRoute><LaunchForm type="vacina" /></WebLayoutRoute></ProtectedRoute>
             } />
             <Route path="/lancamento/outras" element={
-              <ProtectedRoute><LaunchForm type="outras" /></ProtectedRoute>
+              <ProtectedRoute><WebLayoutRoute><LaunchForm type="outras" /></WebLayoutRoute></ProtectedRoute>
             } />
             
             {/* Admin Routes - Require super_admin role */}

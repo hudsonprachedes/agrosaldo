@@ -11,8 +11,10 @@ import {
   TrendingDown,
   Wallet,
   Users,
+  MessageCircle,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import MobileLayout from '@/components/layout/MobileLayout';
 
 export default function MobileHome() {
@@ -21,6 +23,18 @@ export default function MobileHome() {
   const isMobile = useIsMobile();
   const [dashboard, setDashboard] = React.useState<DashboardAnalyticsDTO | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+
+  const whatsappUrl = React.useMemo(() => {
+    const producerName = user?.name ?? 'Não informado';
+    const cpfCnpj = user?.cpfCnpj ?? 'Não informado';
+    const propertyName = selectedProperty?.name ?? 'Não informada';
+    const message =
+      `Olá! Preciso de ajuda no AgroSaldo.\n` +
+      `Produtor: ${producerName}\n` +
+      `CPF/CNPJ: ${cpfCnpj}\n` +
+      `Propriedade: ${propertyName}`;
+    return `https://wa.me/5544991147084?text=${encodeURIComponent(message)}`;
+  }, [user?.name, user?.cpfCnpj, selectedProperty?.name]);
 
   useEffect(() => {
     if (!user) {
@@ -130,6 +144,22 @@ export default function MobileHome() {
             <AlertTriangle className="w-6 h-6" />
           )}
         </div>
+
+        <Button
+          asChild
+          size="lg"
+          className="w-full bg-white/15 text-primary-foreground border border-white/20 hover:bg-white/20 dark:bg-primary/10 dark:text-primary dark:border-border dark:hover:bg-primary/15"
+        >
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Ajuda no WhatsApp"
+          >
+            <MessageCircle className="w-5 h-5" />
+            Ajuda no WhatsApp
+          </a>
+        </Button>
 
         {/* Total Cattle */}
         <div className="text-center py-4">

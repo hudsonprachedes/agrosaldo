@@ -131,6 +131,7 @@ model Propriedade {
   preferencias    PreferenciasUsuario[]
   rebanho         Rebanho[]
   movimentos      Movimento[]
+  questionariosEpidemiologicos QuestionarioEpidemiologico[]
 
   @@map("Property")
 }
@@ -202,6 +203,21 @@ model Movimento {
   @@map("Movement")
 }
 
+model QuestionarioEpidemiologico {
+  id            String      @id @default(uuid()) @map("id")
+  propriedadeId String      @map("propertyId")
+  versao        Int         @default(1) @map("version")
+  respostas     Json        @map("answers")
+  enviadoEm     DateTime    @default(now()) @map("submittedAt")
+  proximoEm     DateTime    @map("nextDueAt")
+  criadoEm      DateTime    @default(now()) @map("createdAt")
+  atualizadoEm  DateTime    @updatedAt @map("updatedAt")
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@index([propriedadeId, enviadoEm])
+  @@map("EpidemiologySurvey")
+}
+
 model SolicitacaoPendente {
   id               String   @id @default(uuid()) @map("id")
   nome             String   @map("name")
@@ -261,6 +277,67 @@ model ConfiguracaoPix {
   atualizadoEm  DateTime @updatedAt @map("updatedAt")
 
   @@map("PixConfig")
+}
+
+model PlanoSaas {
+  id        String   @id @default(uuid()) @map("id")
+  nome      String   @unique @map("name")
+  preco     Float    @map("price")
+  maxCabecas Int?    @map("maxCattle")
+  recursos  String[] @default([]) @map("features")
+  ativo     Boolean  @default(true) @map("active")
+  criadoEm  DateTime @default(now()) @map("createdAt")
+  atualizadoEm DateTime @updatedAt @map("updatedAt")
+
+  @@map("Plan")
+}
+
+model CupomIndicacao {
+  id          String   @id @default(uuid()) @map("id")
+  codigo      String   @unique @map("code")
+  tipo        String   @map("type")
+  valor       Float    @map("value")
+  quantidadeUso Int    @default(0) @map("usageCount")
+  maxUso      Int?     @map("maxUsage")
+  comissao    Float    @default(0) @map("commission")
+  criadoPor   String   @map("createdBy")
+  status      String   @default("active") @map("status")
+  criadoEm    DateTime @default(now()) @map("createdAt")
+  atualizadoEm DateTime @updatedAt @map("updatedAt")
+
+  @@map("Coupon")
+}
+
+model IndicadorParceiro {
+  id                 String   @id @default(uuid()) @map("id")
+  nome               String   @map("name")
+  codigo             String   @unique @map("code")
+  indicacoes         Int      @default(0) @map("referrals")
+  comissaoTotal      Float    @default(0) @map("totalCommission")
+  comissaoPendente   Float    @default(0) @map("pendingCommission")
+  status             String   @default("active") @map("status")
+  criadoEm           DateTime @default(now()) @map("createdAt")
+  atualizadoEm       DateTime @updatedAt @map("updatedAt")
+
+  @@map("Referrer")
+}
+
+model ComunicacaoAdmin {
+  id            String   @id @default(uuid()) @map("id")
+  tipo          String   @map("type")
+  titulo        String   @map("title")
+  mensagem      String   @map("message")
+  enviadoEm     DateTime @default(now()) @map("sentAt")
+  destinatarios Int      @default(0) @map("recipients")
+  status        String   @map("status")
+  publicoAlvo   String   @map("targetAudience")
+  cor           String?  @map("color")
+  inicioEm      DateTime? @map("startDate")
+  fimEm         DateTime? @map("endDate")
+  criadoEm      DateTime @default(now()) @map("createdAt")
+  atualizadoEm  DateTime @updatedAt @map("updatedAt")
+
+  @@map("AdminCommunication")
 }
 
 model LogAuditoria {

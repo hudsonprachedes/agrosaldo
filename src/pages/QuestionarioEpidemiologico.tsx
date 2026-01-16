@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,8 +14,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { saveEpidemiologySurvey, getLatestEpidemiologySurvey } from '@/lib/epidemiology-survey-storage';
-import { EpidemiologyAnswer } from '@/types';
+import { apiClient } from '@/lib/api-client';
+import { EpidemiologyAnswer, EpidemiologySurveyDTO } from '@/types';
 import { toast } from 'sonner';
 import { ArrowRight, ClipboardList, History } from 'lucide-react';
 
@@ -77,9 +77,29 @@ export default function QuestionarioEpidemiologico() {
   const { selectedProperty } = useAuth();
   const navigate = useNavigate();
 
-  const latest = useMemo(() => {
-    if (!selectedProperty?.id) return null;
-    return getLatestEpidemiologySurvey(selectedProperty.id);
+  const [latest, setLatest] = useState<EpidemiologySurveyDTO | null>(null);
+  const [loadingLatest, setLoadingLatest] = useState(false);
+
+  useEffect(() => {
+    const loadLatest = async () => {
+      if (!selectedProperty?.id) {
+        setLatest(null);
+        return;
+      }
+
+      try {
+        setLoadingLatest(true);
+        const data = await apiClient.get<EpidemiologySurveyDTO | null>('/questionario-epidemiologico/latest');
+        setLatest(data);
+      } catch (error) {
+        console.error('Erro ao carregar último questionário:', error);
+        setLatest(null);
+      } finally {
+        setLoadingLatest(false);
+      }
+    };
+
+    void loadLatest();
   }, [selectedProperty?.id]);
 
   const status = useMemo(() => {
@@ -149,11 +169,23 @@ export default function QuestionarioEpidemiologico() {
       }
     }
 
-    const answers = toAnswerList(normalizedValues);
-    const saved = saveEpidemiologySurvey(selectedProperty.id, answers);
+    const submit = async () => {
+      try {
+        const answers = toAnswerList(normalizedValues);
+        const saved = await apiClient.post<EpidemiologySurveyDTO>('/questionario-epidemiologico', {
+          answers,
+        });
 
-    toast.success('Questionário salvo com sucesso');
-    navigate(`/questionario-epidemiologico/historico/${saved.id}`);
+        setLatest(saved);
+        toast.success('Questionário salvo com sucesso');
+        navigate(`/questionario-epidemiologico/historico/${saved.id}`);
+      } catch (error) {
+        console.error('Erro ao salvar questionário:', error);
+        toast.error('Não foi possível salvar o questionário');
+      }
+    };
+
+    void submit();
   };
 
   const nextDuePreview = useMemo(() => {
@@ -189,7 +221,7 @@ export default function QuestionarioEpidemiologico() {
       <Card>
         <CardHeader>
           <CardTitle>Status</CardTitle>
-          <CardDescription>{status.helper}</CardDescription>
+          <CardDescription>{loadingLatest ? 'Carregando status...' : status.helper}</CardDescription>
         </CardHeader>
       </Card>
 

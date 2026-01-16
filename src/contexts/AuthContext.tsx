@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { apiClient } from '@/lib/api-client';
 import { CreateUserRequest, UserDTO, PropertyDTO } from '@/types';
 import { livestockService } from '@/services/api.service';
+import { cleanDocument } from '@/lib/utils';
 
 type RegisterData = CreateUserRequest & { password: string };
 
@@ -116,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (cpfCnpj: string, password: string): Promise<{ success: boolean; user: UserDTO | null }> => {
     try {
       const response = await apiClient.post<{ user: UserDTO; token: string }>('/auth/login', {
-        cpfCnpj,
+        cpfCnpj: cleanDocument(cpfCnpj),
         password,
       });
       apiClient.setAuthToken(response.token);
@@ -133,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiClient.post<UserDTO>('/auth/register', {
         name: data.name,
-        cpfCnpj: data.cpfCnpj,
+        cpfCnpj: cleanDocument(data.cpfCnpj),
         email: data.email,
         phone: data.phone,
         password: data.password,

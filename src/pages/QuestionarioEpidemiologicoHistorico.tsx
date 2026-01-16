@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,8 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { listEpidemiologySurveys } from '@/lib/epidemiology-survey-storage';
+import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
+import { EpidemiologySurveyDTO } from '@/types';
 import { ArrowLeft, ClipboardList, Eye } from 'lucide-react';
 
 function formatPtBrDateTime(iso: string) {
@@ -32,9 +33,29 @@ export default function QuestionarioEpidemiologicoHistorico() {
   const { selectedProperty } = useAuth();
   const navigate = useNavigate();
 
-  const surveys = useMemo(() => {
-    if (!selectedProperty?.id) return [];
-    return listEpidemiologySurveys(selectedProperty.id);
+  const [surveys, setSurveys] = useState<EpidemiologySurveyDTO[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!selectedProperty?.id) {
+        setSurveys([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const data = await apiClient.get<EpidemiologySurveyDTO[]>('/questionario-epidemiologico');
+        setSurveys(data);
+      } catch (error) {
+        console.error('Erro ao carregar histórico do questionário:', error);
+        setSurveys([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, [selectedProperty?.id]);
 
   return (
@@ -63,13 +84,19 @@ export default function QuestionarioEpidemiologicoHistorico() {
         <CardHeader>
           <CardTitle>Respostas registradas</CardTitle>
           <CardDescription>
-            {surveys.length === 0
+            {loading
+              ? 'Carregando registros...'
+              : surveys.length === 0
               ? 'Nenhuma resposta foi registrada ainda.'
               : `${surveys.length} registro(s) encontrado(s).`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {surveys.length === 0 ? (
+          {loading ? (
+            <div className="rounded-lg border p-6 text-center">
+              <p className="text-sm text-muted-foreground">Carregando...</p>
+            </div>
+          ) : surveys.length === 0 ? (
             <div className="rounded-lg border p-6 text-center">
               <p className="font-medium">Você ainda não respondeu este questionário.</p>
               <p className="text-sm text-muted-foreground mt-1">Clique em “Responder agora” para criar o primeiro registro.</p>

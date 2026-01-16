@@ -84,6 +84,12 @@ interface SaleItem {
   unitValue: number;
 }
 
+interface PurchaseItem {
+  id: string;
+  ageGroupId: string;
+  quantity: number;
+}
+
 export default function LaunchForm({ type }: LaunchFormProps) {
   const { selectedProperty } = useAuth();
   const navigate = useNavigate();
@@ -119,12 +125,12 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const [gtaNumber, setGtaNumber] = useState('');
 
   // Purchase fields
-  const [purchaseMode, setPurchaseMode] = useState<'lote' | 'individual'>('lote');
   const [supplier, setSupplier] = useState('');
-  const [purchaseAgeGroup, setPurchaseAgeGroup] = useState('12-24');
   const [purchaseSex, setPurchaseSex] = useState<'male' | 'female'>('male');
-  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
   const [purchaseTotalValue, setPurchaseTotalValue] = useState<number>(0);
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([
+    { id: '1', ageGroupId: '12-24', quantity: 1 },
+  ]);
 
   // Vaccine fields
   const [campaign, setCampaign] = useState('');
@@ -213,18 +219,61 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         compressedPhotoBlob = bestBlob;
       }
 
+      if (type === 'compra') {
+        const cleanedItems = purchaseItems
+          .map((it) => ({ ...it, quantity: Number(it.quantity) || 0 }))
+          .filter((it) => it.quantity > 0);
+
+        if (cleanedItems.length === 0) {
+          toast.error('Adicione pelo menos uma faixa etária com quantidade', {
+            description: 'Inclua uma faixa e informe a quantidade para continuar.',
+          });
+          return;
+        }
+
+        const totalQty = cleanedItems.reduce((sum, it) => sum + it.quantity, 0);
+        const baseDescription = `Compra${supplier ? ` - ${supplier}` : ''}`;
+
+        for (const it of cleanedItems) {
+          const proportionalValue = totalQty > 0 ? (purchaseTotalValue * it.quantity) / totalQty : 0;
+
+          await saveMovement({
+            propertyId: selectedProperty.id,
+            type: 'purchase',
+            date,
+            quantity: it.quantity,
+            sex: purchaseSex,
+            ageGroupId: it.ageGroupId,
+            description: baseDescription,
+            destination: supplier || undefined,
+            value: purchaseTotalValue > 0 ? proportionalValue : undefined,
+            gtaNumber: undefined,
+            photoUrl: undefined,
+            cause: undefined,
+            birthDate: undefined,
+            createdAt: new Date().toISOString(),
+          });
+        }
+
+        toast.success(`Compra de ${totalQty} animal(is) registrada`, {
+          description: purchaseTotalValue > 0 ? `Valor: R$ ${purchaseTotalValue.toLocaleString('pt-BR')}` : undefined,
+          icon: '🛒',
+        });
+
+        navigate(-1);
+        return;
+      }
+
       // Preparar dados do movimento
       const movementType = type === 'nascimento' ? 'birth' 
         : type === 'mortalidade' ? 'death'
         : type === 'venda' ? 'sale'
-        : type === 'compra' ? 'purchase'
         : type === 'vacina' ? 'vaccine'
         : 'adjustment';
 
       const description = type === 'nascimento' ? `Nascimento - ${sex === 'male' ? 'Machos' : 'Fêmeas'}`
         : type === 'mortalidade' ? `${deathType === 'natural' ? 'Morte Natural' : 'Consumo'} - ${deathCause || 'Não especificado'}`
         : type === 'venda' ? `Venda para ${destination} - ${buyer}`
-        : type === 'compra' ? `Compra - ${purchaseMode === 'lote' ? 'Lote' : 'Individual'}${supplier ? ` - ${supplier}` : ''}`
         : type === 'vacina' ? `Vacinação - ${campaign}`
         : notes || 'Ajuste manual';
 
@@ -233,15 +282,13 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         propertyId: selectedProperty.id,
         type: movementType,
         date,
-        quantity: type === 'compra' ? purchaseQuantity : quantity,
-        sex: type === 'nascimento' ? sex : type === 'compra' ? purchaseSex : sexOther ?? undefined,
-        ageGroupId: type === 'nascimento' ? '0-4' : type === 'compra' ? purchaseAgeGroup : ageGroup,
+        quantity,
+        sex: type === 'nascimento' ? sex : sexOther ?? undefined,
+        ageGroupId: type === 'nascimento' ? '0-4' : ageGroup,
         description,
-        destination: type === 'venda' ? destination : type === 'compra' ? supplier || undefined : undefined,
+        destination: type === 'venda' ? destination : undefined,
         value: type === 'venda'
           ? saleItems.reduce((sum, item) => sum + (item.quantity * item.unitValue), 0)
-          : type === 'compra'
-          ? purchaseTotalValue
           : undefined,
         gtaNumber: type === 'venda' && gtaNumber ? gtaNumber : undefined,
         photoUrl: undefined,
@@ -274,11 +321,6 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         toast.success(`Venda de ${totalQty} animais registrada`, {
           description: `Valor: R$ ${totalValue.toLocaleString('pt-BR')}`,
           icon: '🚚',
-        });
-      } else if (type === 'compra') {
-        toast.success(`Compra de ${purchaseQuantity} animal(is) registrada`, {
-          description: purchaseTotalValue > 0 ? `Valor: R$ ${purchaseTotalValue.toLocaleString('pt-BR')}` : undefined,
-          icon: '🛒',
         });
       } else if (type === 'vacina') {
         const totalAnimals = selectedAgeGroups.length * 200; // Mock
@@ -372,6 +414,21 @@ export default function LaunchForm({ type }: LaunchFormProps) {
 
   const removeSaleItem = (id: string) => {
     setSaleItems(saleItems.filter(item => item.id !== id));
+  };
+
+  const addPurchaseItem = () => {
+    setPurchaseItems([
+      ...purchaseItems,
+      { id: Date.now().toString(), ageGroupId: '12-24', quantity: 1 },
+    ]);
+  };
+
+  const removePurchaseItem = (id: string) => {
+    setPurchaseItems(purchaseItems.filter((it) => it.id !== id));
+  };
+
+  const updatePurchaseItem = (id: string, patch: Partial<PurchaseItem>) => {
+    setPurchaseItems(purchaseItems.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   };
 
   const updateSaleItem = (id: string, field: keyof SaleItem, value: unknown) => {
@@ -529,42 +586,6 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           <>
             <Card className="border-0 shadow-card">
               <CardContent className="p-4">
-                <Label className="text-base font-semibold mb-4 block">Tipo de Compra</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPurchaseMode('lote')}
-                    className={cn(
-                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
-                      purchaseMode === 'lote'
-                        ? 'border-primary bg-primary/10 scale-[1.02]'
-                        : 'border-border hover:border-primary/50'
-                    )}
-                  >
-                    <span className="text-3xl">📦</span>
-                    <span className="font-semibold">Lote</span>
-                    <span className="text-xs text-muted-foreground">Vários animais</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPurchaseMode('individual')}
-                    className={cn(
-                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
-                      purchaseMode === 'individual'
-                        ? 'border-primary bg-primary/10 scale-[1.02]'
-                        : 'border-border hover:border-primary/50'
-                    )}
-                  >
-                    <span className="text-3xl">🐮</span>
-                    <span className="font-semibold">Individual</span>
-                    <span className="text-xs text-muted-foreground">Um animal</span>
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-card">
-              <CardContent className="p-4">
                 <Label className="text-base font-semibold mb-3 block">Fornecedor (opcional)</Label>
                 <Input
                   placeholder="Nome do vendedor / leilão / fazenda"
@@ -611,51 +632,110 @@ export default function LaunchForm({ type }: LaunchFormProps) {
 
             <Card className="border-0 shadow-card">
               <CardContent className="p-4">
-                <Label className="text-base font-semibold mb-3 block">Faixa Etária</Label>
-                <Select value={purchaseAgeGroup} onValueChange={setPurchaseAgeGroup}>
-                  <SelectTrigger className="h-14">
-                    <SelectValue placeholder="Selecione a faixa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ageGroups.map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-card">
-              <CardContent className="p-4">
-                <Label className="flex items-center gap-2 text-base font-semibold mb-4">
+                <Label className="flex items-center gap-2 text-base font-semibold mb-3">
                   <Hash className="w-5 h-5 text-primary" />
-                  Quantidade
+                  Faixas Etárias e Quantidades
                 </Label>
-                <div className="flex items-center justify-center gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-14 w-14 rounded-xl text-xl"
-                    onClick={() => setPurchaseQuantity(Math.max(1, purchaseQuantity - 1))}
-                  >
-                    <Minus className="w-6 h-6" />
-                  </Button>
-                  <div className="w-24 text-center">
-                    <span className="text-5xl font-bold text-primary">{purchaseQuantity}</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-14 w-14 rounded-xl text-xl"
-                    onClick={() => setPurchaseQuantity(purchaseMode === 'individual' ? 1 : purchaseQuantity + 1)}
-                  >
-                    <Plus className="w-6 h-6" />
-                  </Button>
+                <div className="space-y-3">
+                  {purchaseItems.map((it, idx) => (
+                    <div
+                      key={it.id}
+                      className="p-4 rounded-xl border bg-muted/30"
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <span className="font-semibold">Faixa {idx + 1}</span>
+                        {purchaseItems.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => removePurchaseItem(it.id)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Faixa Etária</Label>
+                          <Select
+                            value={it.ageGroupId}
+                            onValueChange={(value) => updatePurchaseItem(it.id, { ageGroupId: value })}
+                          >
+                            <SelectTrigger className="h-12">
+                              <SelectValue placeholder="Selecione a faixa" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ageGroups.map((group) => (
+                                <SelectItem key={group.id} value={group.id}>
+                                  {group.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm text-muted-foreground">Quantidade</Label>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-12 w-12 rounded-xl"
+                              onClick={() =>
+                                updatePurchaseItem(it.id, {
+                                  quantity: Math.max(1, (Number(it.quantity) || 0) - 1),
+                                })
+                              }
+                            >
+                              <Minus className="w-5 h-5" />
+                            </Button>
+
+                            <Input
+                              type="number"
+                              min="1"
+                              inputMode="numeric"
+                              value={it.quantity}
+                              onChange={(e) =>
+                                updatePurchaseItem(it.id, {
+                                  quantity: Math.max(1, Number(e.target.value) || 1),
+                                })
+                              }
+                              className="h-12 text-center"
+                            />
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-12 w-12 rounded-xl"
+                              onClick={() =>
+                                updatePurchaseItem(it.id, {
+                                  quantity: (Number(it.quantity) || 0) + 1,
+                                })
+                              }
+                            >
+                              <Plus className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-4 h-12"
+                  onClick={addPurchaseItem}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar faixa etária
+                </Button>
               </CardContent>
             </Card>
 
@@ -673,7 +753,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                   <div className="flex justify-between items-center">
                     <span className="font-semibold">Custo por cabeça:</span>
                     <span className="text-xl font-bold text-primary">
-                      R$ {(purchaseQuantity > 0 ? purchaseTotalValue / purchaseQuantity : 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                      R$ {(purchaseItems.reduce((s, it) => s + (Number(it.quantity) || 0), 0) > 0 ? purchaseTotalValue / purchaseItems.reduce((s, it) => s + (Number(it.quantity) || 0), 0) : 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>

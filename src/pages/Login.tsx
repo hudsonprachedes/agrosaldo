@@ -40,6 +40,8 @@ export default function Login() {
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onSubmit',
+    reValidateMode: 'onBlur',
     defaultValues: { cpfCnpj: '', password: '' },
   });
 

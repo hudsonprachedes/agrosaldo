@@ -265,6 +265,27 @@ export const API_ROUTES = {
     DASHBOARD_STATS: '/admin/dashboard/stats',
     // GET /admin/dashboard/stats
 
+    DASHBOARD_MRR_SERIES: '/admin/dashboard/mrr-series',
+    // GET /admin/dashboard/mrr-series?months=12
+
+    PLANS: '/admin/planos',
+    // GET|POST /admin/planos
+
+    PLANS_ID: '/admin/planos/:id',
+    // PATCH|DELETE /admin/planos/:id
+
+    COUPONS: '/admin/indicacao/cupons',
+    // GET|POST /admin/indicacao/cupons
+
+    REFERRERS: '/admin/indicacao/indicadores',
+    // GET /admin/indicacao/indicadores
+
+    COMMUNICATION: '/admin/comunicacao',
+    // GET|POST /admin/comunicacao
+
+    COMMUNICATION_ID: '/admin/comunicacao/:id',
+    // PATCH|DELETE /admin/comunicacao/:id
+
     PENDING_USERS: '/admin/pendencias',
     // GET /admin/pendencias
 

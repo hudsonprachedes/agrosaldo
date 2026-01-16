@@ -5,11 +5,12 @@ export async function seedAdmin(prisma: PrismaClient) {
   const passwordHash = await bcrypt.hash('admin123', 10);
 
   await (prisma as any).usuario.upsert({
-    where: { cpfCnpj: '04.252.011/0001-10' },
+    where: { email: 'admin@agrosaldo.com' },
     update: {
       nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
       telefone: '(65) 90000-0000',
+      cpfCnpj: '04252011000110',
       senha: passwordHash,
       papel: 'super_admin',
       status: 'ativo',
@@ -17,7 +18,7 @@ export async function seedAdmin(prisma: PrismaClient) {
     create: {
       nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
-      cpfCnpj: '04.252.011/0001-10',
+      cpfCnpj: '04252011000110',
       telefone: '(65) 90000-0000',
       senha: passwordHash,
       papel: 'super_admin' as const,
@@ -131,6 +132,117 @@ export async function seedAdmin(prisma: PrismaClient) {
         acao: 'PAYMENT_RECEIVED',
         detalhes: 'Seed: pagamento registrado',
         ip: '127.0.0.1',
+      },
+    ],
+  });
+
+  await (prisma as any).planoSaas.deleteMany({});
+  await (prisma as any).planoSaas.createMany({
+    data: [
+      { nome: 'Porteira', preco: 29.9, maxCabecas: 500, recursos: [], ativo: true },
+      { nome: 'Piquete', preco: 69.9, maxCabecas: 1500, recursos: [], ativo: true },
+      { nome: 'Retiro', preco: 129.9, maxCabecas: 3000, recursos: [], ativo: true },
+      { nome: 'Estância', preco: 249.9, maxCabecas: 6000, recursos: [], ativo: true },
+      { nome: 'Barão', preco: 399.9, maxCabecas: null, recursos: [], ativo: true },
+    ],
+  });
+
+  await (prisma as any).cupomIndicacao.deleteMany({});
+  await (prisma as any).cupomIndicacao.createMany({
+    data: [
+      {
+        codigo: 'AGRO2024',
+        tipo: 'discount',
+        valor: 20,
+        quantidadeUso: 45,
+        maxUso: 100,
+        comissao: 0,
+        criadoPor: 'Admin',
+        status: 'active',
+      },
+      {
+        codigo: 'PARCEIRO10',
+        tipo: 'referral',
+        valor: 10,
+        quantidadeUso: 23,
+        maxUso: null,
+        comissao: 15,
+        criadoPor: 'João Silva',
+        status: 'active',
+      },
+      {
+        codigo: 'PRIMEIROMES',
+        tipo: 'discount',
+        valor: 100,
+        quantidadeUso: 12,
+        maxUso: 50,
+        comissao: 0,
+        criadoPor: 'Admin',
+        status: 'active',
+      },
+    ],
+  });
+
+  await (prisma as any).indicadorParceiro.deleteMany({});
+  await (prisma as any).indicadorParceiro.createMany({
+    data: [
+      {
+        nome: 'João Silva',
+        codigo: 'JOAO2024',
+        indicacoes: 15,
+        comissaoTotal: 1250.0,
+        comissaoPendente: 350.0,
+        status: 'active',
+      },
+      {
+        nome: 'Maria Oliveira',
+        codigo: 'MARIA2024',
+        indicacoes: 8,
+        comissaoTotal: 680.0,
+        comissaoPendente: 120.0,
+        status: 'active',
+      },
+    ],
+  });
+
+  await (prisma as any).comunicacaoAdmin.deleteMany({});
+  await (prisma as any).comunicacaoAdmin.createMany({
+    data: [
+      {
+        tipo: 'push',
+        titulo: 'Campanha de Aftosa Iniciada!',
+        mensagem: 'A campanha de vacinação contra aftosa começou. Atualize seus registros.',
+        enviadoEm: new Date('2024-01-15'),
+        destinatarios: 245,
+        status: 'sent',
+        publicoAlvo: 'all',
+        cor: null,
+        inicioEm: null,
+        fimEm: null,
+      },
+      {
+        tipo: 'banner',
+        titulo: 'Manutenção Programada',
+        mensagem: 'O sistema ficará indisponível no dia 20/01 das 02h às 04h.',
+        enviadoEm: new Date('2024-01-14'),
+        destinatarios: 312,
+        status: 'active',
+        publicoAlvo: 'all',
+        cor: 'warning',
+        inicioEm: new Date('2024-01-14'),
+        fimEm: new Date('2024-01-21'),
+      },
+      {
+        tipo: 'push',
+        titulo: 'Lembrete de Pagamento',
+        mensagem: 'Sua fatura vence em 3 dias. Regularize para manter o acesso.',
+        enviadoEm: new Date('2024-01-12'),
+        destinatarios: 48,
+        status: 'sent',
+        publicoAlvo: 'overdue',
+        cor: null,
+        inicioEm: null,
+        fimEm: null,
       },
     ],
   });
