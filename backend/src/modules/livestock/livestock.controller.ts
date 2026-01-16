@@ -55,6 +55,26 @@ export class LivestockController {
     return this.livestockService.getSummary(propertyId);
   }
 
+  @Get(':propertyId/espelho')
+  getMirror(
+    @Param('propertyId') propertyId: string,
+    @Headers('x-property-id') propertyHeaderId?: string,
+    @Query('months') months?: string
+  ) {
+    this.assertPropertyHeader(propertyId, propertyHeaderId);
+    return this.livestockService.getMirror(propertyId, months ? Number(months) : undefined);
+  }
+
+  @Get(':propertyId/outras-especies')
+  getOtherSpeciesMirror(
+    @Param('propertyId') propertyId: string,
+    @Headers('x-property-id') propertyHeaderId?: string,
+    @Query('months') months?: string
+  ) {
+    this.assertPropertyHeader(propertyId, propertyHeaderId);
+    return this.livestockService.getOtherSpeciesMirror(propertyId, months ? Number(months) : undefined);
+  }
+
   @Post(':propertyId/recalcular-faixas')
   @HttpCode(200)
   recalculateAgeGroups(

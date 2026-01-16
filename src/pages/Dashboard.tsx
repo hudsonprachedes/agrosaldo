@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useIsMobile } from '@/hooks/useIsMobile';
 import { apiClient } from '@/lib/api-client';
-import { MovementDTO } from '@/types';
+import { DashboardAnalyticsDTO } from '@/types';
 import ReactApexChart from 'react-apexcharts';
 import {
   Beef,
   Baby,
   Skull,
+  ShoppingCart,
   TrendingUp,
   TrendingDown,
   Calendar,
@@ -19,58 +19,39 @@ import { ApexOptions } from 'apexcharts';
 
 export default function Dashboard() {
   const { selectedProperty } = useAuth();
-  const isMobile = useIsMobile();
-  const [movements, setMovements] = useState<MovementDTO[]>([]);
-  const [livestockTotal, setLivestockTotal] = useState(0);
+  const [dashboard, setDashboard] = useState<DashboardAnalyticsDTO | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!selectedProperty) return;
+    if (!selectedProperty) {
+      setDashboard(null);
+      setIsLoading(false);
+      return;
+    }
     const loadDashboard = async () => {
       try {
-        const [movementData, livestockData] = await Promise.all([
-          apiClient.get<MovementDTO[]>('/lancamentos'),
-          apiClient.get<Array<{ headcount: number }>>('/rebanho'),
-        ]);
-        setMovements(movementData);
-        setLivestockTotal(livestockData.reduce((sum, item) => sum + item.headcount, 0));
+        setIsLoading(true);
+        const response = await apiClient.get<DashboardAnalyticsDTO>(
+          `/analytics/dashboard/${selectedProperty.id}`
+        );
+        setDashboard(response);
       } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
+        setDashboard(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     void loadDashboard();
   }, [selectedProperty]);
 
-  const { monthlyBirths, monthlyDeaths, overallCompliance } = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const births = movements.filter(m => {
-      const date = new Date(m.date);
-      return m.type === 'birth' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    });
-    const deaths = movements.filter(m => {
-      const date = new Date(m.date);
-      return m.type === 'death' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-    });
-
-    return {
-      monthlyBirths: births.reduce((sum, m) => sum + m.quantity, 0),
-      monthlyDeaths: deaths.reduce((sum, m) => sum + m.quantity, 0),
-      overallCompliance: 100,
-    };
-  }, [movements]);
-
-  const totalCattle = livestockTotal;
-  const compliance = useMemo(
-    () => [
-      { category: 'Vacinação', percentage: 98 },
-      { category: 'Vermifugação', percentage: 96 },
-      { category: 'Brucelose', percentage: 92 },
-      { category: 'Tuberculose', percentage: 89 },
-    ],
-    [],
-  );
+  const kpis = dashboard?.kpis;
+  const charts = dashboard?.charts;
+  const compliance = dashboard?.compliance;
+  const totalCattle = kpis?.totalCattle ?? 0;
+  const purchasesThisMonth = kpis?.purchasesThisMonth ?? 0;
+  const purchaseCostThisMonth = kpis?.purchaseCostThisMonth ?? 0;
 
   // Gráfico de Evolução do Rebanho (últimos 6 meses)
   const evolutionChartOptions: ApexOptions = {
@@ -92,7 +73,7 @@ export default function Dashboard() {
       }
     },
     xaxis: {
-      categories: ['Ago', 'Set', 'Out', 'Nov', 'Dez', 'Jan'],
+      categories: charts?.months ?? [],
       labels: {
         style: { colors: '#64748b', fontSize: '12px' }
       }
@@ -122,7 +103,7 @@ export default function Dashboard() {
   const evolutionChartSeries = [
     {
       name: 'Total',
-      data: [2140, 2198, 2245, 2301, 2350, livestockTotal]
+      data: charts?.evolution ?? []
     },
   ];
 
@@ -145,7 +126,7 @@ export default function Dashboard() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 0 },
     xaxis: {
-      categories: ['Ago', 'Set', 'Out', 'Nov', 'Dez', 'Jan'],
+      categories: charts?.months ?? [],
       labels: {
         style: { colors: '#64748b', fontSize: '12px' }
       }
@@ -175,11 +156,11 @@ export default function Dashboard() {
   const birthDeathChartSeries = [
     {
       name: 'Nascimentos',
-      data: [78, 92, 85, 77, 87, monthlyBirths || 87]
+      data: charts?.births ?? []
     },
     {
       name: 'Mortes',
-      data: [12, 8, 15, 11, 14, monthlyDeaths || 10]
+      data: charts?.deaths ?? []
     }
   ];
 
@@ -227,7 +208,11 @@ export default function Dashboard() {
     }
   };
 
-  const ageDistributionSeries = [309, 500, 580, 600, 370];
+  const ageDistribution = useMemo(() => {
+    const dist = charts?.ageDistribution ?? {};
+    const labels = ['0-4', '5-12', '12-24', '24-36', '36+'];
+    return labels.map((k) => dist[k] ?? 0);
+  }, [charts?.ageDistribution]);
 
   // Gráfico de Compliance Sanitária
   const complianceChartOptions: ApexOptions = {
@@ -260,7 +245,7 @@ export default function Dashboard() {
       }
     },
     colors: ['#16a34a', '#3b82f6', '#f59e0b', '#ec4899'],
-    labels: compliance.map(c => c.category),
+    labels: (compliance?.items ?? []).map(c => c.category),
     legend: {
       show: true,
       floating: true,
@@ -276,7 +261,7 @@ export default function Dashboard() {
     },
   };
 
-  const complianceSeries = compliance.map(c => c.percentage);
+  const complianceSeries = (compliance?.items ?? []).map(c => c.percentage);
 
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -292,16 +277,16 @@ export default function Dashboard() {
         </div>
         
         <Badge 
-          variant={overallCompliance >= 95 ? 'default' : 'secondary'}
+          variant={(compliance?.overall ?? 0) >= 95 ? 'default' : 'secondary'}
           className="text-sm py-1.5 px-3"
         >
           <Activity className="w-4 h-4 mr-2" />
-          Compliance: {overallCompliance}%
+          Compliance: {compliance?.overall ?? 0}%
         </Badge>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Total Cattle */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
@@ -331,7 +316,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Nascimentos (mês)</p>
                 <p className="text-3xl font-bold text-success mt-1">
-                  +{monthlyBirths || 87}
+                  +{kpis?.birthsThisMonth ?? 0}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
@@ -353,7 +338,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Mortes (mês)</p>
                 <p className="text-3xl font-bold text-death mt-1">
-                  -{monthlyDeaths || 10}
+                  -{kpis?.deathsThisMonth ?? 0}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-death/10 flex items-center justify-center">
@@ -364,6 +349,30 @@ export default function Dashboard() {
               <TrendingDown className="w-4 h-4 text-success" />
               <span className="text-success font-medium">-15%</span>
               <span className="text-muted-foreground">vs mês anterior</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Monthly Purchases */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Compras (mês)</p>
+                <p className="text-3xl font-bold text-primary mt-1">
+                  +{purchasesThisMonth}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {purchaseCostThisMonth.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    maximumFractionDigits: 0,
+                  })}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <ShoppingCart className="w-6 h-6 text-primary" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -418,7 +427,7 @@ export default function Dashboard() {
           <CardContent>
             <ReactApexChart
               options={ageDistributionOptions}
-              series={ageDistributionSeries}
+              series={ageDistribution}
               type="donut"
               height={350}
             />
@@ -445,6 +454,22 @@ export default function Dashboard() {
       </div>
     </div>
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+        Carregando...
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+        Não foi possível carregar o dashboard.
+      </div>
+    );
+  }
 
   return content;
 }

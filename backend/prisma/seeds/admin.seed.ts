@@ -5,7 +5,7 @@ export async function seedAdmin(prisma: PrismaClient) {
   const passwordHash = await bcrypt.hash('admin123', 10);
 
   await (prisma as any).usuario.upsert({
-    where: { cpfCnpj: '00.000.000/0001-00' },
+    where: { cpfCnpj: '04.252.011/0001-10' },
     update: {
       nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
@@ -17,7 +17,7 @@ export async function seedAdmin(prisma: PrismaClient) {
     create: {
       nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
-      cpfCnpj: '00.000.000/0001-00',
+      cpfCnpj: '04.252.011/0001-10',
       telefone: '(65) 90000-0000',
       senha: passwordHash,
       papel: 'super_admin' as const,
@@ -29,14 +29,14 @@ export async function seedAdmin(prisma: PrismaClient) {
   await (prisma as any).configuracaoPix.upsert({
     where: { id: 'seed-pix-config' },
     update: {
-      chavePix: '00.000.000/0001-00',
+      chavePix: '04.252.011/0001-10',
       tipoChavePix: 'cnpj',
       imagemQrCode: null,
       ativo: true,
     },
     create: {
       id: 'seed-pix-config',
-      chavePix: '00.000.000/0001-00',
+      chavePix: '04.252.011/0001-10',
       tipoChavePix: 'cnpj',
       imagemQrCode: null,
       ativo: true,
@@ -87,7 +87,7 @@ export async function seedAdmin(prisma: PrismaClient) {
     data: [
       {
         nome: 'Carlos Andrade',
-        cpfCnpj: '987.654.321-00',
+        cpfCnpj: '529.982.247-25',
         email: 'carlos@fazenda.com',
         telefone: '(65) 98888-7777',
         plano: 'piquete',
@@ -100,7 +100,7 @@ export async function seedAdmin(prisma: PrismaClient) {
       },
       {
         nome: 'Marina Souza',
-        cpfCnpj: '11.222.333/0001-44',
+        cpfCnpj: '04.252.011/0001-10',
         email: 'marina@rancho.com',
         telefone: '(65) 97777-6666',
         plano: 'retiro',

@@ -129,7 +129,7 @@ export const mockTenants: Tenant[] = [
   {
     id: 't-3',
     name: 'Rancho Bela Vista',
-    cpfCnpj: '11.222.333/0001-44',
+    cpfCnpj: '04.252.011/0001-10',
     email: 'gerencia@belavista.agro',
     phone: '(66) 97777-9012',
     plan: 'piquete',
@@ -390,7 +390,7 @@ export const mockFinancialPayments: FinancialPayment[] = [
 // Mock de configuração PIX
 export let mockPixConfig: PixConfig = {
   id: 'pix-1',
-  pixKey: '00.000.000/0001-00',
+  pixKey: '04.252.011/0001-10',
   pixKeyType: 'cnpj',
   qrCodeImage: undefined,
   active: true,

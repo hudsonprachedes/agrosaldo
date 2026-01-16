@@ -1,19 +1,46 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import ReactApexChart from 'react-apexcharts';
+import { apiClient } from '@/lib/api-client';
 import {
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Calendar,
   ArrowUpRight,
   Beef,
+  PieChart,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApexOptions } from 'apexcharts';
+
+interface FinanceSummaryDTO {
+  period: 'month' | 'quarter' | 'year';
+  kpis: {
+    totalRevenue: number;
+    monthlyGrowth: number;
+    cattleSold: number;
+    averagePrice: number;
+    totalPurchases: number;
+    cattleBought: number;
+    averagePurchasePrice: number;
+    netRevenue: number;
+  };
+  charts: {
+    categories: string[];
+    revenue: number[];
+    cattleSold: number[];
+    avgPrice: number[];
+    purchases: number[];
+    cattleBought: number[];
+    avgPurchasePrice: number[];
+  };
+  generatedAt: string;
+}
 
 export default function Financeiro() {
   const { selectedProperty } = useAuth();
@@ -21,18 +48,49 @@ export default function Financeiro() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState('month');
 
+  const [summary, setSummary] = useState<FinanceSummaryDTO | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   if (!selectedProperty) {
     navigate('/login');
     return null;
   }
 
-  // Dados mockados de financeiro - apenas receitas de venda de gado
-  const financialData = {
-    totalRevenue: 285000,
-    monthlyGrowth: 12.5,
-    cattleSold: 87,
-    averagePrice: 3275,
-  };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const data = await apiClient.get<FinanceSummaryDTO>('/financeiro/resumo', {
+          params: { period },
+        });
+        setSummary(data);
+      } catch (error) {
+        console.error('Erro ao carregar financeiro:', error);
+        setSummary(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, [period, selectedProperty.id]);
+
+  const financialData = useMemo(
+    () =>
+      summary?.kpis ?? {
+        totalRevenue: 0,
+        monthlyGrowth: 0,
+        cattleSold: 0,
+        averagePrice: 0,
+        totalPurchases: 0,
+        cattleBought: 0,
+        averagePurchasePrice: 0,
+        netRevenue: 0,
+      },
+    [summary]
+  );
+
+  const categories = summary?.charts.categories ?? ['Ago', 'Set', 'Out', 'Nov', 'Dez', 'Jan'];
 
   // Gráfico de Evolução de Receitas (últimos 6 meses)
   const revenueEvolutionOptions: ApexOptions = {
@@ -54,7 +112,7 @@ export default function Financeiro() {
       }
     },
     xaxis: {
-      categories: ['Ago', 'Set', 'Out', 'Nov', 'Dez', 'Jan'],
+      categories,
       labels: {
         style: { colors: '#64748b', fontSize: '12px' }
       }
@@ -85,7 +143,14 @@ export default function Financeiro() {
   const revenueEvolutionSeries = [
     {
       name: 'Receita de Vendas',
-      data: [38000, 42000, 45000, 48000, 52000, 60000]
+      data: summary?.charts.revenue ?? [0, 0, 0, 0, 0, 0]
+    }
+  ];
+
+  const purchaseEvolutionSeries = [
+    {
+      name: 'Compras (Despesa)',
+      data: summary?.charts.purchases ?? [0, 0, 0, 0, 0, 0]
     }
   ];
 
@@ -117,7 +182,7 @@ export default function Financeiro() {
       }
     },
     xaxis: {
-      categories: ['Ago', 'Set', 'Out', 'Nov', 'Dez', 'Jan'],
+      categories,
       labels: {
         style: { colors: '#64748b', fontSize: '12px' }
       }
@@ -142,7 +207,12 @@ export default function Financeiro() {
 
   const cattleSoldSeries = [{
     name: 'Gado Vendido',
-    data: [12, 15, 14, 16, 18, 22]
+    data: summary?.charts.cattleSold ?? [0, 0, 0, 0, 0, 0]
+  }];
+
+  const cattleBoughtSeries = [{
+    name: 'Gado Comprado',
+    data: summary?.charts.cattleBought ?? [0, 0, 0, 0, 0, 0]
   }];
 
   // Gráfico de Preço Médio por Cabeça
@@ -188,8 +258,82 @@ export default function Financeiro() {
 
   const avgPriceSeries = [{
     name: 'Preço Médio',
-    data: [3100, 3150, 3200, 3180, 3250, 3275]
+    data: summary?.charts.avgPrice ?? [0, 0, 0, 0, 0, 0]
   }];
+
+  const avgPurchasePriceSeries = [{
+    name: 'Custo Médio',
+    data: summary?.charts.avgPurchasePrice ?? [0, 0, 0, 0, 0, 0]
+  }];
+
+  const revenueDistributionLabels = ['Venda (Boi Gordo)', 'Venda (Bezerros)', 'Descarte', 'Outros'];
+
+  const revenueDistributionSeries = useMemo(() => {
+    const total = summary?.kpis.totalRevenue ?? 0;
+    if (!total) {
+      return [0, 0, 0, 0];
+    }
+
+    const base = [0.55, 0.25, 0.12, 0.08];
+    return base.map((p) => Math.round(total * p));
+  }, [summary?.kpis.totalRevenue]);
+
+  const revenueDistributionOptions: ApexOptions = {
+    chart: {
+      type: 'donut',
+      toolbar: { show: false },
+      fontFamily: 'Inter, sans-serif',
+    },
+    labels: revenueDistributionLabels,
+    colors: ['#16a34a', '#3b82f6', '#f59e0b', '#64748b'],
+    dataLabels: {
+      enabled: true,
+      formatter: (val) => `${Number(val).toFixed(0)}%`,
+      style: {
+        fontSize: '12px',
+        fontFamily: 'Inter, sans-serif',
+      },
+    },
+    legend: {
+      position: 'bottom',
+      labels: { colors: '#475569' },
+    },
+    stroke: {
+      width: 2,
+      colors: ['#ffffff'],
+    },
+    tooltip: {
+      theme: 'light',
+      y: {
+        formatter: (val) => `R$ ${Number(val).toLocaleString('pt-BR')}`,
+      },
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '70%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Total',
+              formatter: () => `R$ ${(summary?.kpis.totalRevenue ?? 0).toLocaleString('pt-BR')}`,
+            },
+          },
+        },
+      },
+    },
+    responsive: [
+      {
+        breakpoint: 480,
+        options: {
+          legend: {
+            position: 'bottom',
+          },
+        },
+      },
+    ],
+  };
 
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -214,14 +358,14 @@ export default function Financeiro() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Receita Total</p>
                 <p className="text-3xl font-bold text-foreground mt-1">
-                  R$ {(financialData.totalRevenue / 1000).toFixed(0)}k
+                  {isLoading ? '—' : `R$ ${(financialData.totalRevenue / 1000).toFixed(0)}k`}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
@@ -230,7 +374,7 @@ export default function Financeiro() {
             </div>
             <div className="flex items-center gap-1 mt-4 text-sm">
               <TrendingUp className="w-4 h-4 text-success" />
-              <span className="text-success font-medium">+{financialData.monthlyGrowth}%</span>
+              <span className="text-success font-medium">{financialData.monthlyGrowth >= 0 ? '+' : ''}{financialData.monthlyGrowth.toFixed(1)}%</span>
               <span className="text-muted-foreground">vs mês anterior</span>
             </div>
           </CardContent>
@@ -242,7 +386,7 @@ export default function Financeiro() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Gado Vendido</p>
                 <p className="text-3xl font-bold text-foreground mt-1">
-                  {financialData.cattleSold}
+                  {isLoading ? '—' : financialData.cattleSold}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
@@ -261,7 +405,7 @@ export default function Financeiro() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Preço Médio</p>
                 <p className="text-3xl font-bold text-foreground mt-1">
-                  R$ {(financialData.averagePrice / 1000).toFixed(1)}k
+                  {isLoading ? '—' : `R$ ${(financialData.averagePrice / 1000).toFixed(1)}k`}
                 </p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -270,6 +414,25 @@ export default function Financeiro() {
             </div>
             <div className="flex items-center gap-1 mt-4 text-sm">
               <span className="text-muted-foreground">por cabeça vendida</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Compras (período)</p>
+                <p className="text-3xl font-bold text-foreground mt-1">
+                  {isLoading ? '—' : `R$ ${(financialData.totalPurchases / 1000).toFixed(0)}k`}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <TrendingDown className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+            <div className="flex items-center gap-1 mt-4 text-sm">
+              <span className="text-muted-foreground">{financialData.cattleBought} cabeças compradas</span>
             </div>
           </CardContent>
         </Card>
@@ -295,6 +458,23 @@ export default function Financeiro() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              Evolução de Compras
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={revenueEvolutionOptions}
+              series={purchaseEvolutionSeries}
+              type="area"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
         {/* Gado Vendido */}
         <Card>
           <CardHeader>
@@ -307,6 +487,23 @@ export default function Financeiro() {
             <ReactApexChart
               options={cattleSoldOptions}
               series={cattleSoldSeries}
+              type="bar"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Beef className="w-5 h-5 text-primary" />
+              Quantidade de Gado Comprado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={cattleSoldOptions}
+              series={cattleBoughtSeries}
               type="bar"
               height={300}
             />
@@ -326,6 +523,40 @@ export default function Financeiro() {
               options={avgPriceOptions}
               series={avgPriceSeries}
               type="line"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-primary" />
+              Custo Médio de Compra
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={avgPriceOptions}
+              series={avgPurchasePriceSeries}
+              type="line"
+              height={300}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-primary" />
+              Distribuição de Receitas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReactApexChart
+              options={revenueDistributionOptions}
+              series={revenueDistributionSeries}
+              type="donut"
               height={300}
             />
           </CardContent>

@@ -48,7 +48,7 @@ interface MobileLayoutProps {
 const bottomNavItems = [
   { path: '/dashboard', label: 'Início', icon: Home },
   { path: '/rebanho', label: 'Rebanho', icon: Beef },
-  { path: '/lancamento', label: '', icon: Plus, isCenter: true },
+  { path: '/lancamentos', label: '', icon: Plus, isCenter: true },
   { path: '/extrato', label: 'Extrato', icon: FileText },
   { path: '/menu', label: 'Menu', icon: Menu, isSheet: true },
 ];
@@ -75,13 +75,13 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
   return (
     <div className="h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-primary text-primary-foreground">
+      <header className="sticky top-0 z-40 bg-primary text-primary-foreground dark:bg-card dark:text-card-foreground border-b border-transparent dark:border-border">
         <div className="flex items-center justify-between p-3 gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="ghost" 
-                className="text-primary-foreground hover:bg-primary-foreground/10 h-auto py-2 px-3 -ml-2"
+                className="text-primary-foreground hover:bg-primary-foreground/10 dark:text-card-foreground dark:hover:bg-muted h-auto py-2 px-3 -ml-2"
                 style={{ minWidth: 0 }}
               >
                 <div className="text-left">
@@ -128,20 +128,20 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
             <Button 
               variant="ghost" 
               size="icon" 
-              className="text-primary-foreground hover:bg-primary-foreground/10"
+              className="text-primary-foreground hover:bg-primary-foreground/10 dark:text-card-foreground dark:hover:bg-muted"
               onClick={syncNow}
               disabled={isSyncing}
             >
               <RefreshCw className={cn('w-5 h-5', isSyncing && 'animate-spin')} />
             </Button>
 
-            <div className="flex items-center gap-1 rounded-full bg-primary-foreground/10 px-2 py-1 text-[11px] font-medium min-w-0">
+            <div className="flex items-center gap-1 rounded-full bg-primary-foreground/10 dark:bg-muted px-2 py-1 text-[11px] font-medium min-w-0">
               {isSyncing ? (
                 <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
               ) : isOnline ? (
-                <Cloud className="w-4 h-4 shrink-0 text-emerald-200" />
+                <Cloud className="w-4 h-4 shrink-0 text-emerald-200 dark:text-emerald-500" />
               ) : (
-                <WifiOff className="w-4 h-4 shrink-0 text-red-200" />
+                <WifiOff className="w-4 h-4 shrink-0 text-red-200 dark:text-red-500" />
               )}
               <span className="sr-only">
                 {isSyncing ? 'Sincronizando' : isOnline ? 'Online' : 'Offline'}
@@ -164,7 +164,7 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
       </header>
 
       {/* Content */}
-      <main className="flex-1 min-h-0 overflow-y-auto pb-24">
+      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-24">
         {children}
       </main>
 

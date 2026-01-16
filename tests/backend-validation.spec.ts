@@ -1,7 +1,7 @@
 import { test, expect } from './_setup';
 
 test.describe('Validações Backend e Sincronização', () => {
-  const CPF = '123.456.789-00';
+  const CPF = '529.982.247-25';
   const PASSWORD = '123456';
   const BASE_URL = 'http://localhost:8080';
 

@@ -45,7 +45,7 @@ export const mockUsers: User[] = [
     id: '1',
     name: 'João Silva',
     email: 'joao@fazendaexemplo.com',
-    cpfCnpj: '123.456.789-00',
+    cpfCnpj: '529.982.247-25',
     phone: '(65) 98765-4321',
     nickname: 'João',
     cep: '78000-000',
@@ -118,17 +118,17 @@ export const mockUsers: User[] = [
     id: 'admin-1',
     name: 'Admin Master',
     email: 'admin@agrosaldo.com',
-    cpfCnpj: '00.000.000/0001-00',
+    cpfCnpj: '04.252.011/0001-10',
     role: 'super_admin',
     properties: [],
   },
 ];
 
 export const mockCredentials = [
-  { cpfCnpj: '123.456.789-00', password: '123456', userId: '1' },
-  { cpfCnpj: '12345678900', password: '123456', userId: '1' },
-  { cpfCnpj: '00.000.000/0001-00', password: 'admin123', userId: 'admin-1' },
-  { cpfCnpj: '00000000000100', password: 'admin123', userId: 'admin-1' },
+  { cpfCnpj: '529.982.247-25', password: '123456', userId: '1' },
+  { cpfCnpj: '52998224725', password: '123456', userId: '1' },
+  { cpfCnpj: '04.252.011/0001-10', password: 'admin123', userId: 'admin-1' },
+  { cpfCnpj: '04252011000110', password: 'admin123', userId: 'admin-1' },
 ];
 
 export const plans = [

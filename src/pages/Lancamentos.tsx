@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { apiClient } from '@/lib/api-client';
 import { 
-  Baby,
+  Beef,
   Skull,
   Truck,
+  ShoppingCart,
   Syringe,
-  Dog,
+  PawPrint,
   ChevronRight,
   Plus,
   TrendingUp,
@@ -21,7 +23,7 @@ const launchTypes = [
     id: 'nascimento',
     title: 'Nascimento',
     description: 'Registrar novos bezerros',
-    icon: Baby,
+    icon: Beef,
     color: 'bg-success',
     textColor: 'text-success',
     path: '/lancamento/nascimento',
@@ -45,6 +47,15 @@ const launchTypes = [
     path: '/lancamento/venda',
   },
   {
+    id: 'compra',
+    title: 'Compra',
+    description: 'Entrada por compra (lote ou individual)',
+    icon: ShoppingCart,
+    color: 'bg-primary',
+    textColor: 'text-primary',
+    path: '/lancamento/compra',
+  },
+  {
     id: 'vacina',
     title: 'Vacinação',
     description: 'Registrar campanha de vacina',
@@ -57,22 +68,63 @@ const launchTypes = [
     id: 'outras',
     title: 'Outras Espécies',
     description: 'Equinos, muares, ovinos, etc.',
-    icon: Dog,
+    icon: PawPrint,
     color: 'bg-muted',
     textColor: 'text-muted-foreground',
     path: '/lancamento/outras',
   },
 ];
 
+interface LaunchSummaryDTO {
+  propertyId: string;
+  today: number;
+  week: number;
+  month: number;
+  lastUpdatedAt: string | null;
+  serverTime: string;
+}
+
 export default function Lancamentos() {
   const { selectedProperty } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
+  const [summary, setSummary] = useState<LaunchSummaryDTO | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   if (!selectedProperty) {
     navigate('/login');
     return null;
   }
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const data = await apiClient.get<LaunchSummaryDTO>('/lancamentos/resumo');
+        setSummary(data);
+      } catch (error) {
+        console.error('Erro ao carregar resumo de lançamentos:', error);
+        setSummary(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, [selectedProperty.id]);
+
+  const lastUpdatedLabel = useMemo(() => {
+    if (!summary?.lastUpdatedAt) return '—';
+    const d = new Date(summary.lastUpdatedAt);
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, [summary?.lastUpdatedAt]);
 
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -131,13 +183,13 @@ export default function Lancamentos() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Lançamentos Hoje</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">12</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">{summary?.today ?? 0}</p>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                     <Calendar className="w-6 h-6 text-primary" />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">Última atualização: 14:32</p>
+                <p className="text-xs text-muted-foreground mt-4">Última atualização: {lastUpdatedLabel}</p>
               </CardContent>
             </Card>
 
@@ -146,7 +198,7 @@ export default function Lancamentos() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Esta Semana</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">45</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">{summary?.week ?? 0}</p>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
                     <TrendingUp className="w-6 h-6 text-success" />
@@ -161,7 +213,7 @@ export default function Lancamentos() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Este Mês</p>
-                    <p className="text-3xl font-bold text-foreground mt-1">187</p>
+                    <p className="text-3xl font-bold text-foreground mt-1">{summary?.month ?? 0}</p>
                   </div>
                   <div className="w-12 h-12 rounded-xl bg-chart-3/10 flex items-center justify-center">
                     <Plus className="w-6 h-6 text-chart-3" />

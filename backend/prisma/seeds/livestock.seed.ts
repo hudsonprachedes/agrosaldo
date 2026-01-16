@@ -46,5 +46,27 @@ export async function seedLivestock(prisma: PrismaClient) {
         });
       }
     }
+
+    const otherSpeciesByIndex: Array<Record<string, number>> = [
+      // Fazenda Santa Rita
+      { suinos: 485, aves: 2650, equinos: 13, caprinos: 95, ovinos: 135 },
+      // Fazenda Ouro Verde
+      { suinos: 890, aves: 5500, equinos: 9, caprinos: 0, ovinos: 50 },
+    ];
+
+    const speciesCounts = otherSpeciesByIndex[Math.min(properties.indexOf(property), otherSpeciesByIndex.length - 1)] ?? {};
+
+    for (const [speciesId, qty] of Object.entries(speciesCounts)) {
+      if (!qty || qty <= 0) continue;
+      await (prisma as any).rebanho.create({
+        data: {
+          propriedadeId: property.id,
+          especie: speciesId,
+          faixaEtaria: 'all',
+          sexo: 'macho',
+          cabecas: qty,
+        },
+      });
+    }
   }
 }

@@ -1,24 +1,14 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { 
-  mockCattleBalance,
-  ageGroups,
-  getTotalCattle,
-} from '@/mocks/mock-bovinos';
-import {
-  mockOtherSpeciesBalance,
-  otherSpecies,
-  getTotalOtherSpecies,
-  getOtherSpeciesMovements,
-} from '@/mocks/mock-outras-especies';
+import { apiClient } from '@/lib/api-client';
+import { LivestockMirrorDTO, OtherSpeciesMirrorDTO } from '@/types';
 import ReactApexChart from 'react-apexcharts';
 import {
   Beef,
   TrendingUp,
   TrendingDown,
-  ArrowLeft,
   FileText,
   Share2,
   Printer,
@@ -41,17 +31,64 @@ import { useToast } from '@/hooks/use-toast';
 export default function Rebanho() {
   const { selectedProperty, user } = useAuth();
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { toast } = useToast();
+
+  const [mirror, setMirror] = useState<LivestockMirrorDTO | null>(null);
+  const [otherMirror, setOtherMirror] = useState<OtherSpeciesMirrorDTO | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   if (!selectedProperty) {
     return <Navigate to="/selecionar-propriedade" replace />;
   }
 
-  const balances = mockCattleBalance[selectedProperty.id] || [];
-  const totalCattle = getTotalCattle(selectedProperty.id);
-  const otherSpeciesBalances = mockOtherSpeciesBalance[selectedProperty.id] || [];
-  const totalOtherSpecies = getTotalOtherSpecies(selectedProperty.id);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const [bovinos, outras] = await Promise.all([
+          apiClient.get<LivestockMirrorDTO>(`/rebanho/${selectedProperty.id}/espelho?months=1`),
+          apiClient.get<OtherSpeciesMirrorDTO>(`/rebanho/${selectedProperty.id}/outras-especies?months=1`),
+        ]);
+        setMirror(bovinos);
+        setOtherMirror(outras);
+      } catch (error) {
+        console.error('Erro ao carregar rebanho:', error);
+        setMirror(null);
+        setOtherMirror(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, [selectedProperty.id]);
+
+  const ageGroups = useMemo(
+    () => [
+      { id: '0-4', label: '0 a 4 meses' },
+      { id: '5-12', label: '5 a 12 meses' },
+      { id: '12-24', label: '12 a 24 meses' },
+      { id: '24-36', label: '24 a 36 meses' },
+      { id: '36+', label: 'Acima de 36 meses' },
+    ],
+    [],
+  );
+
+  const balances = mirror?.balances ?? [];
+  const totalCattle = mirror?.totals.total ?? 0;
+
+  const otherSpeciesBalances = otherMirror?.balances ?? [];
+  const totalOtherSpecies = otherMirror?.total ?? 0;
+  const otherSpecies = useMemo(
+    () => [
+      { id: 'suinos', name: 'Suínos', unit: 'cabeças' as const, icon: '🐷' },
+      { id: 'aves', name: 'Aves (Frangos/Galinhas)', unit: 'unidades' as const, icon: '🐔' },
+      { id: 'equinos', name: 'Equinos (Cavalos)', unit: 'cabeças' as const, icon: '🐴' },
+      { id: 'caprinos', name: 'Caprinos (Cabras)', unit: 'cabeças' as const, icon: '🐐' },
+      { id: 'ovinos', name: 'Ovinos (Ovelhas)', unit: 'cabeças' as const, icon: '🐑' },
+    ],
+    [],
+  );
 
   const getAgeGroupLabel = (ageGroupId: string) => {
     const group = ageGroups.find(g => g.id === ageGroupId);
@@ -326,6 +363,22 @@ export default function Rebanho() {
         .map(balance => balance.exits)
     }
   ];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+        Carregando...
+      </div>
+    );
+  }
+
+  if (!mirror) {
+    return (
+      <div className="flex items-center justify-center h-[60vh] text-muted-foreground">
+        Não foi possível carregar o rebanho.
+      </div>
+    );
+  }
 
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">
@@ -694,22 +747,6 @@ export default function Rebanho() {
       )}
     </div>
   );
-
-  if (isMobile) {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-40 bg-card border-b border-border">
-          <div className="flex items-center gap-3 p-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-lg">Meu Rebanho</h1>
-          </div>
-        </header>
-        {content}
-      </div>
-    );
-  }
 
   return content;
 }

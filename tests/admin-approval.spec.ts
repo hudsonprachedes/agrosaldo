@@ -4,7 +4,7 @@ test.describe('Aprovação Admin', () => {
   test.beforeEach(async ({ page }) => {
     // Login como SuperAdmin
     await page.goto('http://localhost:8080/login');
-    await page.fill('input[type="text"]', '00.000.000/0001-00');
+    await page.fill('input[type="text"]', '04.252.011/0001-10');
     await page.fill('input[type="password"]', 'admin123');
     await page.click('button[type="submit"]');
     

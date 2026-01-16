@@ -9,7 +9,7 @@ export async function seedUsers(prisma: PrismaClient) {
     {
       nome: 'João Silva',
       email: 'joao@fazendaexemplo.com',
-      cpfCnpj: '123.456.789-00',
+      cpfCnpj: '529.982.247-25',
       telefone: '(65) 98765-4321',
       senha: passwordHash,
       papel: 'proprietario' as const,
@@ -18,7 +18,7 @@ export async function seedUsers(prisma: PrismaClient) {
     {
       nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
-      cpfCnpj: '00.000.000/0001-00',
+      cpfCnpj: '04.252.011/0001-10',
       telefone: '(65) 90000-0000',
       senha: adminPasswordHash,
       papel: 'super_admin' as const,

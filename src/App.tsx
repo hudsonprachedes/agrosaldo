@@ -15,6 +15,7 @@ import PropertySelection from "./pages/PropertySelection";
 import Onboarding from "./pages/Onboarding";
 import QuestionarioEpidemiologico from "./pages/QuestionarioEpidemiologico";
 import QuestionarioEpidemiologicoHistorico from "./pages/QuestionarioEpidemiologicoHistorico";
+import QuestionarioEpidemiologicoDetalhe from "./pages/QuestionarioEpidemiologicoDetalhe";
 import Dashboard from "./pages/Dashboard";
 import MobileHome from "./pages/MobileHome";
 import Rebanho from "./pages/Rebanho";
@@ -149,6 +150,9 @@ const App = () => (
             <Route path="/questionario-epidemiologico/historico" element={
               <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoHistorico /></LayoutRoute></ProtectedRoute>
             } />
+            <Route path="/questionario-epidemiologico/historico/:id" element={
+              <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoDetalhe /></LayoutRoute></ProtectedRoute>
+            } />
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={
@@ -178,7 +182,7 @@ const App = () => (
             
             {/* Launch Forms */}
             <Route path="/lancamento" element={
-              <ProtectedRoute><MobileHome /></ProtectedRoute>
+              <ProtectedRoute><Navigate to="/lancamentos" replace /></ProtectedRoute>
             } />
             <Route path="/lancamento/nascimento" element={
               <ProtectedRoute><LaunchForm type="nascimento" /></ProtectedRoute>
@@ -188,6 +192,9 @@ const App = () => (
             } />
             <Route path="/lancamento/venda" element={
               <ProtectedRoute><LaunchForm type="venda" /></ProtectedRoute>
+            } />
+            <Route path="/lancamento/compra" element={
+              <ProtectedRoute><LaunchForm type="compra" /></ProtectedRoute>
             } />
             <Route path="/lancamento/vacina" element={
               <ProtectedRoute><LaunchForm type="vacina" /></ProtectedRoute>

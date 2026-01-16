@@ -140,6 +140,12 @@ export const API_ROUTES = {
     // Request: VaccineMovementRequest
     // Response: MovementDTO
 
+    CREATE_PURCHASE: '/lancamentos/compra',
+    // POST /lancamentos/compra
+    // Headers: { Authorization: Bearer token, X-Property-ID: id }
+    // Request: CreateMovementRequest (type: purchase)
+    // Response: MovementDTO
+
     GET_ALL: '/lancamentos',
     // GET /lancamentos
     // Headers: { Authorization: Bearer token, X-Property-ID: id }

@@ -50,6 +50,14 @@ enum TipoPlano {
   @@map("PlanType")
 }
 
+enum StatusAssinatura {
+  ativa @map("active")
+  cancelada @map("canceled")
+  inadimplente @map("past_due")
+
+  @@map("SubscriptionStatus")
+}
+
 enum TipoMovimento {
   nascimento @map("birth")
   morte @map("death")
@@ -84,8 +92,26 @@ model Usuario {
   criadoEm          DateTime        @default(now()) @map("createdAt")
   atualizadoEm      DateTime        @updatedAt @map("updatedAt")
   propriedades      UsuarioPropriedade[]
+  preferencias      PreferenciasUsuario[]
+  assinaturas       Assinatura[]
 
   @@map("User")
+}
+
+model Assinatura {
+  id          String          @id @default(uuid()) @map("id")
+  usuarioId   String          @map("userId")
+  plano       TipoPlano       @default(porteira) @map("plan")
+  status      StatusAssinatura @default(ativa) @map("status")
+  valorMensal Float?          @map("monthlyAmount")
+  inicioEm    DateTime        @default(now()) @map("startAt")
+  fimEm       DateTime?       @map("endAt")
+  criadoEm    DateTime        @default(now()) @map("createdAt")
+  atualizadoEm DateTime       @updatedAt @map("updatedAt")
+  usuario     Usuario         @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@map("Subscription")
 }
 
 model Propriedade {
@@ -102,6 +128,7 @@ model Propriedade {
   criadoEm        DateTime           @default(now()) @map("createdAt")
   atualizadoEm    DateTime           @updatedAt @map("updatedAt")
   usuarios        UsuarioPropriedade[]
+  preferencias    PreferenciasUsuario[]
   rebanho         Rebanho[]
   movimentos      Movimento[]
 
@@ -117,6 +144,25 @@ model UsuarioPropriedade {
 
   @@unique([usuarioId, propriedadeId])
   @@map("UserProperty")
+}
+
+model PreferenciasUsuario {
+  id                   String     @id @default(uuid()) @map("id")
+  usuarioId            String     @map("userId")
+  propriedadeId        String     @map("propertyId")
+  notificacoes         Boolean    @default(true) @map("notifications")
+  sincronizacaoAuto    Boolean    @default(true) @map("autoSync")
+  modoEscuro           Boolean    @default(false) @map("darkMode")
+  notificacaoNascimento Boolean   @default(true) @map("notifyBirth")
+  notificacaoMorte     Boolean    @default(true) @map("notifyDeath")
+  notificacaoVacina    Boolean    @default(true) @map("notifyVaccine")
+  criadoEm             DateTime   @default(now()) @map("createdAt")
+  atualizadoEm         DateTime   @updatedAt @map("updatedAt")
+  usuario              Usuario    @relation(fields: [usuarioId], references: [id])
+  propriedade          Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@unique([usuarioId, propriedadeId])
+  @@map("UserPreferences")
 }
 
 model Rebanho {
@@ -147,6 +193,8 @@ model Movimento {
   valor         Float?       @map("value")
   numeroGta     String?      @map("gtaNumber")
   fotoUrl       String?      @map("photoUrl")
+  fotoData      Bytes?       @map("photoData")
+  fotoMimeType  String?      @map("photoMimeType")
   causa         String?      @map("cause")
   criadoEm      DateTime     @default(now()) @map("createdAt")
   propriedade   Propriedade  @relation(fields: [propriedadeId], references: [id])

@@ -1,17 +1,24 @@
 import { z } from 'zod';
+import { validateCpfCnpj } from './document-validation';
 
 // ============================================================================
 // AUTENTICAÇÃO
 // ============================================================================
 export const LoginSchema = z.object({
-  cpfCnpj: z.string().min(11, 'CPF/CNPJ inválido'),
+  cpfCnpj: z
+    .string()
+    .min(1, 'CPF/CNPJ inválido')
+    .refine((value) => validateCpfCnpj(value), 'CPF/CNPJ inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
 export const RegisterSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('Email inválido'),
-  cpfCnpj: z.string().min(11, 'CPF/CNPJ inválido'),
+  cpfCnpj: z
+    .string()
+    .min(1, 'CPF/CNPJ inválido')
+    .refine((value) => validateCpfCnpj(value), 'CPF/CNPJ inválido'),
   phone: z.string().optional(),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });

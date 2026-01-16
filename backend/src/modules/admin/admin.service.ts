@@ -157,9 +157,21 @@ export class AdminService {
   // --- Pix Config ---
 
   async getPixConfig() {
-    return (this.prisma as any).configuracaoPix.findFirst({
-      orderBy: { criadoEm: 'desc' }
+    const row = await (this.prisma as any).configuracaoPix.findFirst({
+      orderBy: { criadoEm: 'desc' },
     });
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      pixKey: row.chavePix,
+      pixKeyType: row.tipoChavePix,
+      qrCodeImage: row.imagemQrCode ?? null,
+      active: row.ativo,
+      createdAt: row.criadoEm,
+      updatedAt: row.atualizadoEm,
+    };
   }
 
   async updatePixConfig(dto: UpdatePixConfigDto) {
@@ -167,11 +179,21 @@ export class AdminService {
     if (current) {
       return (this.prisma as any).configuracaoPix.update({
         where: { id: current.id },
-        data: dto as any
+        data: {
+          chavePix: dto.pixKey,
+          tipoChavePix: dto.pixKeyType,
+          imagemQrCode: dto.qrCodeImage,
+          ativo: dto.active,
+        },
       });
     } else {
       return (this.prisma as any).configuracaoPix.create({
-        data: dto as any
+        data: {
+          chavePix: dto.pixKey,
+          tipoChavePix: dto.pixKeyType,
+          imagemQrCode: dto.qrCodeImage,
+          ativo: dto.active,
+        },
       });
     }
   }

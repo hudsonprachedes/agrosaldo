@@ -62,6 +62,19 @@ export async function seedMovements(prisma: PrismaClient) {
         numeroGta: `GTA-${monthDate.getFullYear()}-${String(i + 1).padStart(2, '0')}0001`,
       });
 
+      // Compras
+      movements.push({
+        propriedadeId: property.id,
+        tipo: 'compra',
+        data: new Date(monthDate.getFullYear(), monthDate.getMonth(), 14),
+        quantidade: 12 + Math.max(0, Math.floor((11 - i) / 2)),
+        sexo: 'macho',
+        faixaEtaria: '12-24',
+        descricao: `Compra - Lote ${monthLabel}`,
+        destino: 'Fornecedor (seed)',
+        valor: 42_000 + (11 - i) * 900,
+      });
+
       // Vacinas
       movements.push({
         propriedadeId: property.id,
@@ -70,6 +83,46 @@ export async function seedMovements(prisma: PrismaClient) {
         quantidade: 250 + (11 - i) * 5,
         descricao: 'Vacinação - campanha mensal',
       });
+    }
+
+    const otherSpeciesByIndex: Array<Record<string, number>> = [
+      // Fazenda Santa Rita
+      { suinos: 120, aves: 800, equinos: 2, caprinos: 25, ovinos: 35 },
+      // Fazenda Ouro Verde
+      { suinos: 220, aves: 1500, equinos: 1, caprinos: 0, ovinos: 15 },
+    ];
+
+    const otherMov = otherSpeciesByIndex[Math.min(properties.indexOf(property), otherSpeciesByIndex.length - 1)] ?? {};
+    const currentMonthDate = new Date(now.getFullYear(), now.getMonth(), 15);
+
+    // Entradas (nascimento/compra) do mês atual
+    for (const [speciesId, qty] of Object.entries(otherMov)) {
+      if (!qty || qty <= 0) continue;
+
+      const type = speciesId === 'equinos' ? 'compra' : 'nascimento';
+      movements.push({
+        propriedadeId: property.id,
+        especie: speciesId,
+        tipo: type,
+        data: new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 8),
+        quantidade: qty,
+        descricao: `${type === 'compra' ? 'Compra' : 'Nascimento'} - ${speciesId} (seed)`,
+      });
+
+      // Saídas (venda) do mês atual (70% das entradas, arredondado)
+      const exits = Math.max(0, Math.round(qty * 0.7));
+      if (exits > 0) {
+        movements.push({
+          propriedadeId: property.id,
+          especie: speciesId,
+          tipo: 'venda',
+          data: new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 22),
+          quantidade: exits,
+          descricao: `Venda - ${speciesId} (seed)`,
+          destino: 'Destino (seed)',
+          valor: exits * (speciesId === 'equinos' ? 12000 : 150),
+        });
+      }
     }
 
     for (const movement of movements) {

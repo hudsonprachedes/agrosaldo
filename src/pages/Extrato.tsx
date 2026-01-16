@@ -2,10 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { 
-  mockMovements,
-  MovementRecord,
-} from '@/mocks/mock-bovinos';
+import { apiClient } from '@/lib/api-client';
+import type { PaginatedResponse } from '@/types';
+import type { MovementRecord } from '@/mocks/mock-bovinos';
 import {
   Baby,
   Skull,
@@ -15,7 +14,6 @@ import {
   Calendar,
   ChevronRight,
   Filter,
-  Edit2,
   Trash2,
   X,
   Download,
@@ -84,8 +82,6 @@ const typeColors: Record<string, string> = {
   purchase: 'bg-primary text-primary-foreground',
 };
 
-import { ArrowLeft } from 'lucide-react';
-
 const STORAGE_KEY = 'agrosaldo_extrato_filters';
 
 export default function Extrato() {
@@ -123,7 +119,48 @@ export default function Extrato() {
   const [currentPage, setCurrentPage] = useState(1);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [movements, setMovements] = useState<MovementRecord[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 20;
+
+  useEffect(() => {
+    const load = async () => {
+      if (!selectedProperty) return;
+      try {
+        setIsLoading(true);
+
+        const response = await apiClient.get<PaginatedResponse<MovementRecord>>('/lancamentos/extrato', {
+          params: {
+            type: filterType,
+            dateFrom: dateFrom ? dateFrom.toISOString().slice(0, 10) : undefined,
+            dateTo: dateTo ? dateTo.toISOString().slice(0, 10) : undefined,
+            page: currentPage,
+            limit: itemsPerPage,
+          },
+        });
+
+        setMovements(response.data);
+        setTotalItems(response.pagination.total);
+      } catch (error) {
+        console.error('Erro ao carregar extrato:', error);
+        toast.error('Erro ao carregar extrato');
+        setMovements([]);
+        setTotalItems(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, [selectedProperty, filterType, dateFrom, dateTo, currentPage]);
+
+  useEffect(() => {
+    if (!photoDialogOpen && selectedPhoto) {
+      URL.revokeObjectURL(selectedPhoto);
+      setSelectedPhoto(null);
+    }
+  }, [photoDialogOpen, selectedPhoto]);
 
   // Save filters to localStorage when they change
   useEffect(() => {
@@ -139,14 +176,8 @@ export default function Extrato() {
   // Apply filters and pagination
   const filteredMovements = useMemo(() => {
     if (!selectedProperty) return [];
-    let filtered = mockMovements
-      .filter(m => m.propertyId === selectedProperty.id)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // Type filter
-    if (filterType !== 'all') {
-      filtered = filtered.filter(m => m.type === filterType);
-    }
+    let filtered = movements;
 
     // Age group filter (only for birth/death that have sex)
     if (filterAgeGroup !== 'all') {
@@ -157,28 +188,17 @@ export default function Extrato() {
       });
     }
 
-    // Date range filter
-    if (dateFrom) {
-      filtered = filtered.filter(m => new Date(m.date) >= dateFrom);
-    }
-    if (dateTo) {
-      filtered = filtered.filter(m => new Date(m.date) <= dateTo);
-    }
-
     return filtered;
-  }, [selectedProperty, filterType, filterAgeGroup, dateFrom, dateTo]);
+  }, [selectedProperty, movements, filterAgeGroup]);
 
   if (!selectedProperty) {
     navigate('/login');
     return null;
   }
 
-  // Pagination
-  const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
-  const paginatedMovements = filteredMovements.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Pagination (vinda do backend)
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedMovements = filteredMovements;
 
   const hasActiveFilters = filterType !== 'all' || filterAgeGroup !== 'all' || dateFrom || dateTo;
 
@@ -193,10 +213,6 @@ export default function Extrato() {
   const handleQuickDateFilter = (days: number) => {
     setDateFrom(subDays(new Date(), days));
     setDateTo(new Date());
-  };
-
-  const handleEdit = (movement: MovementRecord) => {
-    toast.info(`Editar lançamento: ${movement.id}`);
   };
 
   const handleDelete = (movement: MovementRecord) => {
@@ -278,7 +294,7 @@ export default function Extrato() {
             Extrato
           </h1>
           <p className="text-muted-foreground">
-            {filteredMovements.length} {filteredMovements.length === 1 ? 'movimentação' : 'movimentações'}
+            {totalItems} {totalItems === 1 ? 'movimentação' : 'movimentações'}
           </p>
         </div>
 
@@ -448,7 +464,13 @@ export default function Extrato() {
 
       {/* Timeline */}
       <div className="space-y-4">
-        {paginatedMovements.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">Carregando extrato...</p>
+            </CardContent>
+          </Card>
+        ) : paginatedMovements.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <p className="text-muted-foreground">
@@ -536,9 +558,19 @@ export default function Extrato() {
                               variant="outline"
                               size="sm"
                               className="mt-2"
-                              onClick={() => {
-                                setSelectedPhoto(movement.photoUrl || null);
-                                setPhotoDialogOpen(true);
+                              onClick={async () => {
+                                try {
+                                  const axios = apiClient.getAxiosInstance();
+                                  const response = await axios.get(`/lancamentos/${movement.id}/foto`, {
+                                    responseType: 'blob',
+                                  });
+                                  const url = URL.createObjectURL(response.data);
+                                  setSelectedPhoto(url);
+                                  setPhotoDialogOpen(true);
+                                } catch (error) {
+                                  console.error('Erro ao carregar foto:', error);
+                                  toast.error('Erro ao carregar foto');
+                                }
                               }}
                             >
                               <ImageIcon className="w-4 h-4 mr-2" />
@@ -557,10 +589,6 @@ export default function Extrato() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(movement)}>
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(movement)}
                           className="text-destructive"
@@ -656,22 +684,6 @@ export default function Extrato() {
       </Dialog>
     </div>
   );
-
-  if (isMobile) {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-40 bg-card border-b border-border">
-          <div className="flex items-center gap-3 p-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-display font-bold text-lg">Extrato</h1>
-          </div>
-        </header>
-        {content}
-      </div>
-    );
-  }
 
   return content;
 }

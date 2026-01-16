@@ -7,7 +7,7 @@ test.describe('Autenticação', () => {
 
   test('deve fazer login com credenciais válidas de produtor', async ({ page }) => {
     // Preenche formulário de login
-    await page.fill('input[type="text"]', '123.456.789-00');
+    await page.fill('input[type="text"]', '529.982.247-25');
     await page.fill('input[type="password"]', '123456');
     
     // Clica no botão Entrar
@@ -22,7 +22,7 @@ test.describe('Autenticação', () => {
 
   test('deve fazer login como SuperAdmin', async ({ page }) => {
     // Preenche formulário com credenciais de admin
-    await page.fill('input[type="text"]', '00.000.000/0001-00');
+    await page.fill('input[type="text"]', '04.252.011/0001-10');
     await page.fill('input[type="password"]', 'admin123');
     
     // Clica no botão Entrar
@@ -64,7 +64,7 @@ test.describe('Autenticação', () => {
 
   test('deve fazer logout corretamente', async ({ page }) => {
     // Faz login primeiro
-    await page.fill('input[type="text"]', '123.456.789-00');
+    await page.fill('input[type="text"]', '529.982.247-25');
     await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
     
@@ -98,7 +98,7 @@ test.describe('Autenticação', () => {
 
   test('deve aceitar CPF com ou sem formatação', async ({ page }) => {
     // Login com CPF formatado
-    await page.fill('input[type="text"]', '123.456.789-00');
+    await page.fill('input[type="text"]', '529.982.247-25');
     await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
     
@@ -108,7 +108,7 @@ test.describe('Autenticação', () => {
     await page.goto('http://localhost:8080/login');
     
     // Login com CPF sem formatação
-    await page.fill('input[type="text"]', '12345678900');
+    await page.fill('input[type="text"]', '52998224725');
     await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
     
@@ -117,7 +117,7 @@ test.describe('Autenticação', () => {
 
   test('deve manter sessão após reload', async ({ page }) => {
     // Faz login
-    await page.fill('input[type="text"]', '123.456.789-00');
+    await page.fill('input[type="text"]', '529.982.247-25');
     await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
     

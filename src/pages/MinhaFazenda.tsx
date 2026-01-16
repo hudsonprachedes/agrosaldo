@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { PreferencesDTO, useAuth } from '@/contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
@@ -51,12 +51,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { getTotalCattle } from '@/mocks/mock-bovinos';
-import { plans, determineUserPlan } from '@/mocks/mock-auth';
 import { fetchViaCepWithCache } from '@/lib/cep';
+import { apiClient } from '@/lib/api-client';
+import { PropertyDTO } from '@/types';
 
-interface Property {
-  id: string;
+type PropertyForm = {
   name: string;
   viaAcesso?: string;
   comunidade?: string;
@@ -66,33 +65,40 @@ interface Property {
   areaPastagemNatural?: number;
   areaPastagemCultivada?: number;
   areaTotal: number;
-}
+};
+
+type PlanId = 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
+
+type PlanCatalogItem = {
+  id: PlanId;
+  name: string;
+  price: number;
+  maxCattle: number;
+};
+
+type SubscriptionDTO = {
+  id: string;
+  usuarioId: string;
+  plano: PlanId;
+  status: 'ativa' | 'cancelada' | 'inadimplente' | string;
+  valorMensal?: number | null;
+  inicioEm: string;
+  fimEm?: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+} | null;
 
 export default function MinhaFazenda() {
-  const { user, selectedProperty } = useAuth();
+  const { user, selectedProperty, refreshMe, preferences, updatePreferences } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('propriedade');
 
-  // Propriedades do usuário (mock - futuramente virá do backend)
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: selectedProperty?.id || '1',
-      name: selectedProperty?.name || 'Fazenda Santa Maria',
-      viaAcesso: 'BR-163, KM 245',
-      comunidade: 'Assentamento Nova Esperança',
-      cep: '79000-000',
-      municipio: selectedProperty?.city || 'Campo Grande',
-      uf: selectedProperty?.state || 'MS',
-      areaPastagemNatural: 150,
-      areaPastagemCultivada: 350,
-      areaTotal: selectedProperty?.totalArea || 500,
-    }
-  ]);
+  const [properties, setProperties] = useState<PropertyDTO[]>([]);
 
   const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
-  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
-  const [propertyForm, setPropertyForm] = useState<Partial<Property>>({});
+  const [editingProperty, setEditingProperty] = useState<PropertyDTO | null>(null);
+  const [propertyForm, setPropertyForm] = useState<Partial<PropertyForm>>({});
 
   // Produtor form
   const [isEditingProdutor, setIsEditingProdutor] = useState(false);
@@ -104,12 +110,13 @@ export default function MinhaFazenda() {
     email: user?.email || '',
     cep: '',
     endereco: '',
+    bairro: '',
     municipio: '',
     estado: '',
   });
 
   // Settings
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<PreferencesDTO>({
     notificacoes: true,
     sincronizacaoAuto: true,
     modoEscuro: false,
@@ -117,6 +124,52 @@ export default function MinhaFazenda() {
     notificacaoMorte: true,
     notificacaoVacina: true,
   });
+
+  const [plansCatalog, setPlansCatalog] = useState<PlanCatalogItem[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionDTO>(null);
+
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const data = await apiClient.get<PropertyDTO[]>('/propriedades/minhas');
+        setProperties(data);
+      } catch (error) {
+        console.error('Erro ao carregar propriedades:', error);
+        setProperties([]);
+      }
+    };
+
+    if (user?.id) {
+      void loadProperties();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadPlansAndSubscription = async () => {
+      try {
+        const [catalog, sub] = await Promise.all([
+          apiClient.get<PlanCatalogItem[]>('/planos'),
+          apiClient.get<SubscriptionDTO>('/assinaturas/minha'),
+        ]);
+        setPlansCatalog(catalog);
+        setSubscription(sub);
+      } catch (error) {
+        console.error('Erro ao carregar planos/assinatura:', error);
+        setPlansCatalog([]);
+        setSubscription(null);
+      }
+    };
+
+    if (user?.id) {
+      void loadPlansAndSubscription();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (preferences) {
+      setSettings(preferences);
+    }
+  }, [preferences]);
 
   // Password form (local-only mock)
   const [passwordForm, setPasswordForm] = useState({
@@ -147,13 +200,31 @@ export default function MinhaFazenda() {
     return <Navigate to="/selecionar-propriedade" replace />;
   }
 
-  // Calcular total de bovinos e bubalinos de todas propriedades
-  const totalCattleAllProperties = properties.reduce((total, prop) => {
-    return total + getTotalCattle(prop.id);
-  }, 0);
+  const totalCattleAllProperties = properties.reduce((total, prop) => total + (prop.cattleCount ?? 0), 0);
 
-  const currentPlan = plans.find(p => p.id === selectedProperty.plan) ?? determineUserPlan(totalCattleAllProperties);
-  const planMaxCattle = currentPlan.maxCattle;
+  const subscriptionPlanId: PlanId | null = subscription?.plano ?? null;
+  const currentPlan = subscriptionPlanId
+    ? (plansCatalog.find((p) => p.id === subscriptionPlanId) ?? null)
+    : null;
+  const planMaxCattle = currentPlan?.maxCattle ?? 0;
+  const subscriptionStatus = (subscription?.status ?? '').toLowerCase();
+  const hasSubscription = Boolean(subscription?.id);
+  const isSubscriptionActive = hasSubscription && subscriptionStatus === 'ativa';
+
+  const handleSubscribeOrUpgrade = async (planId: PlanId) => {
+    try {
+      const updated = await apiClient.post<SubscriptionDTO>('/assinaturas/minha', {
+        planId,
+      });
+      setSubscription(updated);
+      toast.success('Plano atualizado com sucesso');
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        'Não foi possível atualizar o plano. Tente novamente.';
+      toast.error(message);
+    }
+  };
 
   // Property CRUD handlers
   const handleAddProperty = () => {
@@ -162,41 +233,73 @@ export default function MinhaFazenda() {
     setIsPropertyDialogOpen(true);
   };
 
-  const handleEditProperty = (property: Property) => {
+  const handleEditProperty = (property: PropertyDTO) => {
     setEditingProperty(property);
-    setPropertyForm(property);
+    setPropertyForm({
+      name: property.name,
+      cep: property.cep,
+      viaAcesso: property.accessRoute,
+      comunidade: property.community,
+      municipio: property.city,
+      uf: property.state,
+      areaTotal: property.totalArea,
+      areaPastagemNatural: property.pastureNaturalHa,
+      areaPastagemCultivada: property.pastureCultivatedHa,
+    });
     setIsPropertyDialogOpen(true);
   };
 
-  const handleDeleteProperty = (propertyId: string) => {
+  const handleDeleteProperty = async (propertyId: string) => {
     if (properties.length === 1) {
       toast.error('Você precisa ter pelo menos uma propriedade');
       return;
     }
-    setProperties(properties.filter(p => p.id !== propertyId));
-    toast.success('Propriedade removida com sucesso');
+
+    try {
+      await apiClient.delete(`/propriedades/minhas/${propertyId}`);
+      await refreshMe();
+      const data = await apiClient.get<PropertyDTO[]>('/propriedades/minhas');
+      setProperties(data);
+      toast.success('Propriedade removida com sucesso');
+    } catch (error) {
+      console.error('Erro ao remover propriedade:', error);
+      toast.error('Erro ao remover propriedade');
+    }
   };
 
-  const handleSaveProperty = () => {
+  const handleSaveProperty = async () => {
     if (!propertyForm.name || !propertyForm.municipio || !propertyForm.uf) {
       toast.error('Preencha os campos obrigatórios');
       return;
     }
 
-    if (editingProperty) {
-      setProperties(properties.map(p => 
-        p.id === editingProperty.id ? { ...p, ...propertyForm } as Property : p
-      ));
-      toast.success('Propriedade atualizada com sucesso');
-    } else {
-      const newProperty: Property = {
-        id: `prop-${Date.now()}`,
-        ...propertyForm,
-      } as Property;
-      setProperties([...properties, newProperty]);
-      toast.success('Propriedade cadastrada com sucesso');
+
+    const payload = {
+      name: propertyForm.name,
+      city: propertyForm.municipio,
+      state: propertyForm.uf,
+      totalArea: Number(propertyForm.areaTotal ?? 0),
+      cultivatedArea: 0,
+      naturalArea: 0,
+    };
+
+    try {
+      if (editingProperty?.id) {
+        await apiClient.patch(`/propriedades/minhas/${editingProperty.id}`, payload);
+        toast.success('Propriedade atualizada com sucesso');
+      } else {
+        await apiClient.post('/propriedades/minhas', payload);
+        toast.success('Propriedade cadastrada com sucesso');
+      }
+
+      setIsPropertyDialogOpen(false);
+      await refreshMe();
+      const data = await apiClient.get<PropertyDTO[]>('/propriedades/minhas');
+      setProperties(data);
+    } catch (error) {
+      console.error('Erro ao salvar propriedade:', error);
+      toast.error('Erro ao salvar propriedade');
     }
-    setIsPropertyDialogOpen(false);
   };
 
   // CEP Search handler
@@ -218,6 +321,7 @@ export default function MinhaFazenda() {
           setProdutorForm({
             ...produtorForm,
             endereco: data.address,
+            bairro: data.neighborhood,
             municipio: data.city,
             estado: data.uf,
           });
@@ -236,6 +340,20 @@ export default function MinhaFazenda() {
   const handleSaveProdutor = () => {
     setIsEditingProdutor(false);
     toast.success('Dados do produtor atualizados');
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      const saved = await updatePreferences(settings);
+      if (!saved) {
+        toast.error('Erro ao salvar configurações');
+        return;
+      }
+      toast.success('Configurações salvas com sucesso');
+    } catch (error) {
+      console.error('Erro ao salvar preferências:', error);
+      toast.error('Erro ao salvar configurações');
+    }
   };
 
   const content = (
@@ -288,42 +406,96 @@ export default function MinhaFazenda() {
               </Button>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Município/UF</TableHead>
-                    <TableHead>Área Total</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              {isMobile ? (
+                <div className="space-y-3">
                   {properties.map((property) => (
-                    <TableRow key={property.id}>
-                      <TableCell className="font-medium">{property.name}</TableCell>
-                      <TableCell>{property.municipio}/{property.uf}</TableCell>
-                      <TableCell>{property.areaTotal} ha</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditProperty(property)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteProperty(property.id)}
-                          disabled={properties.length === 1}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <div
+                      key={property.id}
+                      className="rounded-xl border border-border bg-card p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground leading-tight break-words">
+                            {property.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {property.city}/{property.state}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditProperty(property)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteProperty(property.id)}
+                            disabled={properties.length === 1}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div className="rounded-lg bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">Área total</p>
+                          <p className="text-sm font-medium text-foreground mt-1">
+                            {property.totalArea} ha
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-muted/30 p-3">
+                          <p className="text-xs text-muted-foreground">Cabeças</p>
+                          <p className="text-sm font-medium text-foreground mt-1">
+                            {(property.cattleCount ?? 0).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Município/UF</TableHead>
+                      <TableHead>Área Total</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {properties.map((property) => (
+                      <TableRow key={property.id}>
+                        <TableCell className="font-medium">{property.name}</TableCell>
+                        <TableCell>{property.city}/{property.state}</TableCell>
+                        <TableCell>{property.totalArea} ha</TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditProperty(property)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteProperty(property.id)}
+                            disabled={properties.length === 1}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -627,6 +799,15 @@ export default function MinhaFazenda() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>Bairro</Label>
+                  <Input
+                    value={produtorForm.bairro}
+                    onChange={(e) => setProdutorForm({ ...produtorForm, bairro: e.target.value })}
+                    disabled={!isEditingProdutor}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label>Município</Label>
                   <Input
                     value={produtorForm.municipio}
@@ -662,78 +843,179 @@ export default function MinhaFazenda() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 mb-6">
-                <div className="flex items-start justify-between mb-4">
+              {!hasSubscription ? (
+                <div className="space-y-6">
+                  <div className="p-6 rounded-xl border bg-muted/30">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xl font-semibold text-foreground">Escolha um plano para continuar</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Você ainda não possui uma assinatura ativa vinculada ao seu CPF/CNPJ.
+                        </p>
+                      </div>
+                      <Lock className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div className="mt-4 grid sm:grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Total de propriedades</p>
+                        <p className="text-sm font-medium text-foreground mt-1">{properties.length}</p>
+                      </div>
+                      <div className="rounded-lg bg-card p-3">
+                        <p className="text-xs text-muted-foreground">Total de cabeças (todas propriedades)</p>
+                        <p className="text-sm font-medium text-foreground mt-1">{totalCattleAllProperties.toLocaleString('pt-BR')}</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
-                    <p className="text-2xl font-bold text-primary font-display">{currentPlan?.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-foreground">R$ {currentPlan?.price && typeof currentPlan.price === 'number' ? currentPlan.price.toFixed(2).replace('.', ',') : currentPlan?.price}</p>
-                    <p className="text-sm text-muted-foreground">/mês</p>
+                    <h3 className="text-lg font-semibold mb-4">Planos Disponíveis</h3>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {plansCatalog.slice().sort((a, b) => a.price - b.price).map((plan) => (
+                        <Card key={plan.id}>
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{plan.name}</CardTitle>
+                                <p className="text-2xl font-bold mt-2">R$ {plan.price.toFixed(2).replace('.', ',')}</p>
+                                <p className="text-xs text-muted-foreground">/mês</p>
+                              </div>
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Beef className="w-4 h-4 text-muted-foreground" />
+                              <span>Até {plan.maxCattle === -1 ? '∞' : plan.maxCattle.toLocaleString('pt-BR')} cabeças</span>
+                            </div>
+                            <Button
+                              className="w-full mt-4"
+                              onClick={() => void handleSubscribeOrUpgrade(plan.id)}
+                            >
+                              Assinar {plan.name}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 </div>
+              ) : !isSubscriptionActive ? (
+                <div className="p-6 rounded-xl border border-destructive/30 bg-destructive/5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xl font-semibold text-foreground">Acesso bloqueado por status da assinatura</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Sua assinatura está com status <span className="font-medium">{subscription?.status}</span>. Regularize para continuar usando o sistema.
+                      </p>
+                    </div>
+                    <Lock className="w-6 h-6 text-destructive" />
+                  </div>
 
-                <div className="space-y-3 mt-4">
-                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
-                    <span className="text-sm text-muted-foreground">Limite de cabeças</span>
-                    <span className="font-medium">{planMaxCattle === -1 ? 'Ilimitado' : planMaxCattle.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
-                    <span className="text-sm text-muted-foreground">Total de propriedades</span>
-                    <span className="font-medium">{properties.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
-                    <span className="text-sm text-muted-foreground">Total de cabeças (todas propriedades)</span>
-                    <span className="font-medium">{totalCattleAllProperties.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-card rounded-lg">
-                    <span className="text-sm text-muted-foreground">Disponível</span>
-                    <span className="font-medium text-success">
-                      {planMaxCattle === -1 ? 'Ilimitado' : (planMaxCattle - totalCattleAllProperties).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Planos Disponíveis */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Planos Disponíveis</h3>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {plans.slice().sort((a, b) => a.price - b.price).map((plan) => (
-                    <Card 
-                      key={plan.id}
-                      className={plan.id === currentPlan?.id ? 'border-2 border-primary' : ''}
+                  <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                    <Button
+                      onClick={() => toast.info('Fluxo de pagamento/regularização será integrado na próxima etapa.')}
                     >
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{plan.name}</CardTitle>
-                            <p className="text-2xl font-bold mt-2">R$ {plan.price.toFixed(2).replace('.', ',')}</p>
-                            <p className="text-xs text-muted-foreground">/mês</p>
-                          </div>
-                          {plan.id === currentPlan?.id && (
-                            <Badge variant="default" className="flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              Atual
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Beef className="w-4 h-4 text-muted-foreground" />
-                          <span>Até {plan.maxCattle === -1 ? '∞' : plan.maxCattle.toLocaleString()} cabeças</span>
-                        </div>
-                        {plan.id !== currentPlan?.id && (
-                          <Button className="w-full mt-4" variant="outline">
-                            {plan.maxCattle > (currentPlan?.maxCattle || 0) ? 'Fazer Upgrade' : 'Alterar Plano'}
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                      Regularizar pagamento
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => refreshMe && void refreshMe()}
+                    >
+                      Já paguei, atualizar
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="p-6 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className="text-2xl font-bold text-primary font-display">{currentPlan?.name}</p>
+                        <div className="mt-2">
+                          <Badge variant="default" className="flex items-center gap-1 w-fit">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Assinatura ativa
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-foreground">
+                          R${' '}
+                          {currentPlan?.price && typeof currentPlan.price === 'number'
+                            ? currentPlan.price.toFixed(2).replace('.', ',')
+                            : currentPlan?.price}
+                        </p>
+                        <p className="text-sm text-muted-foreground">/mês</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mt-4">
+                      <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                        <span className="text-sm text-muted-foreground">Limite de cabeças</span>
+                        <span className="font-medium">{planMaxCattle === -1 ? 'Ilimitado' : planMaxCattle.toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                        <span className="text-sm text-muted-foreground">Total de propriedades</span>
+                        <span className="font-medium">{properties.length}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                        <span className="text-sm text-muted-foreground">Total de cabeças (todas propriedades)</span>
+                        <span className="font-medium">{totalCattleAllProperties.toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-card rounded-lg">
+                        <span className="text-sm text-muted-foreground">Disponível</span>
+                        <span className="font-medium text-success">
+                          {planMaxCattle === -1
+                            ? 'Ilimitado'
+                            : Math.max(0, planMaxCattle - totalCattleAllProperties).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4">Planos Disponíveis</h3>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {plansCatalog.slice().sort((a, b) => a.price - b.price).map((plan) => (
+                        <Card
+                          key={plan.id}
+                          className={plan.id === currentPlan?.id ? 'border-2 border-primary' : ''}
+                        >
+                          <CardHeader>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{plan.name}</CardTitle>
+                                <p className="text-2xl font-bold mt-2">R$ {plan.price.toFixed(2).replace('.', ',')}</p>
+                                <p className="text-xs text-muted-foreground">/mês</p>
+                              </div>
+                              {plan.id === currentPlan?.id && (
+                                <Badge variant="default" className="flex items-center gap-1">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  Atual
+                                </Badge>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Beef className="w-4 h-4 text-muted-foreground" />
+                              <span>Até {plan.maxCattle === -1 ? '∞' : plan.maxCattle.toLocaleString('pt-BR')} cabeças</span>
+                            </div>
+                            {plan.id !== currentPlan?.id && (
+                              <Button
+                                className="w-full mt-4"
+                                variant="outline"
+                                onClick={() => void handleSubscribeOrUpgrade(plan.id)}
+                              >
+                                {plan.maxCattle > (currentPlan?.maxCattle || 0) ? 'Fazer Upgrade' : 'Alterar Plano'}
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -779,7 +1061,10 @@ export default function MinhaFazenda() {
                   </div>
                   <Switch
                     checked={settings.modoEscuro}
-                    onCheckedChange={(checked) => setSettings({ ...settings, modoEscuro: checked })}
+                    onCheckedChange={(checked) => {
+                      setSettings({ ...settings, modoEscuro: checked });
+                      void updatePreferences({ modoEscuro: checked });
+                    }}
                   />
                 </div>
               </div>
@@ -826,7 +1111,7 @@ export default function MinhaFazenda() {
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={() => toast.success('Configurações salvas com sucesso')}
+                  onClick={handleSavePreferences}
                 >
                   <Save className="w-4 h-4 mr-2" />
                   Salvar Configurações

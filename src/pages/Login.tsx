@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { MaskedInput } from '@/components/ui/masked-input';
+import { validateCpfCnpj } from '@/lib/document-validation';
 import heroBackground from '@/assets/hero-background.jpg';
 
 // ============================================================================
@@ -23,8 +24,7 @@ const loginSchema = z.object({
     .string()
     .min(1, 'CPF/CNPJ é obrigatório')
     .refine((value) => {
-      const digits = value.replace(/\D/g, '');
-      return digits.length === 11 || digits.length === 14;
+      return validateCpfCnpj(value);
     }, 'CPF/CNPJ inválido'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 });

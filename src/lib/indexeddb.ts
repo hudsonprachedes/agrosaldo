@@ -31,6 +31,7 @@ export interface StoredMovement {
 export interface StoredPhoto {
   id: string;
   movementId: string;
+  propertyId?: string;
   data: Blob;
   mimeType: string;
   size: number;
@@ -421,6 +422,7 @@ export async function updateSyncQueueItem(
  */
 export async function savePhotoOffline(
   movementId: string,
+  propertyId: string,
   photoData: Blob,
   originalSize: number
 ): Promise<StoredPhoto> {
@@ -429,6 +431,7 @@ export async function savePhotoOffline(
   const photo: StoredPhoto = {
     id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     movementId,
+    propertyId,
     data: photoData,
     mimeType: photoData.type || 'image/jpeg',
     size: photoData.size,
@@ -440,7 +443,7 @@ export async function savePhotoOffline(
   await db.add('photos', photo);
 
   await addToSyncQueue({
-    propertyId: movementId.split('-')[1] || 'unknown',
+    propertyId,
     type: 'photo',
     resourceId: photo.id,
     payload: photo as Record<string, unknown>,

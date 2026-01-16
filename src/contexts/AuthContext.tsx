@@ -5,12 +5,24 @@ import { livestockService } from '@/services/api.service';
 
 type RegisterData = CreateUserRequest & { password: string };
 
+export interface PreferencesDTO {
+  notificacoes: boolean;
+  sincronizacaoAuto: boolean;
+  modoEscuro: boolean;
+  notificacaoNascimento: boolean;
+  notificacaoMorte: boolean;
+  notificacaoVacina: boolean;
+}
+
 interface AuthContextType {
   user: UserDTO | null;
   selectedProperty: PropertyDTO | null;
   isLoading: boolean;
+  preferences: PreferencesDTO | null;
   login: (cpfCnpj: string, password: string) => Promise<{ success: boolean; user: UserDTO | null }>;
   register: (data: RegisterData) => Promise<boolean>;
+  refreshMe: () => Promise<UserDTO | null>;
+  updatePreferences: (next: Partial<PreferencesDTO>) => Promise<PreferencesDTO | null>;
   logout: () => void;
   selectProperty: (propertyOrId: PropertyDTO | string) => void;
   clearSelectedProperty: () => void;
@@ -22,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDTO | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<PropertyDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [preferences, setPreferences] = useState<PreferencesDTO | null>(null);
 
   useEffect(() => {
     const runAgeGroupRecalculation = async () => {
@@ -46,8 +59,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Erro ao recalcular faixas etárias no backend:', error);
       }
     };
-
     void runAgeGroupRecalculation();
+  }, [selectedProperty?.id]);
+
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!selectedProperty?.id) {
+        setPreferences(null);
+        document.documentElement.classList.remove('dark');
+        return;
+      }
+
+      try {
+        const data = await apiClient.get<PreferencesDTO>('/preferencias');
+        setPreferences(data);
+        document.documentElement.classList.toggle('dark', Boolean((data as any).modoEscuro));
+      } catch (error) {
+        console.error('Erro ao carregar preferências:', error);
+        setPreferences(null);
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    void loadPreferences();
   }, [selectedProperty?.id]);
 
   useEffect(() => {
@@ -111,6 +145,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshMe = async (): Promise<UserDTO | null> => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setUser(null);
+      setSelectedProperty(null);
+      return null;
+    }
+
+    try {
+      const me = await apiClient.get<UserDTO>('/auth/me');
+      setUser(me);
+
+      const storedPropertyId = localStorage.getItem('agrosaldo_property_id');
+      const props = me.properties ?? [];
+      const found = storedPropertyId ? props.find((p) => p.id === storedPropertyId) : undefined;
+
+      if (found) {
+        setSelectedProperty(found);
+      } else if (props.length > 0) {
+        setSelectedProperty(props[0]);
+        localStorage.setItem('agrosaldo_property_id', props[0].id);
+      } else {
+        setSelectedProperty(null);
+        localStorage.removeItem('agrosaldo_property_id');
+      }
+
+      return me;
+    } catch (error) {
+      console.error('Erro ao atualizar dados do usuário:', error);
+      return null;
+    }
+  };
+
+  const updatePreferences = async (next: Partial<PreferencesDTO>): Promise<PreferencesDTO | null> => {
+    if (!selectedProperty?.id) {
+      return null;
+    }
+
+    const payload: PreferencesDTO = {
+      notificacoes: next.notificacoes ?? preferences?.notificacoes ?? true,
+      sincronizacaoAuto: next.sincronizacaoAuto ?? preferences?.sincronizacaoAuto ?? true,
+      modoEscuro: next.modoEscuro ?? preferences?.modoEscuro ?? false,
+      notificacaoNascimento: next.notificacaoNascimento ?? preferences?.notificacaoNascimento ?? true,
+      notificacaoMorte: next.notificacaoMorte ?? preferences?.notificacaoMorte ?? true,
+      notificacaoVacina: next.notificacaoVacina ?? preferences?.notificacaoVacina ?? true,
+    };
+
+    try {
+      const updated = await apiClient.put<PreferencesDTO>('/preferencias', payload);
+      setPreferences(updated);
+      document.documentElement.classList.toggle('dark', Boolean((updated as any).modoEscuro));
+      return updated;
+    } catch (error) {
+      console.error('Erro ao atualizar preferências:', error);
+      return null;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setSelectedProperty(null);
@@ -145,8 +237,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       selectedProperty,
       isLoading,
+      preferences,
       login,
       register,
+      refreshMe,
+      updatePreferences,
       logout,
       selectProperty,
       clearSelectedProperty,

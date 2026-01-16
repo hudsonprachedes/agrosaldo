@@ -5,7 +5,7 @@ test.describe('Navegação Geral', () => {
   test.beforeEach(async ({ page }) => {
     // Login como produtor e seleção de propriedade
     await page.goto('/login');
-    await page.fill('input[type="text"]', '123.456.789-00');
+    await page.fill('input[type="text"]', '529.982.247-25');
     await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
     await page.waitForURL(/.*property-selection/);
@@ -57,7 +57,7 @@ test.describe('Navegação Geral', () => {
     } else {
       await page.goto('/login');
     }
-    await page.fill('input[type="text"]', '00.000.000/0001-00');
+    await page.fill('input[type="text"]', '04.252.011/0001-10');
     await page.fill('input[type="password"]', 'admin123');
     await page.click('button[type="submit"]');
     await page.waitForURL(/.*admin\/dashboard/);

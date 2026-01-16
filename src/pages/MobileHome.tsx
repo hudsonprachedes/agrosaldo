@@ -2,85 +2,25 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { apiClient } from '@/lib/api-client';
+import { DashboardAnalyticsDTO } from '@/types';
 import {
-  Baby,
-  Skull,
-  Truck,
-  Syringe,
-  Dog,
-  MessageCircle,
-  ChevronRight,
   CheckCircle,
   AlertTriangle,
   TrendingUp,
   TrendingDown,
+  Wallet,
+  Users,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { getTotalCattle, getMonthlyBirths, getMonthlyDeaths } from '@/mocks/mock-bovinos';
-import { mockComplianceData } from '@/mocks/mock-analytics';
 import MobileLayout from '@/components/layout/MobileLayout';
-
-const actionItems = [
-  { 
-    id: 'birth', 
-    label: 'Nascimento', 
-    icon: Baby, 
-    color: 'bg-gradient-to-br from-success to-success/80', 
-    textColor: 'text-white',
-    emoji: '🐮',
-    path: '/lancamento/nascimento'
-  },
-  { 
-    id: 'death', 
-    label: 'Mortalidade', 
-    icon: Skull, 
-    color: 'bg-gradient-to-br from-death to-death/80', 
-    textColor: 'text-white',
-    emoji: '💀',
-    path: '/lancamento/mortalidade'
-  },
-  { 
-    id: 'sale', 
-    label: 'Venda', 
-    icon: Truck, 
-    color: 'bg-gradient-to-br from-warning to-warning/80', 
-    textColor: 'text-warning-foreground',
-    emoji: '🚚',
-    path: '/lancamento/venda'
-  },
-  { 
-    id: 'vaccine', 
-    label: 'Vacina', 
-    icon: Syringe, 
-    color: 'bg-gradient-to-br from-chart-3 to-chart-3/80', 
-    textColor: 'text-white',
-    emoji: '💉',
-    path: '/lancamento/vacina'
-  },
-  { 
-    id: 'other', 
-    label: 'Outras Espécies', 
-    icon: Dog, 
-    color: 'bg-gradient-to-br from-muted to-muted/80', 
-    textColor: 'text-foreground',
-    emoji: '🐴',
-    path: '/lancamento/outras'
-  },
-  { 
-    id: 'help', 
-    label: 'Ajuda', 
-    icon: MessageCircle, 
-    color: 'bg-gradient-to-br from-success to-success/80', 
-    textColor: 'text-white',
-    emoji: '📞',
-    path: 'https://wa.me/5565999999999'
-  },
-];
 
 export default function MobileHome() {
   const { user, selectedProperty } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [dashboard, setDashboard] = React.useState<DashboardAnalyticsDTO | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -98,25 +38,68 @@ export default function MobileHome() {
     }
   }, [user, selectedProperty, isMobile, navigate]);
 
+  useEffect(() => {
+    if (!user || !selectedProperty || !isMobile) {
+      setDashboard(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        const response = await apiClient.get<DashboardAnalyticsDTO>(
+          `/analytics/dashboard/${selectedProperty.id}`
+        );
+        setDashboard(response);
+      } catch (error) {
+        console.error('Erro ao carregar home mobile:', error);
+        setDashboard(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, [user, selectedProperty, isMobile]);
+
   if (!user || !selectedProperty || !isMobile) {
     return null;
   }
 
-  const totalCattle = getTotalCattle(selectedProperty.id);
-  const monthlyBirths = getMonthlyBirths(selectedProperty.id) || 87;
-  const monthlyDeaths = getMonthlyDeaths(selectedProperty.id) || 10;
-  const compliance = mockComplianceData[selectedProperty.id] || [];
-  const overallCompliance = compliance.length > 0
-    ? Math.round(compliance.reduce((sum, c) => sum + c.percentage, 0) / compliance.length)
-    : 100;
+  if (isLoading) {
+    return (
+      <MobileLayout>
+        <div className="p-6 text-center text-muted-foreground">Carregando...</div>
+      </MobileLayout>
+    );
+  }
 
-  const handleActionClick = (item: typeof actionItems[0]) => {
-    if (item.id === 'help') {
-      window.open(item.path, '_blank');
-    } else {
-      navigate(item.path);
-    }
-  };
+  if (!dashboard) {
+    return (
+      <MobileLayout>
+        <div className="p-6 text-center text-muted-foreground">
+          Não foi possível carregar.
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  const totalCattle = dashboard.kpis.totalCattle;
+  const monthlyBirths = dashboard.kpis.birthsThisMonth;
+  const monthlyDeaths = dashboard.kpis.deathsThisMonth;
+  const monthlyPurchases = dashboard.kpis.purchasesThisMonth ?? 0;
+  const monthlyPurchaseCost = dashboard.kpis.purchaseCostThisMonth ?? 0;
+  const compliance = dashboard.compliance.items;
+  const overallCompliance = dashboard.compliance.overall;
+
+  const latestRevenue = dashboard.charts.revenue[dashboard.charts.revenue.length - 1] ?? 0;
+  const latestEvolution = dashboard.charts.evolution[dashboard.charts.evolution.length - 1] ?? 0;
+  const previousEvolution = dashboard.charts.evolution[dashboard.charts.evolution.length - 2] ?? 0;
+  const evolutionDelta = latestEvolution - previousEvolution;
+  const netChangeThisMonth = monthlyBirths - monthlyDeaths;
+
+  void monthlyPurchases;
 
   const getStatusColor = () => {
     if (overallCompliance >= 95) return 'bg-success';
@@ -133,9 +116,9 @@ export default function MobileHome() {
   return (
     <MobileLayout>
       {/* Hero Stats Section */}
-      <div className="bg-primary text-primary-foreground -mt-1 rounded-b-3xl px-4 pb-6 pt-2">
+      <div className="bg-primary text-primary-foreground dark:bg-card dark:text-card-foreground -mt-1 rounded-b-3xl px-4 pb-6 pt-2 border-b border-transparent dark:border-border">
         {/* Status Bar */}
-        <div className="flex items-center gap-3 bg-primary-foreground/10 rounded-xl p-3 mb-4">
+        <div className="flex items-center gap-3 bg-primary-foreground/10 dark:bg-muted rounded-xl p-3 mb-4">
           <div className={`w-3 h-3 rounded-full ${getStatusColor()} animate-pulse`} />
           <div className="flex-1">
             <p className="text-sm font-medium">{getStatusText()}</p>
@@ -158,14 +141,14 @@ export default function MobileHome() {
 
         {/* Quick Stats Row */}
         <div className="grid grid-cols-2 gap-3 mt-2">
-          <div className="bg-white/10 border border-white/10 rounded-xl p-3 text-center">
+          <div className="bg-white/10 border border-white/10 dark:bg-muted dark:border-border rounded-xl p-3 text-center">
             <div className="flex items-center justify-center gap-1">
-              <TrendingUp className="w-4 h-4 text-white" />
-              <span className="text-2xl font-bold text-white drop-shadow">+{monthlyBirths}</span>
+              <TrendingUp className="w-4 h-4 text-white dark:text-primary" />
+              <span className="text-2xl font-bold text-white dark:text-foreground drop-shadow">+{monthlyBirths}</span>
             </div>
             <p className="text-xs opacity-80 mt-1">Nascimentos</p>
           </div>
-          <div className="bg-primary-foreground/10 rounded-xl p-3 text-center">
+          <div className="bg-primary-foreground/10 dark:bg-muted rounded-xl p-3 text-center">
             <div className="flex items-center justify-center gap-1">
               <TrendingDown className="w-4 h-4 text-error" />
               <span className="text-2xl font-bold text-error">-{monthlyDeaths}</span>
@@ -179,27 +162,82 @@ export default function MobileHome() {
       <div className="p-4 -mt-4">
         <Card className="shadow-card border-0">
           <CardContent className="p-4">
-            <h2 className="font-display font-semibold text-lg mb-4 text-foreground flex items-center gap-2">
-              <span>⚡</span> Lançamentos Rápidos
+            <h2 className="font-display font-semibold text-lg mb-4 text-foreground">
+              Resumo do mês
             </h2>
-            
-            <div className="grid grid-cols-3 gap-3">
-              {actionItems.map((item, index) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleActionClick(item)}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl 
-                    ${item.color} ${item.textColor} 
-                    shadow-mobile-btn active:scale-95 transition-all duration-200
-                    animate-scale-in min-h-[100px]`}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <span className="text-3xl">{item.emoji}</span>
-                  <span className="text-xs font-semibold text-center leading-tight">
-                    {item.label}
-                  </span>
-                </button>
-              ))}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="border-0 shadow-sm bg-muted/30">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Saldo (nasc. - mortes)</p>
+                      <p className="text-2xl font-bold">
+                        {netChangeThisMonth >= 0 ? '+' : ''}{netChangeThisMonth}
+                      </p>
+                    </div>
+                    {netChangeThisMonth >= 0 ? (
+                      <TrendingUp className="w-5 h-5 text-success" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 text-error" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-muted/30">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Receita (mês)</p>
+                      <p className="text-2xl font-bold">
+                        {latestRevenue.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                          maximumFractionDigits: 0,
+                        })}
+                      </p>
+                    </div>
+                    <Wallet className="w-5 h-5 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-muted/30">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Variação do rebanho</p>
+                      <p className="text-2xl font-bold">
+                        {evolutionDelta >= 0 ? '+' : ''}{evolutionDelta}
+                      </p>
+                    </div>
+                    {evolutionDelta >= 0 ? (
+                      <TrendingUp className="w-5 h-5 text-success" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 text-error" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-sm bg-muted/30">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Compras (mês)</p>
+                      <p className="text-sm font-semibold leading-tight">
+                        {monthlyPurchaseCost.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                          maximumFractionDigits: 0,
+                        })}
+                      </p>
+                    </div>
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </CardContent>
         </Card>
@@ -209,19 +247,22 @@ export default function MobileHome() {
       <div className="px-4 space-y-3 pb-4">
         <div className="grid grid-cols-2 gap-3 pt-2">
           {compliance.slice(0, 4).map((item, index) => (
+            (() => {
+              const status = item.percentage >= 95 ? 'ok' : item.percentage >= 80 ? 'warning' : 'error';
+              return (
             <Card 
               key={item.category}
               className={`border-0 shadow-sm animate-fade-in ${
-                item.status === 'ok' ? 'bg-success/5' : 
-                item.status === 'warning' ? 'bg-warning/5' : 
+                status === 'ok' ? 'bg-success/5' : 
+                status === 'warning' ? 'bg-warning/5' : 
                 'bg-error/5'
               }`}
               style={{ animationDelay: `${200 + index * 50}ms` }}
             >
               <CardContent className="p-3 text-center">
                 <div className={`text-2xl font-bold ${
-                  item.status === 'ok' ? 'text-success' : 
-                  item.status === 'warning' ? 'text-warning' : 
+                  status === 'ok' ? 'text-success' : 
+                  status === 'warning' ? 'text-warning' : 
                   'text-error'
                 }`}>
                   {item.percentage}%
@@ -229,6 +270,8 @@ export default function MobileHome() {
                 <p className="text-xs text-muted-foreground mt-1 truncate">{item.category}</p>
               </CardContent>
             </Card>
+              );
+            })()
           ))}
         </div>
       </div>

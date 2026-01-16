@@ -216,6 +216,15 @@ class ApiClient {
   }
 
   private extractData<T>(responseData: ApiResponse<T> | T): T {
+    if (
+      responseData &&
+      typeof responseData === 'object' &&
+      'pagination' in responseData &&
+      'data' in responseData
+    ) {
+      return responseData as T;
+    }
+
     if (responseData && typeof responseData === 'object' && 'data' in responseData) {
       return (responseData as ApiResponse<T>).data as T;
     }

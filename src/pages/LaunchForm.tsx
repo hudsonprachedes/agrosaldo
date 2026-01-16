@@ -52,7 +52,7 @@ import { compressImage } from '@/lib/image-compression';
 import { getAvailableMatrizes } from '@/mocks/mock-bovinos';
 import CameraCapture from '@/components/CameraCapture';
 interface LaunchFormProps {
-  type: 'nascimento' | 'mortalidade' | 'venda' | 'vacina' | 'outras';
+  type: 'nascimento' | 'mortalidade' | 'venda' | 'compra' | 'vacina' | 'outras';
 }
 
 const deathCauses = [
@@ -100,6 +100,8 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const [sex, setSex] = useState<'male' | 'female'>('male');
   const [quantity, setQuantity] = useState(1);
 
+  const [sexOther, setSexOther] = useState<'male' | 'female' | null>(null);
+
   // Death fields
   const [deathType, setDeathType] = useState<'natural' | 'consumo'>('natural');
   const [deathCause, setDeathCause] = useState('');
@@ -115,6 +117,14 @@ export default function LaunchForm({ type }: LaunchFormProps) {
     { id: '1', ageGroup: '24-36', quantity: 10, unitValue: 3500 }
   ]);
   const [gtaNumber, setGtaNumber] = useState('');
+
+  // Purchase fields
+  const [purchaseMode, setPurchaseMode] = useState<'lote' | 'individual'>('lote');
+  const [supplier, setSupplier] = useState('');
+  const [purchaseAgeGroup, setPurchaseAgeGroup] = useState('12-24');
+  const [purchaseSex, setPurchaseSex] = useState<'male' | 'female'>('male');
+  const [purchaseQuantity, setPurchaseQuantity] = useState(1);
+  const [purchaseTotalValue, setPurchaseTotalValue] = useState<number>(0);
 
   // Vaccine fields
   const [campaign, setCampaign] = useState('');
@@ -159,16 +169,62 @@ export default function LaunchForm({ type }: LaunchFormProps) {
     }
 
     try {
+      let compressedPhotoBlob: Blob | null = null;
+
+      if (photoDataUrl) {
+        const MAX_BYTES = 300 * 1024;
+        const attempts = [
+          { maxWidth: 1280, maxHeight: 720, quality: 0.6 },
+          { maxWidth: 1280, maxHeight: 720, quality: 0.5 },
+          { maxWidth: 1024, maxHeight: 576, quality: 0.5 },
+          { maxWidth: 960, maxHeight: 540, quality: 0.45 },
+        ];
+
+        let bestBlob: Blob | null = null;
+
+        for (const a of attempts) {
+          const compressedDataUrl = await compressImage(photoDataUrl, {
+            maxWidth: a.maxWidth,
+            maxHeight: a.maxHeight,
+            quality: a.quality,
+            mimeType: 'image/jpeg',
+          });
+
+          const response = await fetch(compressedDataUrl);
+          const blob = await response.blob();
+
+          if (!bestBlob || blob.size < bestBlob.size) {
+            bestBlob = blob;
+          }
+
+          if (blob.size <= MAX_BYTES) {
+            bestBlob = blob;
+            break;
+          }
+        }
+
+        if (!bestBlob || bestBlob.size > MAX_BYTES) {
+          toast.error('Foto muito grande para auditoria', {
+            description: 'Não foi possível reduzir para 300 KB mantendo legibilidade. Tente uma foto mais próxima/iluminada.',
+          });
+          return;
+        }
+
+        compressedPhotoBlob = bestBlob;
+      }
+
       // Preparar dados do movimento
       const movementType = type === 'nascimento' ? 'birth' 
         : type === 'mortalidade' ? 'death'
         : type === 'venda' ? 'sale'
+        : type === 'compra' ? 'purchase'
         : type === 'vacina' ? 'vaccine'
         : 'adjustment';
 
       const description = type === 'nascimento' ? `Nascimento - ${sex === 'male' ? 'Machos' : 'Fêmeas'}`
         : type === 'mortalidade' ? `${deathType === 'natural' ? 'Morte Natural' : 'Consumo'} - ${deathCause || 'Não especificado'}`
         : type === 'venda' ? `Venda para ${destination} - ${buyer}`
+        : type === 'compra' ? `Compra - ${purchaseMode === 'lote' ? 'Lote' : 'Individual'}${supplier ? ` - ${supplier}` : ''}`
         : type === 'vacina' ? `Vacinação - ${campaign}`
         : notes || 'Ajuste manual';
 
@@ -177,14 +233,18 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         propertyId: selectedProperty.id,
         type: movementType,
         date,
-        quantity,
-        sex: type === 'nascimento' ? sex : undefined,
-        ageGroupId: type === 'nascimento' ? '0-4' : ageGroup,
+        quantity: type === 'compra' ? purchaseQuantity : quantity,
+        sex: type === 'nascimento' ? sex : type === 'compra' ? purchaseSex : sexOther ?? undefined,
+        ageGroupId: type === 'nascimento' ? '0-4' : type === 'compra' ? purchaseAgeGroup : ageGroup,
         description,
-        destination: type === 'venda' ? destination : undefined,
-        value: type === 'venda' ? saleItems.reduce((sum, item) => sum + (item.quantity * item.unitValue), 0) : undefined,
+        destination: type === 'venda' ? destination : type === 'compra' ? supplier || undefined : undefined,
+        value: type === 'venda'
+          ? saleItems.reduce((sum, item) => sum + (item.quantity * item.unitValue), 0)
+          : type === 'compra'
+          ? purchaseTotalValue
+          : undefined,
         gtaNumber: type === 'venda' && gtaNumber ? gtaNumber : undefined,
-        photoUrl: photoDataUrl || undefined,
+        photoUrl: undefined,
         cause: deathCause || undefined,
         birthDate: type === 'nascimento' ? date : undefined,
         createdAt: new Date().toISOString(),
@@ -192,11 +252,8 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       const movementId = movement.id;
 
       // Salvar foto se existir
-      if (photoDataUrl) {
-        const response = await fetch(photoDataUrl);
-        const blob = await response.blob();
-        
-        await savePhoto(movementId, blob, blob.size);
+      if (compressedPhotoBlob) {
+        await savePhoto(movementId, selectedProperty.id, compressedPhotoBlob, compressedPhotoBlob.size);
       }
 
       // Toast de sucesso
@@ -217,6 +274,11 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         toast.success(`Venda de ${totalQty} animais registrada`, {
           description: `Valor: R$ ${totalValue.toLocaleString('pt-BR')}`,
           icon: '🚚',
+        });
+      } else if (type === 'compra') {
+        toast.success(`Compra de ${purchaseQuantity} animal(is) registrada`, {
+          description: purchaseTotalValue > 0 ? `Valor: R$ ${purchaseTotalValue.toLocaleString('pt-BR')}` : undefined,
+          icon: '🛒',
         });
       } else if (type === 'vacina') {
         const totalAnimals = selectedAgeGroups.length * 200; // Mock
@@ -271,6 +333,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       case 'nascimento': return 'Nascimento';
       case 'mortalidade': return 'Mortalidade';
       case 'venda': return 'Venda';
+      case 'compra': return 'Compra';
       case 'vacina': return 'Vacinação';
       case 'outras': return 'Outras Espécies';
       default: return 'Lançamento';
@@ -282,6 +345,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       case 'nascimento': return '🐮';
       case 'mortalidade': return '💀';
       case 'venda': return '🚚';
+      case 'compra': return '🛒';
       case 'vacina': return '💉';
       case 'outras': return '🐴';
       default: return '📝';
@@ -293,6 +357,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       case 'nascimento': return 'bg-success';
       case 'mortalidade': return 'bg-death';
       case 'venda': return 'bg-warning';
+      case 'compra': return 'bg-primary';
       case 'vacina': return 'bg-chart-3';
       default: return 'bg-muted';
     }
@@ -459,9 +524,214 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           </>
         )}
 
+        {/* COMPRA */}
+        {type === 'compra' && (
+          <>
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-4 block">Tipo de Compra</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseMode('lote')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      purchaseMode === 'lote'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">📦</span>
+                    <span className="font-semibold">Lote</span>
+                    <span className="text-xs text-muted-foreground">Vários animais</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseMode('individual')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      purchaseMode === 'individual'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">🐮</span>
+                    <span className="font-semibold">Individual</span>
+                    <span className="text-xs text-muted-foreground">Um animal</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-3 block">Fornecedor (opcional)</Label>
+                <Input
+                  placeholder="Nome do vendedor / leilão / fazenda"
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  className="h-14 text-base"
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-4 block">Sexo do Animal</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseSex('male')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      purchaseSex === 'male'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♂️</span>
+                    <span className="font-semibold">Macho</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseSex('female')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      purchaseSex === 'female'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♀️</span>
+                    <span className="font-semibold">Fêmea</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-3 block">Faixa Etária</Label>
+                <Select value={purchaseAgeGroup} onValueChange={setPurchaseAgeGroup}>
+                  <SelectTrigger className="h-14">
+                    <SelectValue placeholder="Selecione a faixa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ageGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id}>
+                        {group.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="flex items-center gap-2 text-base font-semibold mb-4">
+                  <Hash className="w-5 h-5 text-primary" />
+                  Quantidade
+                </Label>
+                <div className="flex items-center justify-center gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-14 w-14 rounded-xl text-xl"
+                    onClick={() => setPurchaseQuantity(Math.max(1, purchaseQuantity - 1))}
+                  >
+                    <Minus className="w-6 h-6" />
+                  </Button>
+                  <div className="w-24 text-center">
+                    <span className="text-5xl font-bold text-primary">{purchaseQuantity}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-14 w-14 rounded-xl text-xl"
+                    onClick={() => setPurchaseQuantity(purchaseMode === 'individual' ? 1 : purchaseQuantity + 1)}
+                  >
+                    <Plus className="w-6 h-6" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-3 block">Valor Total (R$)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={purchaseTotalValue}
+                  onChange={(e) => setPurchaseTotalValue(Number(e.target.value) || 0)}
+                  className="h-14 text-base"
+                />
+                <div className="mt-3 p-3 bg-primary/10 rounded-xl">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Custo por cabeça:</span>
+                    <span className="text-xl font-bold text-primary">
+                      R$ {(purchaseQuantity > 0 ? purchaseTotalValue / purchaseQuantity : 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
         {/* MORTALIDADE */}
         {type === 'mortalidade' && (
           <>
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-4 block">Sexo do Animal (opcional)</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSexOther('male')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === 'male'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♂️</span>
+                    <span className="font-semibold">Macho</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSexOther('female')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === 'female'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♀️</span>
+                    <span className="font-semibold">Fêmea</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSexOther(null)}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === null
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">➖</span>
+                    <span className="font-semibold">Não informar</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="border-0 shadow-card">
               <CardContent className="p-4">
                 <Label className="text-base font-semibold mb-4 block">Tipo de Baixa</Label>
@@ -649,6 +919,53 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           <>
             <Card className="border-0 shadow-card">
               <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-4 block">Sexo do Animal (opcional)</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSexOther('male')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === 'male'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♂️</span>
+                    <span className="font-semibold">Macho</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSexOther('female')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === 'female'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♀️</span>
+                    <span className="font-semibold">Fêmea</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSexOther(null)}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === null
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">➖</span>
+                    <span className="font-semibold">Não informar</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
                 <Label className="text-base font-semibold mb-4 block">Destino da Venda</Label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -796,6 +1113,53 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           <>
             <Card className="border-0 shadow-card">
               <CardContent className="p-4">
+                <Label className="text-base font-semibold mb-4 block">Sexo do Animal (opcional)</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSexOther('male')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === 'male'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♂️</span>
+                    <span className="font-semibold">Macho</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSexOther('female')}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === 'female'
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">♀️</span>
+                    <span className="font-semibold">Fêmea</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSexOther(null)}
+                    className={cn(
+                      'p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2',
+                      sexOther === null
+                        ? 'border-primary bg-primary/10 scale-[1.02]'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <span className="text-3xl">➖</span>
+                    <span className="font-semibold">Não informar</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-card">
+              <CardContent className="p-4">
                 <Label className="text-base font-semibold mb-4 block">Campanha de Vacinação</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {vaccineCampaigns.map((c) => (
@@ -937,6 +1301,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
             type === 'nascimento' && 'bg-success hover:bg-success/90',
             type === 'mortalidade' && 'bg-death hover:bg-death/90',
             type === 'venda' && 'bg-warning hover:bg-warning/90 text-warning-foreground',
+            type === 'compra' && 'bg-primary hover:bg-primary/90 text-primary-foreground',
             type === 'vacina' && 'bg-chart-3 hover:bg-chart-3/90',
           )}
         >

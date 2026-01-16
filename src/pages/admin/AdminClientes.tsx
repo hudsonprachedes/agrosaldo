@@ -61,6 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { validateCpfCnpj } from '@/lib/document-validation';
 
 interface ActionLog {
   timestamp: Date;
@@ -235,8 +236,7 @@ export default function AdminClientes() {
   const handleSaveEdit = () => {
     if (!selectedTenant) return;
 
-    const cpfCnpjDigits = editCpfCnpj.replace(/\D/g, '');
-    if (!(cpfCnpjDigits.length === 11 || cpfCnpjDigits.length === 14)) {
+    if (!validateCpfCnpj(editCpfCnpj)) {
       toast.error('CPF/CNPJ inválido');
       return;
     }

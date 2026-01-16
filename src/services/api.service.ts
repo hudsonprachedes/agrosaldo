@@ -159,17 +159,24 @@ export const propertyService = {
 
 export const movementService = {
   async create(data: CreateMovementRequest): Promise<Movement> {
+    const { propertyId, ...payload } = data;
     const endpoint = data.type === 'birth' 
       ? API_ROUTES.MOVEMENTS.CREATE_BIRTH
       : data.type === 'death'
       ? API_ROUTES.MOVEMENTS.CREATE_DEATH
       : data.type === 'sale'
       ? API_ROUTES.MOVEMENTS.CREATE_SALE
+      : data.type === 'purchase'
+      ? API_ROUTES.MOVEMENTS.CREATE_PURCHASE
       : data.type === 'vaccine'
       ? API_ROUTES.MOVEMENTS.CREATE_VACCINE
       : '/lancamentos';
     
-    return apiClient.post<Movement>(endpoint, data);
+    return apiClient.post<Movement>(endpoint, payload, {
+      headers: {
+        'X-Property-ID': propertyId,
+      },
+    });
   },
 
   async getAll(propertyId: string, filters?: Record<string, unknown>): Promise<Movement[]> {

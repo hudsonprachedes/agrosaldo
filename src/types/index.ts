@@ -343,6 +343,90 @@ export interface AnalyticsDTO {
   revenue: number;
 }
 
+export interface DashboardAnalyticsDTO {
+  propertyId: string;
+  kpis: {
+    totalCattle: number;
+    birthsThisMonth: number;
+    deathsThisMonth: number;
+    purchasesThisMonth?: number;
+    purchaseCostThisMonth?: number;
+  };
+  compliance: {
+    overall: number;
+    items: Array<{
+      category: string;
+      percentage: number;
+    }>;
+  };
+  charts: {
+    months: string[];
+    births: number[];
+    deaths: number[];
+    revenue: number[];
+    purchases?: number[];
+    purchaseCost?: number[];
+    evolution: number[];
+    ageDistribution: Record<string, number>;
+    bySex: Record<string, number>;
+  };
+}
+
+export interface LivestockSummaryDTO {
+  total: number;
+  byAgeGroup: Record<string, number>;
+  bySex: Record<string, number>;
+}
+
+export interface LivestockMirrorDTO {
+  propertyId: string;
+  months: number;
+  balances: Array<{
+    ageGroupId: string;
+    male: {
+      previousBalance: number;
+      entries: number;
+      exits: number;
+      currentBalance: number;
+    };
+    female: {
+      previousBalance: number;
+      entries: number;
+      exits: number;
+      currentBalance: number;
+    };
+  }>;
+  totals: {
+    total: number;
+    male: number;
+    female: number;
+  };
+}
+
+export interface OtherSpeciesCatalogItemDTO {
+  id: string;
+  name: string;
+  unit: 'cabeças' | 'unidades';
+  icon: string;
+}
+
+export interface OtherSpeciesBalanceDTO {
+  speciesId: string;
+  speciesName: string;
+  previousBalance: number;
+  entries: number;
+  exits: number;
+  currentBalance: number;
+  unit: 'cabeças' | 'unidades';
+}
+
+export interface OtherSpeciesMirrorDTO {
+  propertyId: string;
+  months: number;
+  balances: OtherSpeciesBalanceDTO[];
+  total: number;
+}
+
 // ============================================================================
 // ERROS E RESPOSTAS GENÉRICAS
 // ============================================================================

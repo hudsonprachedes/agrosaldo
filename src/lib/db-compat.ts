@@ -4,16 +4,13 @@
  */
 
 import { getDB, getSyncQueueItems, updateSyncQueueItem } from './indexeddb';
-
-interface ApiClient {
-  post: (path: string, data: unknown) => Promise<unknown>;
-}
+import { apiClient } from './api-client';
 
 /**
  * Sincroniza movimentos pendentes com o servidor
  * Implementa retry com backoff exponencial
  */
-export async function syncMovements(apiClient?: ApiClient): Promise<{
+export async function syncMovements(): Promise<{
   success: number;
   failed: number;
   errors: string[];
@@ -32,11 +29,44 @@ export async function syncMovements(apiClient?: ApiClient): Promise<{
       try {
         await updateSyncQueueItem(item.id, 'syncing');
 
-        // TODO: Integrar com API real quando backend estiver pronto
-        // const response = await apiClient.post('/api/lancamentos', item.payload);
-        
-        // Simular sucesso por enquanto
-        await new Promise(resolve => setTimeout(resolve, 100));
+        const payload = item.payload as Record<string, unknown>;
+        const movementType = String(payload.type ?? 'adjustment');
+        const endpoint =
+          movementType === 'birth'
+            ? '/lancamentos/nascimento'
+            : movementType === 'death'
+              ? '/lancamentos/mortalidade'
+              : movementType === 'sale'
+                ? '/lancamentos/venda'
+                : movementType === 'vaccine'
+                  ? '/lancamentos/vacina'
+                  : '/lancamentos';
+
+        const requestBody = {
+          type: payload.type,
+          date: payload.date,
+          quantity: payload.quantity,
+          sex: payload.sex,
+          ageGroup: payload.ageGroup ?? payload.ageGroupId,
+          description: payload.description,
+          destination: payload.destination,
+          value: payload.value,
+          gtaNumber: payload.gtaNumber,
+          photoUrl: undefined,
+          cause: payload.cause,
+        };
+
+        const resp = await apiClient.post(endpoint, requestBody, {
+          headers: { 'X-Property-ID': item.propertyId },
+        });
+
+        const db = await getDB();
+        const localMovement = await db.get('movements', item.resourceId);
+        if (localMovement && resp && typeof resp === 'object' && 'id' in (resp as any)) {
+          (localMovement as any).serverId = (resp as any).id;
+          (localMovement as any).syncStatus = 'synced';
+          await db.put('movements', localMovement);
+        }
 
         await updateSyncQueueItem(item.id, 'synced');
         result.success++;
@@ -60,7 +90,7 @@ export async function syncMovements(apiClient?: ApiClient): Promise<{
 /**
  * Sincroniza fotos pendentes com o servidor
  */
-export async function syncPhotos(apiClient?: ApiClient): Promise<{
+export async function syncPhotos(): Promise<{
   success: number;
   failed: number;
   errors: string[];
@@ -79,11 +109,21 @@ export async function syncPhotos(apiClient?: ApiClient): Promise<{
       try {
         await updateSyncQueueItem(item.id, 'syncing');
 
-        // TODO: Upload real quando backend estiver pronto
-        // const response = await apiClient.post('/api/photos', item.payload);
+        const db = await getDB();
+        const photo = await db.get('photos', item.resourceId);
+        if (!photo) {
+          throw new Error('Foto não encontrada no IndexedDB');
+        }
 
-        // Simular sucesso
-        await new Promise(resolve => setTimeout(resolve, 200));
+        const localMovement = await db.get('movements', (photo as any).movementId);
+        const serverId = localMovement ? (localMovement as any).serverId : null;
+        if (!serverId) {
+          await updateSyncQueueItem(item.id, 'pending');
+          continue;
+        }
+
+        const file = new File([photo.data as Blob], 'foto.jpg', { type: (photo as any).mimeType || 'image/jpeg' });
+        await apiClient.uploadFile(`/lancamentos/${serverId}/foto`, file);
 
         await updateSyncQueueItem(item.id, 'synced');
         result.success++;
@@ -107,15 +147,12 @@ export async function syncPhotos(apiClient?: ApiClient): Promise<{
 /**
  * Sincroniza todos os itens pendentes
  */
-export async function syncAll(apiClient?: ApiClient): Promise<{
+export async function syncAll(): Promise<{
   movements: { success: number; failed: number };
   photos: { success: number; failed: number };
   totalErrors: string[];
 }> {
-  const [movementResults, photoResults] = await Promise.all([
-    syncMovements(apiClient),
-    syncPhotos(apiClient),
-  ]);
+  const [movementResults, photoResults] = await Promise.all([syncMovements(), syncPhotos()]);
 
   return {
     movements: {
@@ -133,10 +170,10 @@ export async function syncAll(apiClient?: ApiClient): Promise<{
 /**
  * Agenda sincronização automática quando internet retorna
  */
-export function setupAutoSync(apiClient?: ApiClient): () => void {
+export function setupAutoSync(): () => void {
   const handleOnline = async () => {
     console.log('🌐 Conexão restaurada, iniciando sincronização...');
-    const results = await syncAll(apiClient);
+    const results = await syncAll();
     
     const totalSuccess = results.movements.success + results.photos.success;
     const totalFailed = results.movements.failed + results.photos.failed;

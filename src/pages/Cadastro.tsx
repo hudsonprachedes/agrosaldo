@@ -12,57 +12,17 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, UserPlus, CheckCircle, ArrowLeft, Sparkles, ShieldCheck, Globe2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetchViaCep } from '@/lib/cep';
+import { validateCPF, validateCNPJ, validateCpfCnpj } from '@/lib/document-validation';
 import heroBackground from '@/assets/hero-background.jpg';
 
 // Validação de CPF
 const isValidCPF = (cpf: string) => {
-  const cleanCPF = cpf.replace(/\D/g, '');
-  if (cleanCPF.length !== 11 || /^(\d)\1+$/.test(cleanCPF)) return false;
-  
-  let sum = 0;
-  for (let i = 0; i < 9; i++) sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
-  let digit = 11 - (sum % 11);
-  if (digit >= 10) digit = 0;
-  if (digit !== parseInt(cleanCPF.charAt(9))) return false;
-  
-  sum = 0;
-  for (let i = 0; i < 10; i++) sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
-  digit = 11 - (sum % 11);
-  if (digit >= 10) digit = 0;
-  return digit === parseInt(cleanCPF.charAt(10));
+  return validateCPF(cpf);
 };
 
 // Validação de CNPJ
 const isValidCNPJ = (cnpj: string) => {
-  const cleanCNPJ = cnpj.replace(/\D/g, '');
-  if (cleanCNPJ.length !== 14 || /^(\d)\1+$/.test(cleanCNPJ)) return false;
-  
-  let size = cleanCNPJ.length - 2;
-  let numbers = cleanCNPJ.substring(0, size);
-  const digits = cleanCNPJ.substring(size);
-  let sum = 0;
-  let pos = size - 7;
-  
-  for (let i = size; i >= 1; i--) {
-    sum += parseInt(numbers.charAt(size - i)) * pos--;
-    if (pos < 2) pos = 9;
-  }
-  
-  let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-  if (result !== parseInt(digits.charAt(0))) return false;
-  
-  size = size + 1;
-  numbers = cleanCNPJ.substring(0, size);
-  sum = 0;
-  pos = size - 7;
-  
-  for (let i = size; i >= 1; i--) {
-    sum += parseInt(numbers.charAt(size - i)) * pos--;
-    if (pos < 2) pos = 9;
-  }
-  
-  result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-  return result === parseInt(digits.charAt(1));
+  return validateCNPJ(cnpj);
 };
 
 const cadastroSchema = z.object({
@@ -70,8 +30,7 @@ const cadastroSchema = z.object({
   cpfCnpj: z.string()
     .min(11, 'CPF ou CNPJ inválido')
     .refine((val) => {
-      const clean = val.replace(/\D/g, '');
-      return clean.length === 11 ? isValidCPF(val) : clean.length === 14 ? isValidCNPJ(val) : false;
+      return validateCpfCnpj(val);
     }, 'CPF ou CNPJ inválido'),
   celular: z.string()
     .min(10, 'Celular inválido')
@@ -82,6 +41,8 @@ const cadastroSchema = z.object({
   cep: z.string()
     .min(8, 'CEP inválido')
     .regex(/^\d{5}-\d{3}$/, 'Formato: 00000-000'),
+  endereco: z.string().optional(),
+  bairro: z.string().optional(),
   municipio: z.string().min(2, 'Município é obrigatório'),
   uf: z.string().length(2, 'UF deve ter 2 caracteres'),
   senha: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
@@ -126,6 +87,8 @@ export default function Cadastro() {
         try {
           const data = await fetchViaCep(cepValue);
           if (data.found) {
+            setValue('endereco', data.address);
+            setValue('bairro', data.neighborhood);
             setValue('municipio', data.city);
             setValue('uf', data.uf);
           }
@@ -485,6 +448,29 @@ export default function Cadastro() {
                         </SelectContent>
                       </Select>
                       {errors.uf && <p className="text-sm text-red-500">{errors.uf.message}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="endereco">Endereço</Label>
+                      <Input
+                        id="endereco"
+                        {...register('endereco')}
+                        placeholder="Rua, número, complemento"
+                        className={cn('h-11', errors.endereco && 'border-red-500')}
+                      />
+                      {errors.endereco && <p className="text-sm text-red-500">{errors.endereco.message}</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bairro">Bairro</Label>
+                      <Input
+                        id="bairro"
+                        {...register('bairro')}
+                        placeholder="Centro"
+                        className={cn('h-11', errors.bairro && 'border-red-500')}
+                      />
+                      {errors.bairro && <p className="text-sm text-red-500">{errors.bairro.message}</p>}
                     </div>
                   </div>
 

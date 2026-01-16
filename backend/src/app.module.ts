@@ -12,6 +12,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { UsersModule } from './modules/users/users.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { PreferencesModule } from './modules/preferences/preferences.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -26,6 +29,9 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     PropertiesModule,
     LivestockModule,
     MovementsModule,
+    FinanceModule,
+    PreferencesModule,
+    SubscriptionsModule,
     AdminModule,
     AnalyticsModule,
     HealthModule,

@@ -29,6 +29,17 @@ export class AnalyticsController {
     return this.analyticsService.getDashboard(propertyId);
   }
 
+  @Get('resumo')
+  getSummary(
+    @Headers('x-property-id') propertyId?: string,
+    @Query('period') period?: 'month' | 'quarter' | 'year',
+  ) {
+    if (!propertyId) {
+      throw new ForbiddenException('Property header required');
+    }
+    return this.analyticsService.getSummary(propertyId, period ?? 'year');
+  }
+
   @Get('periodo/:propertyId')
   getPeriod(
     @Param('propertyId') propertyId: string,

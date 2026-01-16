@@ -4,7 +4,7 @@ test.describe('Lançamento de Nascimento', () => {
   test.beforeEach(async ({ page }) => {
     // Faz login e seleciona propriedade
     await page.goto('http://localhost:8080/login');
-    await page.fill('input[type="text"]', '123.456.789-00');
+    await page.fill('input[type="text"]', '529.982.247-25');
     await page.fill('input[type="password"]', '123456');
     await page.click('button[type="submit"]');
     await page.waitForURL(/.*property-selection/);

@@ -1,465 +1,430 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import React, { useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { addMonths } from 'date-fns';
+
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  saveEpidemiologySurvey, 
-  getLastEpidemiologySurvey,
-  getOnboardingStatus 
-} from '@/lib/indexeddb';
-import { AlertCircle, CheckCircle } from 'lucide-react';
-import type { StoredEpidemiologySurvey } from '@/lib/indexeddb';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { saveEpidemiologySurvey, getLatestEpidemiologySurvey } from '@/lib/epidemiology-survey-storage';
+import { EpidemiologyAnswer } from '@/types';
+import { toast } from 'sonner';
+import { ArrowRight, ClipboardList, History } from 'lucide-react';
 
-// ============================================================================
-// DEFINIÇÃO DO QUESTIONÁRIO
-// ============================================================================
+const schema = z.object({
+  email: z.string().email('Informe um e-mail válido').optional().or(z.literal('')),
+  telefone: z.string().optional().or(z.literal('')),
 
-interface EpidemiologyQuestion {
-  id: string;
-  section: string;
-  label: string;
-  type: 'text' | 'number' | 'date' | 'select' | 'checkbox' | 'textarea';
-  required: boolean;
-  options?: { label: string; value: string }[];
-  hint?: string;
-  placeholder?: string;
-}
+  areaPastagemCultivadaHa: z.coerce.number().min(0, 'Informe um valor válido').optional(),
+  areaPastagemNaturalHa: z.coerce.number().min(0, 'Informe um valor válido').optional(),
+  quantidadeVacasLeiteiras: z.coerce.number().min(0, 'Informe um valor válido').optional(),
 
-const EPIDEMIOLOGY_QUESTIONS: EpidemiologyQuestion[] = [
-  // SEÇÃO 1: INFORMAÇÕES GERAIS
-  {
-    id: 'property_health_status',
-    section: 'Informações Gerais',
-    label: 'Qual é o status sanitário atual da propriedade?',
-    type: 'select',
-    required: true,
-    options: [
-      { label: 'Sem problemas aparentes', value: 'healthy' },
-      { label: 'Casos suspeitos em investigação', value: 'suspicious' },
-      { label: 'Casos confirmados', value: 'confirmed' },
-      { label: 'Recovido de doença recente', value: 'recovering' },
-    ],
-  },
-  {
-    id: 'last_disease_date',
-    section: 'Informações Gerais',
-    label: 'Data do último caso de doença (se houver)',
-    type: 'date',
-    required: false,
-  },
-  {
-    id: 'quarantine_status',
-    section: 'Informações Gerais',
-    label: 'Há isolamento ou quarentena de animais?',
-    type: 'checkbox',
-    required: false,
-  },
+  finalidadeCriacaoBovinos: z.enum(['leite', 'corte', 'mista', 'nao_se_aplica']),
+  ordenha: z.enum(['manual', 'mecanica', 'nao_se_aplica']),
+  ordenhaVezesAoDia: z.enum(['uma', 'duas', 'tres', 'nao_se_aplica']),
 
-  // SEÇÃO 2: VACINAÇÕES
-  {
-    id: 'vaccinations_up_to_date',
-    section: 'Vacinações',
-    label: 'Todas as vacinações obrigatórias estão em dia?',
-    type: 'checkbox',
-    required: true,
-  },
-  {
-    id: 'recent_vaccinations',
-    section: 'Vacinações',
-    label: 'Descreva as vacinações realizadas nos últimos 6 meses',
-    type: 'textarea',
-    required: false,
-    placeholder: 'ex: Febre aftosa (03/2025), Clostridioses (01/2025), ...',
-  },
-  {
-    id: 'external_animals_introduced',
-    section: 'Vacinações',
-    label: 'Animais externos foram introduzidos na propriedade?',
-    type: 'checkbox',
-    required: false,
-  },
+  contatoComJavalis: z.enum(['sim', 'nao']),
 
-  // SEÇÃO 3: MANEJO E HIGIENE
-  {
-    id: 'water_source_quality',
-    section: 'Manejo e Higiene',
-    label: 'Qualidade da fonte de água',
-    type: 'select',
-    required: true,
-    options: [
-      { label: 'Excelente - testada regularmente', value: 'excellent' },
-      { label: 'Boa - visualmente limpa', value: 'good' },
-      { label: 'Aceitável - com alguns problemas', value: 'acceptable' },
-      { label: 'Precisa melhorias', value: 'poor' },
-    ],
-  },
-  {
-    id: 'facilities_sanitation',
-    section: 'Manejo e Higiene',
-    label: 'Como é a limpeza e desinfecção das instalações?',
-    type: 'textarea',
-    required: false,
-    placeholder: 'Frequência, produtos utilizados, áreas prioritárias...',
-  },
-  {
-    id: 'pest_control_program',
-    section: 'Manejo e Higiene',
-    label: 'Há programa de controle de pragas (insetos, roedores)?',
-    type: 'checkbox',
-    required: false,
-  },
+  avesAcessoAgua: z.enum(['sim', 'nao']),
+  avesContatoSilvestres: z.enum(['sim', 'nao']),
 
-  // SEÇÃO 4: MORTALIDADE E MORBIDADE
-  {
-    id: 'unusual_mortality',
-    section: 'Mortalidade e Morbidade',
-    label: 'Há aumento inusitado na mortalidade?',
-    type: 'checkbox',
-    required: true,
-  },
-  {
-    id: 'mortality_rate_percent',
-    section: 'Mortalidade e Morbidade',
-    label: 'Taxa de mortalidade estimada (%)',
-    type: 'number',
-    required: false,
-    placeholder: '0',
-  },
-  {
-    id: 'illness_symptoms',
-    section: 'Mortalidade e Morbidade',
-    label: 'Quais sintomas foram observados nos animais doentes?',
-    type: 'textarea',
-    required: false,
-    placeholder: 'ex: diarréia, tosse, febre, apatia, lesões, ...',
-  },
-
-  // SEÇÃO 5: RASTREABILIDADE
-  {
-    id: 'traceability_system',
-    section: 'Rastreabilidade',
-    label: 'Há sistema de rastreabilidade dos animais?',
-    type: 'select',
-    required: true,
-    options: [
-      { label: 'Sim, sistema eletrônico completo', value: 'electronic' },
-      { label: 'Parcial (alguns animais marcados)', value: 'partial' },
-      { label: 'Apenas registros em papel', value: 'paper' },
-      { label: 'Não há rastreamento', value: 'none' },
-    ],
-  },
-  {
-    id: 'gta_compliance',
-    section: 'Rastreabilidade',
-    label: 'Todos os deslocamentos são documentados com GTA?',
-    type: 'checkbox',
-    required: true,
-  },
-
-  // SEÇÃO 6: OBSERVAÇÕES GERAIS
-  {
-    id: 'additional_comments',
-    section: 'Observações Gerais',
-    label: 'Comentários adicionais ou preocupações',
-    type: 'textarea',
-    required: false,
-    placeholder: 'Qualquer informação relevante sobre saúde animal ou biosegurança...',
-  },
-];
-
-// ============================================================================
-// SCHEMA ZOD
-// ============================================================================
-
-const questionSchemaFields: Record<string, z.ZodTypeAny> = {};
-EPIDEMIOLOGY_QUESTIONS.forEach(q => {
-  if (q.type === 'checkbox' || q.type === 'select') {
-    questionSchemaFields[q.id] = z.unknown().optional();
-  } else if (q.type === 'number') {
-    questionSchemaFields[q.id] = z.number().optional();
-  } else {
-    questionSchemaFields[q.id] = z.string().optional();
-  }
-
-  if (q.required) {
-    if (q.type === 'checkbox' || q.type === 'select') {
-      questionSchemaFields[q.id] = z.unknown();
-    } else if (q.type === 'number') {
-      questionSchemaFields[q.id] = z.number();
-    } else {
-      questionSchemaFields[q.id] = z.string().min(1, 'Campo obrigatório');
-    }
-  }
+  mordeduraMorcegoUltimos6Meses: z.enum(['sim', 'nao']),
 });
 
-const surveySchema = z.object(questionSchemaFields);
+type FormValues = z.infer<typeof schema>;
 
-// ============================================================================
-// PÁGINA QUESTIONÁRIO
-// ============================================================================
+function toAnswerList(values: FormValues): EpidemiologyAnswer[] {
+  return [
+    { fieldId: 'a_email', value: values.email ?? '' },
+    { fieldId: 'a_telefone', value: values.telefone ?? '' },
 
-const QuestionarioEpidemiologico: React.FC = () => {
+    { fieldId: 'b_area_pastagem_cultivada_ha', value: values.areaPastagemCultivadaHa ?? '' },
+    { fieldId: 'b_area_pastagem_natural_ha', value: values.areaPastagemNaturalHa ?? '' },
+    { fieldId: 'b_quantidade_vacas_leiteiras', value: values.quantidadeVacasLeiteiras ?? '' },
+    { fieldId: 'b_finalidade_criacao_bovinos', value: values.finalidadeCriacaoBovinos },
+    { fieldId: 'b_ordenha', value: values.ordenha },
+    { fieldId: 'b_ordenha_vezes_ao_dia', value: values.ordenhaVezesAoDia },
+
+    { fieldId: 'c_contato_com_javalis', value: values.contatoComJavalis },
+
+    { fieldId: 'd_aves_acesso_agua', value: values.avesAcessoAgua },
+    { fieldId: 'd_aves_contato_silvestres', value: values.avesContatoSilvestres },
+
+    { fieldId: 'e_mordedura_morcego_ultimos_6_meses', value: values.mordeduraMorcegoUltimos6Meses },
+  ];
+}
+
+function formatPtBrDateTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export default function QuestionarioEpidemiologico() {
   const { selectedProperty } = useAuth();
   const navigate = useNavigate();
-  const [lastSubmission, setLastSubmission] = useState<StoredEpidemiologySurvey | null>(null);
-  const [daysUntilDue, setDaysUntilDue] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
-  const form = useForm<z.infer<typeof surveySchema>>({
-    resolver: zodResolver(surveySchema),
-    defaultValues: Object.fromEntries(
-      EPIDEMIOLOGY_QUESTIONS.map(q => [q.id, q.type === 'checkbox' ? false : ''])
-    ),
+  const latest = useMemo(() => {
+    if (!selectedProperty?.id) return null;
+    return getLatestEpidemiologySurvey(selectedProperty.id);
+  }, [selectedProperty?.id]);
+
+  const status = useMemo(() => {
+    if (!latest) {
+      return { label: 'Pendente', variant: 'destructive' as const, helper: 'Nenhuma resposta registrada ainda.' };
+    }
+
+    const now = new Date();
+    const due = new Date(latest.nextDueAt);
+    if (now > due) {
+      return {
+        label: 'Pendente',
+        variant: 'destructive' as const,
+        helper: `Última resposta: ${formatPtBrDateTime(latest.submittedAt)}. Venceu em ${formatPtBrDateTime(latest.nextDueAt)}.`,
+      };
+    }
+
+    return {
+      label: 'Em dia',
+      variant: 'secondary' as const,
+      helper: `Última resposta: ${formatPtBrDateTime(latest.submittedAt)}. Próxima até ${formatPtBrDateTime(latest.nextDueAt)}.`,
+    };
+  }, [latest]);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: '',
+      telefone: '',
+      areaPastagemCultivadaHa: undefined,
+      areaPastagemNaturalHa: undefined,
+      quantidadeVacasLeiteiras: undefined,
+      finalidadeCriacaoBovinos: 'nao_se_aplica',
+      ordenha: 'nao_se_aplica',
+      ordenhaVezesAoDia: 'nao_se_aplica',
+      contatoComJavalis: 'nao',
+      avesAcessoAgua: 'nao',
+      avesContatoSilvestres: 'nao',
+      mordeduraMorcegoUltimos6Meses: 'nao',
+    },
+    mode: 'onBlur',
   });
 
-  // Carregar última submissão
-  useEffect(() => {
-    if (!selectedProperty) return;
+  const finalidade = form.watch('finalidadeCriacaoBovinos');
 
-    const loadLastSubmission = async () => {
-      setIsLoading(true);
-      try {
-        const last = await getLastEpidemiologySurvey(selectedProperty.id);
-        if (last) {
-          setLastSubmission(last);
-
-          const nextDue = new Date(last.nextDueAt);
-          const today = new Date();
-          const daysLeft = Math.ceil((nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          setDaysUntilDue(daysLeft);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar última submissão:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadLastSubmission();
-  }, [selectedProperty]);
-
-  const onSubmit = async (data: z.infer<typeof surveySchema>) => {
-    if (!selectedProperty) return;
-
-    setSubmitting(true);
-    try {
-      const answers = Object.entries(data).map(([fieldId, value]) => ({
-        fieldId,
-        value,
-      }));
-
-      const nextDueDate = new Date();
-      nextDueDate.setMonth(nextDueDate.getMonth() + 6);
-
-      await saveEpidemiologySurvey({
-        propertyId: selectedProperty.id,
-        version: 1,
-        answers,
-        submittedAt: new Date().toISOString(),
-        nextDueAt: nextDueDate.toISOString(),
-      });
-
-      toast.success('✅ Questionário epidemiológico salvo com sucesso!');
-      toast.info('Próxima avaliação será em ' + nextDueDate.toLocaleDateString('pt-BR'));
-
-      // Redirecionar após 2s
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 2000);
-    } catch (error) {
-      console.error('Erro ao salvar questionário:', error);
-      toast.error('Erro ao salvar questionário');
-    } finally {
-      setSubmitting(false);
+  const onSubmit = (values: FormValues) => {
+    if (!selectedProperty?.id) {
+      toast.error('Selecione uma propriedade para responder o questionário');
+      return;
     }
+
+    if (finalidade !== 'leite') {
+      form.setValue('ordenha', 'nao_se_aplica');
+      form.setValue('ordenhaVezesAoDia', 'nao_se_aplica');
+    }
+
+    const normalizedValues = form.getValues();
+
+    if (normalizedValues.finalidadeCriacaoBovinos === 'leite') {
+      if (normalizedValues.ordenha === 'nao_se_aplica') {
+        toast.error('Informe como é feita a ordenha');
+        return;
+      }
+      if (normalizedValues.ordenhaVezesAoDia === 'nao_se_aplica') {
+        toast.error('Informe quantas vezes por dia realiza a ordenha');
+        return;
+      }
+    }
+
+    const answers = toAnswerList(normalizedValues);
+    const saved = saveEpidemiologySurvey(selectedProperty.id, answers);
+
+    toast.success('Questionário salvo com sucesso');
+    navigate(`/questionario-epidemiologico/historico/${saved.id}`);
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto" />
-          <p>Carregando questionário...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Agrupar perguntas por seção
-  const groupedQuestions = EPIDEMIOLOGY_QUESTIONS.reduce((acc, question) => {
-    if (!acc[question.section]) {
-      acc[question.section] = [];
-    }
-    acc[question.section].push(question);
-    return acc;
-  }, {} as Record<string, EpidemiologyQuestion[]>);
+  const nextDuePreview = useMemo(() => {
+    const now = new Date();
+    return addMonths(now, 6).toLocaleDateString('pt-BR');
+  }, []);
 
   return (
-    <div className="py-8 px-4 max-w-3xl mx-auto">
-        {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-green-700 mb-2">
-            📋 Questionário Epidemiológico
+    <div className="p-4 md:p-6 lg:p-8 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+            <ClipboardList className="w-7 h-7 text-primary" />
+            Questionário Epidemiológico
           </h1>
-          <p className="text-gray-600">
-            Avaliação semestral de saúde animal e biossegurança da propriedade
+          <p className="text-muted-foreground">
+            Atualização semestral (a cada 6 meses) para comunicação social em saúde animal
           </p>
         </div>
 
-        <div className="mb-6 flex justify-end">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/questionario-epidemiologico/historico')}
-          >
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={() => navigate('/questionario-epidemiologico/historico')}
+            className="w-full sm:w-auto">
+            <History className="w-4 h-4 mr-2" />
             Ver histórico
           </Button>
+          <Badge variant={status.variant} className={cn('w-fit', status.variant === 'secondary' && 'bg-success/15 text-success border border-success/20')}>
+            {status.label}
+          </Badge>
         </div>
+      </div>
 
-        {/* INFORMAÇÃO DE ÚLTIMA SUBMISSÃO */}
-        {lastSubmission && (
-          <Alert className="mb-6 border-blue-200 bg-blue-50">
-            <CheckCircle className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="ml-2 text-blue-900">
-              <strong>Última submissão:</strong> {new Date(lastSubmission.submittedAt).toLocaleDateString('pt-BR')}
-              {daysUntilDue !== null && (
-                <>
-                  {' | '}
-                  <strong>
-                    {daysUntilDue > 0
-                      ? `Próxima devida em ${daysUntilDue} dias`
-                      : 'Já vencida - atualize o questionário'}
-                  </strong>
-                </>
+      <Card>
+        <CardHeader>
+          <CardTitle>Status</CardTitle>
+          <CardDescription>{status.helper}</CardDescription>
+        </CardHeader>
+      </Card>
+
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>A) Atualização de dados para comunicação social em saúde animal</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                placeholder="seuemail@exemplo.com"
+                {...form.register('email')}
+              />
+              {form.formState.errors.email?.message && (
+                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
               )}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* ALERTA DE RESPONSABILIDADE */}
-        <Alert className="mb-6 border-amber-200 bg-amber-50">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="ml-2 text-amber-900">
-            Este questionário é importante para o acompanhamento sanitário da propriedade.
-            Responda com precisão e honestidade. Os dados serão armazenados para futuras
-            consultas.
-          </AlertDescription>
-        </Alert>
-
-        {/* FORMULÁRIO */}
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {Object.entries(groupedQuestions).map(([section, questions]) => (
-              <Card key={section} className="border-green-200">
-                <CardHeader className="bg-green-50">
-                  <CardTitle className="text-lg text-green-700">{section}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                  {questions.map(question => (
-                    <FormField
-                      key={question.id}
-                      control={form.control}
-                      name={question.id as keyof z.infer<typeof surveySchema>}
-                      render={({ field }) => (
-                        <FormItem>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <FormLabel className="text-base font-medium">
-                                {question.label}
-                                {question.required && <span className="text-red-600 ml-1">*</span>}
-                              </FormLabel>
-                              {question.hint && (
-                                <p className="text-sm text-gray-500 mt-1">{question.hint}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <FormControl>
-                            {question.type === 'checkbox' ? (
-                              <Checkbox
-                                checked={Boolean(field.value)}
-                                onCheckedChange={(next) => field.onChange(next === true)}
-                              />
-                            ) : question.type === 'select' ? (
-                              <select
-                                {...field}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                              >
-                                <option value="">Selecione...</option>
-                                {question.options?.map(opt => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : question.type === 'textarea' ? (
-                              <Textarea
-                                {...field}
-                                placeholder={question.placeholder}
-                                className="min-h-24"
-                              />
-                            ) : question.type === 'number' ? (
-                              <Input
-                                type="number"
-                                {...field}
-                                placeholder={question.placeholder || '0'}
-                                onChange={e =>
-                                  field.onChange(e.target.value ? Number(e.target.value) : '')
-                                }
-                              />
-                            ) : (
-                              <Input
-                                type={question.type}
-                                {...field}
-                                placeholder={question.placeholder}
-                              />
-                            )}
-                          </FormControl>
-
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
-
-            {/* BOTÕES */}
-            <div className="flex gap-3 pt-6">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="flex-1"
-                onClick={() => navigate(-1)}
-                disabled={submitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                size="lg"
-                className="flex-1 bg-green-600 hover:bg-green-700"
-                disabled={submitting}
-              >
-                {submitting ? 'Salvando...' : 'Salvar Questionário ✓'}
-              </Button>
             </div>
-          </form>
-        </Form>
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input placeholder="(00) 00000-0000" {...form.register('telefone')} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>B) Atualização de Exploração Pecuária de bovídeos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Área de pastagem cultivada (ha)</Label>
+                <Input type="number" min={0} step={0.01} placeholder="0" {...form.register('areaPastagemCultivadaHa')} />
+              </div>
+              <div className="space-y-2">
+                <Label>Área de pastagem natural (ha)</Label>
+                <Input type="number" min={0} step={0.01} placeholder="0" {...form.register('areaPastagemNaturalHa')} />
+              </div>
+              <div className="space-y-2">
+                <Label>Quantidade de vacas leiteiras (secas + lactação)</Label>
+                <Input type="number" min={0} step={1} placeholder="0" {...form.register('quantidadeVacasLeiteiras')} />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <Label>Finalidade da criação de bovinos</Label>
+              <RadioGroup
+                value={form.watch('finalidadeCriacaoBovinos')}
+                onValueChange={(v) => form.setValue('finalidadeCriacaoBovinos', v as FormValues['finalidadeCriacaoBovinos'])}
+                className="grid gap-3 md:grid-cols-4"
+              >
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="leite" />
+                  Leite
+                </label>
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="corte" />
+                  Corte
+                </label>
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="mista" />
+                  Mista
+                </label>
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="nao_se_aplica" />
+                  Não se aplica
+                </label>
+              </RadioGroup>
+            </div>
+
+            <div className={cn('space-y-6', finalidade !== 'leite' && 'opacity-60')}>
+              <div className="space-y-3">
+                <Label>4.1. Se a finalidade for LEITE, como é feita a ordenha?</Label>
+                <RadioGroup
+                  value={form.watch('ordenha')}
+                  onValueChange={(v) => form.setValue('ordenha', v as FormValues['ordenha'])}
+                  className="grid gap-3 md:grid-cols-3"
+                  disabled={finalidade !== 'leite'}
+                >
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="manual" />
+                    Ordenha manual
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="mecanica" />
+                    Ordenhadeira mecânica
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="nao_se_aplica" />
+                    Não se aplica
+                  </label>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-3">
+                <Label>4.2. Quantas vezes por dia realiza a ordenha?</Label>
+                <RadioGroup
+                  value={form.watch('ordenhaVezesAoDia')}
+                  onValueChange={(v) => form.setValue('ordenhaVezesAoDia', v as FormValues['ordenhaVezesAoDia'])}
+                  className="grid gap-3 md:grid-cols-4"
+                  disabled={finalidade !== 'leite'}
+                >
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="uma" />
+                    Uma
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="duas" />
+                    Duas
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="tres" />
+                    Três
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <RadioGroupItem value="nao_se_aplica" />
+                    Não se aplica
+                  </label>
+                </RadioGroup>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>C) Suínos não tecnificados (subsistência)</CardTitle>
+            <CardDescription>Preencher caso exista suínos de subsistência</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Label>
+              A criação permite contato com suínos asselvajados de vida livre (javalis e cruzados)?
+            </Label>
+            <RadioGroup
+              value={form.watch('contatoComJavalis')}
+              onValueChange={(v) => form.setValue('contatoComJavalis', v as FormValues['contatoComJavalis'])}
+              className="grid gap-3 md:grid-cols-2"
+            >
+              <label className="flex items-center gap-2">
+                <RadioGroupItem value="sim" />
+                Sim
+              </label>
+              <label className="flex items-center gap-2">
+                <RadioGroupItem value="nao" />
+                Não
+              </label>
+            </RadioGroup>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>D) Aves não comerciais (subsistência)</CardTitle>
+            <CardDescription>Preencher caso exista aves de subsistência</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <Label>As aves têm acesso a açude, tanque escavado, lagoa, rio ou outro espelho d’água?</Label>
+              <RadioGroup
+                value={form.watch('avesAcessoAgua')}
+                onValueChange={(v) => form.setValue('avesAcessoAgua', v as FormValues['avesAcessoAgua'])}
+                className="grid gap-3 md:grid-cols-2"
+              >
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="sim" />
+                  Sim
+                </label>
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="nao" />
+                  Não
+                </label>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-3">
+              <Label>As aves domésticas têm contato com aves de vida livre/silvestres?</Label>
+              <RadioGroup
+                value={form.watch('avesContatoSilvestres')}
+                onValueChange={(v) => form.setValue('avesContatoSilvestres', v as FormValues['avesContatoSilvestres'])}
+                className="grid gap-3 md:grid-cols-2"
+              >
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="sim" />
+                  Sim
+                </label>
+                <label className="flex items-center gap-2">
+                  <RadioGroupItem value="nao" />
+                  Não
+                </label>
+              </RadioGroup>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>E) Raiva dos herbívoros</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Label>Observou animal com mordedura por morcego hematófago nos últimos 6 meses?</Label>
+            <RadioGroup
+              value={form.watch('mordeduraMorcegoUltimos6Meses')}
+              onValueChange={(v) => form.setValue('mordeduraMorcegoUltimos6Meses', v as FormValues['mordeduraMorcegoUltimos6Meses'])}
+              className="grid gap-3 md:grid-cols-2"
+            >
+              <label className="flex items-center gap-2">
+                <RadioGroupItem value="sim" />
+                Sim
+              </label>
+              <label className="flex items-center gap-2">
+                <RadioGroupItem value="nao" />
+                Não
+              </label>
+            </RadioGroup>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="font-medium">Ao salvar, o sistema registra no histórico da propriedade.</p>
+              <p className="text-sm text-muted-foreground">Próxima data prevista: {nextDuePreview}.</p>
+            </div>
+            <Button type="submit" className="w-full md:w-auto">
+              Salvar questionário
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      </form>
     </div>
   );
-};
-
-export default QuestionarioEpidemiologico;
+}
