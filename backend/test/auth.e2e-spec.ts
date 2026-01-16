@@ -1,18 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
+import { createMockPrismaService } from './test-helpers';
 
 describe('AuthController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
   let prismaService: PrismaService;
 
   beforeEach(async () => {
+    // Mock PrismaService before creating the module
+    const mockPrismaService = createMockPrismaService();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider(PrismaService)
+    .useValue(mockPrismaService)
+    .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -48,9 +54,9 @@ describe('AuthController (e2e)', () => {
           cpfCnpj: '12345678901',
           password: 'password123',
         })
-        .expect(200)
+        .expect(201)
         .expect((res) => {
-          expect(res.body).toHaveProperty('access_token');
+          expect(res.body).toHaveProperty('token');
           expect(res.body).toHaveProperty('user');
           expect(res.body.user.email).toBe('test@example.com');
         });
@@ -162,12 +168,12 @@ describe('AuthController (e2e)', () => {
           password: 'password123',
         });
 
-      const token = loginResponse.body.access_token;
+      const token = loginResponse.body.token;
 
       return request(app.getHttpServer())
         .get('/auth/me')
         .set('Authorization', `Bearer ${token}`)
-        .expect(200)
+        .expect(201)
         .expect((res) => {
           expect(res.body.email).toBe('test@example.com');
         });

@@ -34,7 +34,7 @@ export class AuthService {
         phone: user.phone,
         role: user.role,
         status: user.status,
-        properties: user.properties.map(item => item.property),
+        properties: user.properties ? user.properties.map(item => item.property) : [],
       },
       token,
     };

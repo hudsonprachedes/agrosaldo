@@ -20,20 +20,14 @@ import { PendingSignup } from '@/mocks/mock-admin';
 import { toast } from '@/hooks/use-toast';
 
 export default function AdminCadastros() {
-  const [signups, setSignups] = useState<PendingSignup[]>([]);
+  const [signups, setSignups] = useState<PendingSignup[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return JSON.parse(localStorage.getItem('agrosaldo_pending_signups') || '[]');
+  });
   const [selectedSignup, setSelectedSignup] = useState<PendingSignup | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [trialDays, setTrialDays] = useState(30);
   const [trialPlan, setTrialPlan] = useState<'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao'>('porteira');
-
-  useEffect(() => {
-    loadSignups();
-  }, []);
-
-  const loadSignups = () => {
-    const pending = JSON.parse(localStorage.getItem('agrosaldo_pending_signups') || '[]');
-    setSignups(pending);
-  };
 
   const handleApprove = () => {
     if (!selectedSignup) return;

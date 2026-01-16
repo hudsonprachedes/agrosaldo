@@ -23,9 +23,8 @@ export default function Dashboard() {
   const [movements, setMovements] = useState<MovementDTO[]>([]);
   const [livestockTotal, setLivestockTotal] = useState(0);
 
-  if (!selectedProperty) return null;
-
   useEffect(() => {
+    if (!selectedProperty) return;
     const loadDashboard = async () => {
       try {
         const [movementData, livestockData] = await Promise.all([
@@ -40,7 +39,7 @@ export default function Dashboard() {
     };
 
     void loadDashboard();
-  }, [selectedProperty.id]);
+  }, [selectedProperty]);
 
   const { monthlyBirths, monthlyDeaths, overallCompliance } = useMemo(() => {
     const now = new Date();
@@ -61,6 +60,17 @@ export default function Dashboard() {
       overallCompliance: 100,
     };
   }, [movements]);
+
+  const totalCattle = livestockTotal;
+  const compliance = useMemo(
+    () => [
+      { category: 'Vacinação', percentage: 98 },
+      { category: 'Vermifugação', percentage: 96 },
+      { category: 'Brucelose', percentage: 92 },
+      { category: 'Tuberculose', percentage: 89 },
+    ],
+    [],
+  );
 
   // Gráfico de Evolução do Rebanho (últimos 6 meses)
   const evolutionChartOptions: ApexOptions = {
@@ -277,7 +287,7 @@ export default function Dashboard() {
             Visão Geral
           </h1>
           <p className="text-muted-foreground">
-            {selectedProperty.name} • {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            {selectedProperty?.name} • {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
           </p>
         </div>
         

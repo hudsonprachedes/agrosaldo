@@ -97,6 +97,20 @@ export interface CattleReport {
   bySex: Record<string, number>;
 }
 
+export interface LivestockHistoryEntry {
+  date: string;
+  headcount: number;
+  ageGroup?: string;
+  sex?: string;
+  species?: string;
+}
+
+export interface LivestockSummary {
+  total: number;
+  byAgeGroup: Record<string, number>;
+  bySex: Record<string, number>;
+}
+
 export const authService = {
   async login(data: LoginRequest): Promise<LoginResponse> {
     return apiClient.post<LoginResponse>(API_ROUTES.AUTH.LOGIN, data);
@@ -181,12 +195,12 @@ export const livestockService = {
     return apiClient.get<CattleReport>(API_ROUTES.CATTLE.GET_BALANCE.replace(':propertyId', propertyId));
   },
 
-  async getHistory(propertyId: string, months?: number): Promise<any[]> {
+  async getHistory(propertyId: string, months?: number): Promise<LivestockHistoryEntry[]> {
     const params = months ? `?months=${months}` : '';
-    return apiClient.get<any[]>(`${API_ROUTES.CATTLE.GET_HISTORY.replace(':propertyId', propertyId)}${params}`);
+    return apiClient.get<LivestockHistoryEntry[]>(`${API_ROUTES.CATTLE.GET_HISTORY.replace(':propertyId', propertyId)}${params}`);
   },
 
-  async getSummary(propertyId: string): Promise<any> {
-    return apiClient.get<any>(API_ROUTES.CATTLE.GET_SUMMARY.replace(':propertyId', propertyId));
+  async getSummary(propertyId: string): Promise<LivestockSummary> {
+    return apiClient.get<LivestockSummary>(API_ROUTES.CATTLE.GET_SUMMARY.replace(':propertyId', propertyId));
   },
 };

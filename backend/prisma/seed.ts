@@ -1,11 +1,14 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { seedUsers } from './seeds/users.seed.js';
-import { seedProperties } from './seeds/properties.seed.js';
-import { seedLivestock } from './seeds/livestock.seed.js';
-import { seedMovements } from './seeds/movements.seed.js';
-import { seedAdmin } from './seeds/admin.seed.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { seedUsers } from './seeds/users.seed';
+import { seedProperties } from './seeds/properties.seed';
+import { seedLivestock } from './seeds/livestock.seed';
+import { seedMovements } from './seeds/movements.seed';
+import { seedAdmin } from './seeds/admin.seed';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await seedUsers(prisma);

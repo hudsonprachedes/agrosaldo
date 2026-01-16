@@ -161,8 +161,7 @@ export function setupAutoSync(apiClient?: ApiClient): () => void {
  * Obter itens pendentes de sincronização
  */
 export async function getPendingSyncItems(): Promise<Record<string, unknown>[]> {
-  const db = await import('./indexeddb').then(m => m.getDB());
-  const dbInstance = await db;
+  const dbInstance = await getDB();
   
   const syncQueue = await dbInstance.getAll('syncQueue');
   return syncQueue.filter((item: Record<string, unknown>) => item.status === 'pending');
@@ -177,8 +176,7 @@ export async function getDatabaseStats(): Promise<{
   pendingSyncItems: number;
   queueSize: number;
 }> {
-  const db = await import('./indexeddb').then(m => m.getDB());
-  const dbInstance = await db;
+  const dbInstance = await getDB();
   
   const movements = await dbInstance.getAll('movements');
   const photos = await dbInstance.getAll('photos');

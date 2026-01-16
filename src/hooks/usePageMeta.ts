@@ -40,11 +40,7 @@ export function usePageMeta({ page, overrides, structuredData }: UsePageMetaOpti
         script?.remove();
       });
     };
-  }, [
-    page,
-    overrides ? JSON.stringify(overrides) : '',
-    structuredData ? JSON.stringify(structuredData) : '',
-  ]);
+  }, [page, overrides, structuredData]);
 }
 
 export default usePageMeta;

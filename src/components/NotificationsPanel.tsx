@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,7 +48,7 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getMockNotifications = (): NotificationItem[] => {
+  const getMockNotifications = useCallback((): NotificationItem[] => {
     const now = Date.now();
     const base = {
       propertyId,
@@ -99,7 +99,7 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
         readAt: new Date(now - 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
       },
     ];
-  };
+  }, [propertyId, userId]);
 
   // Carregar notificações
   useEffect(() => {
@@ -139,7 +139,7 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
     if (isOpen) {
       loadNotifications();
     }
-  }, [isOpen, propertyId, userId]);
+  }, [getMockNotifications, isOpen, propertyId, userId]);
 
   // Marcar como lida
   const handleMarkAsRead = async (id: string) => {

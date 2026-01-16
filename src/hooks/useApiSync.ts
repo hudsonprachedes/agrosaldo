@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { getSyncQueueItems, updateSyncQueueItem } from '@/lib/db';
-import { movementService } from '@/services/api.service';
+import { CreateMovementRequest, movementService } from '@/services/api.service';
 import { useToast } from '@/hooks/use-toast';
 
 export function useApiSync(propertyId: string | undefined) {
@@ -20,13 +20,14 @@ export function useApiSync(propertyId: string | undefined) {
       for (const item of pending) {
         try {
           if (item.type === 'movement' && item.payload) {
-            await movementService.create(item.payload as any);
-            await updateSyncQueueItem(item.id!, { status: 'synced' });
+            const payload = item.payload as unknown as CreateMovementRequest;
+            await movementService.create(payload);
+            await updateSyncQueueItem(item.id, 'synced');
             synced++;
           }
         } catch (error) {
           console.error('Erro ao sincronizar item:', error);
-          await updateSyncQueueItem(item.id!, { status: 'failed' });
+          await updateSyncQueueItem(item.id, 'failed');
           failed++;
         }
       }

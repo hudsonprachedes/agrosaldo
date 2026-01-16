@@ -1,5 +1,5 @@
 ---
-trigger: manual
+trigger: always_on
 ---
 
 # AgroSaldo - Instruções para Agentes de IA

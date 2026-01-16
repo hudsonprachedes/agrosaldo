@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { isOnboardingCompleted } from "@/lib/indexeddb";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -67,24 +68,24 @@ function ProtectedRoute({
 
   // Carregar status do onboarding
   useEffect(() => {
-    if (selectedProperty && requireOnboarding) {
-      const checkOnboarding = async () => {
-        try {
-          const { isOnboardingCompleted } = await import('./lib/indexeddb');
-          const completed = await isOnboardingCompleted(selectedProperty.id);
-          setOnboardingCompleted(completed);
-        } catch (error) {
-          console.error('Erro ao verificar onboarding:', error);
-          setOnboardingCompleted(false);
-        }
-      };
-      checkOnboarding();
-    } else {
-      setOnboardingCompleted(true);
+    if (!selectedProperty || !requireOnboarding) {
+      return;
     }
+    const checkOnboarding = async () => {
+      try {
+        const completed = await isOnboardingCompleted(selectedProperty.id);
+        setOnboardingCompleted(completed);
+      } catch (error) {
+        console.error('Erro ao verificar onboarding:', error);
+        setOnboardingCompleted(false);
+      }
+    };
+    checkOnboarding();
   }, [selectedProperty, requireOnboarding]);
   
-  if (isLoading || (requireOnboarding && onboardingCompleted === null)) {
+  const effectiveOnboardingCompleted = !requireOnboarding || !selectedProperty ? true : onboardingCompleted;
+
+  if (isLoading || (requireOnboarding && effectiveOnboardingCompleted === null)) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   
@@ -102,7 +103,7 @@ function ProtectedRoute({
   }
 
   // Verificar onboarding
-  if (requireOnboarding && requireProperty && !onboardingCompleted) {
+  if (requireOnboarding && requireProperty && !effectiveOnboardingCompleted) {
     return <Navigate to="/onboarding" replace />;
   }
   
@@ -125,7 +126,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />

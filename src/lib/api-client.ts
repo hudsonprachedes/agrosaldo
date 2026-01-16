@@ -215,44 +215,51 @@ class ApiClient {
     window.location.href = '/login';
   }
 
+  private extractData<T>(responseData: ApiResponse<T> | T): T {
+    if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+      return (responseData as ApiResponse<T>).data as T;
+    }
+    return responseData as T;
+  }
+
   /**
    * Requisição GET genérica
    */
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.get<ApiResponse<T>>(url, config);
-    return response.data.data as T;
+    const response = await this.instance.get<ApiResponse<T> | T>(url, config);
+    return this.extractData(response.data);
   }
 
   /**
    * Requisição POST genérica
    */
   async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.post<ApiResponse<T>>(url, data, config);
-    return response.data.data as T;
+    const response = await this.instance.post<ApiResponse<T> | T>(url, data, config);
+    return this.extractData(response.data);
   }
 
   /**
    * Requisição PUT genérica
    */
   async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.put<ApiResponse<T>>(url, data, config);
-    return response.data.data as T;
+    const response = await this.instance.put<ApiResponse<T> | T>(url, data, config);
+    return this.extractData(response.data);
   }
 
   /**
    * Requisição PATCH genérica
    */
   async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.patch<ApiResponse<T>>(url, data, config);
-    return response.data.data as T;
+    const response = await this.instance.patch<ApiResponse<T> | T>(url, data, config);
+    return this.extractData(response.data);
   }
 
   /**
    * Requisição DELETE genérica
    */
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.delete<ApiResponse<T>>(url, config);
-    return response.data.data as T;
+    const response = await this.instance.delete<ApiResponse<T> | T>(url, config);
+    return this.extractData(response.data);
   }
 
   /**
@@ -272,13 +279,13 @@ class ApiClient {
       });
     }
 
-    const response = await this.instance.post<ApiResponse<T>>(url, formData, {
+    const response = await this.instance.post<ApiResponse<T> | T>(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
 
-    return response.data.data as T;
+    return this.extractData(response.data);
   }
 
   /**

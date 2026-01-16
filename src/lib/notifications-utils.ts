@@ -1,3 +1,5 @@
+import { saveNotification } from '@/lib/indexeddb';
+
 /**
  * Utilitários para notificações
  */
@@ -28,8 +30,6 @@ export async function createSystemNotification(
   type: 'system' | 'reminder' | 'announcement' = 'system',
   actionUrl?: string
 ) {
-  const { saveNotification } = await import('@/lib/indexeddb');
-
   return saveNotification({
     propertyId,
     type,

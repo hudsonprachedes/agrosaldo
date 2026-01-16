@@ -123,7 +123,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   html {
@@ -133,10 +133,13 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
     overflow-y: auto;
-    font-family: 'Inter', system-ui, sans-serif;
   }
 
   /* Ensure app uses full viewport height so only the main container scrolls */
@@ -147,51 +150,81 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', system-ui, sans-serif;
-    @apply font-semibold tracking-tight;
+    font-weight: 600;
+    letter-spacing: -0.025em;
   }
 }
 
 @layer components {
   /* Status Cards */
   .status-card {
-    @apply rounded-xl p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    transition: all 300ms ease;
+  }
+
+  .status-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
   }
   
   .status-card-success {
-    @apply status-card bg-success text-success-foreground;
+    background-color: hsl(var(--success));
+    color: hsl(var(--success-foreground));
   }
   
   .status-card-warning {
-    @apply status-card bg-warning text-warning-foreground;
+    background-color: hsl(var(--warning));
+    color: hsl(var(--warning-foreground));
   }
   
   .status-card-error {
-    @apply status-card bg-error text-error-foreground;
+    background-color: hsl(var(--error));
+    color: hsl(var(--error-foreground));
   }
   
   .status-card-death {
-    @apply status-card bg-death text-death-foreground;
+    background-color: hsl(var(--death));
+    color: hsl(var(--death-foreground));
   }
 
   /* Mobile Action Grid */
   .mobile-action-btn {
-    @apply flex flex-col items-center justify-center gap-2 p-6 rounded-2xl 
-           transition-all duration-200 active:scale-95 shadow-sm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    transition: all 200ms ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-action-btn:active {
+    transform: scale(0.95);
   }
 
   /* Sidebar Active State */
   .sidebar-item-active {
-    @apply bg-sidebar-accent text-sidebar-primary font-medium;
+    background-color: hsl(var(--sidebar-accent));
+    color: hsl(var(--sidebar-primary));
+    font-weight: 500;
   }
 
   /* Glass Effect */
   .glass {
-    @apply bg-white/80 backdrop-blur-md border border-white/20;
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   /* Hero gradient text */
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(90deg, hsl(var(--primary)) 0%, hsla(var(--primary), 0.7) 100%);
   }
 }
 

@@ -46,21 +46,22 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
         setIsCameraActive(true);
         console.log('✅ Stream conectado ao vídeo');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Erro ao acessar câmera:', error);
-      
-      let errorMessage = 'Não foi possível acessar a câmera';
+
+      const errorMessage = 'Não foi possível acessar a câmera';
       let errorDescription = 'Verifique as permissões do navegador';
-      
-      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      const errorName = error instanceof Error ? error.name : undefined;
+
+      if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
         errorDescription = 'Permissão negada. Autorize o acesso à câmera nas configurações.';
-      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
         errorDescription = 'Nenhuma câmera encontrada no dispositivo.';
-      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
         errorDescription = 'Câmera em uso por outro aplicativo.';
-      } else if (error.name === 'OverconstrainedError') {
+      } else if (errorName === 'OverconstrainedError') {
         errorDescription = 'Configurações de câmera não suportadas.';
-      } else if (error.name === 'NotSupportedError') {
+      } else if (errorName === 'NotSupportedError') {
         errorDescription = 'Acesso à câmera não suportado (use HTTPS).';
       }
       
