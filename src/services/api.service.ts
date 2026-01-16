@@ -208,6 +208,10 @@ export const livestockService = {
   async getSummary(propertyId: string): Promise<LivestockSummary> {
     return apiClient.get<LivestockSummary>(API_ROUTES.CATTLE.GET_SUMMARY.replace(':propertyId', propertyId));
   },
+
+  async recalculateAgeGroups(propertyId: string): Promise<unknown> {
+    return apiClient.post<unknown>(API_ROUTES.CATTLE.RECALCULATE_AGE_GROUPS.replace(':propertyId', propertyId));
+  },
 };
 
 // --- Admin Interfaces ---

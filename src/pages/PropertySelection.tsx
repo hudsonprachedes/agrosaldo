@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Property, plans, getUserPlan } from '@/mocks/mock-auth';
+import { plans, determineUserPlan } from '@/mocks/mock-auth';
+import { PropertyDTO } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -71,18 +72,19 @@ export default function PropertySelection() {
   });
 
   if (!user) {
-    navigate('/login');
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
-  const handleSelectProperty = (property: Property) => {
-    selectProperty(property);
+  const properties = user.properties ?? [];
+
+  const handleSelectProperty = (propertyId: string) => {
+    selectProperty(propertyId);
     navigate('/dashboard');
   };
 
   // Get unified user plan information
-  const userPlan = getUserPlan(user);
-  const totalCattle = user.properties.reduce((total, property) => total + property.cattleCount, 0);
+  const totalCattle = properties.reduce((total, property) => total + (property.cattleCount ?? 0), 0);
+  const userPlan = determineUserPlan(totalCattle);
 
   // Handle CEP lookup
   const handleCepChange = async (cep: string) => {
@@ -112,8 +114,10 @@ export default function PropertySelection() {
       await new Promise(resolve => setTimeout(resolve, 800));
 
       // Criar nova propriedade
-      const newProperty: Property = {
+      const nowIso = new Date().toISOString();
+      const newProperty: PropertyDTO = {
         id: `property_${Date.now()}`,
+        userId: user.id,
         name: data.name,
         cep: data.cep,
         accessRoute: data.accessRoute,
@@ -133,20 +137,20 @@ export default function PropertySelection() {
           bovino: data.bovinoEnabled,
           bubalino: data.bubalinoEnabled,
         },
+        createdAt: nowIso,
+        updatedAt: nowIso,
       };
 
       // Adicionar à propriedade do usuário (em mock)
-      if (user) {
-        user.properties.push(newProperty);
-        localStorage.setItem('agrosaldo_user_id', user.id);
-      }
+      user.properties = [...properties, newProperty];
+      localStorage.setItem('agrosaldo_user_id', user.id);
 
       toast.success('Propriedade cadastrada com sucesso!');
       setOpenDialog(false);
       form.reset();
       
       // Navegar para onboarding da nova propriedade
-      selectProperty(newProperty);
+      selectProperty(newProperty.id);
       navigate('/onboarding');
     } catch (error) {
       toast.error('Erro ao cadastrar propriedade');
@@ -234,15 +238,15 @@ export default function PropertySelection() {
           </CardContent>
         </Card>
 
-        {user.properties.length > 0 ? (
+        {properties.length > 0 ? (
           <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {user.properties.map((property, index) => {
+            {properties.map((property, index) => {
               return (
                 <Card 
                   key={property.id}
                   className="cursor-pointer hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02] animate-fade-in border-2 border-transparent hover:border-primary/20 active:scale-[0.98]"
                   style={{ animationDelay: `${index * 100}ms` }}
-                  onClick={() => handleSelectProperty(property)}
+                  onClick={() => handleSelectProperty(property.id)}
                 >
                   <CardContent className="p-4 md:p-6">
                     <div className="flex items-start justify-between mb-4">
@@ -270,7 +274,7 @@ export default function PropertySelection() {
                     <div className="flex items-center justify-between pt-4 border-t border-border">
                       <div>
                         <p className="text-2xl font-bold text-foreground">
-                          {property.cattleCount.toLocaleString('pt-BR')}
+                          {(property.cattleCount ?? 0).toLocaleString('pt-BR')}
                         </p>
                         <p className="text-xs text-muted-foreground">cabeças</p>
                       </div>

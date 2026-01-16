@@ -105,7 +105,7 @@ export function isWhatsAppAvailable(): boolean {
  * Formata número de telefone para padrão WhatsApp
  * Remove caracteres especiais, mantém apenas dígitos
  * @param phone - Telefone em qualquer formato
- * @returns Telefone formatado para WhatsApp (ex: 5567999999999)
+ * @returns Telefone formatado para WhatsApp (ex: 5544991147084)
  */
 export function formatPhoneNumberForWhatsApp(phone: string): string {
   // Remove tudo que não é dígito

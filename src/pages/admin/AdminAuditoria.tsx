@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '@/services/api.service';
+import { adminService, AuditLog } from '@/services/api.service';
 import { toast } from 'sonner';
 import {
   Shield,
@@ -44,7 +44,7 @@ const actionLabels: Record<string, string> = {
 
 export default function AdminAuditoria() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -63,11 +63,19 @@ export default function AdminAuditoria() {
     void loadLogs();
   }, []);
 
-  const filteredLogs = logs.filter(log =>
-    log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.details.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const normalizedSearchTerm = searchTerm.toLowerCase();
+
+  const filteredLogs = logs.filter((log) => {
+    const userName = log.userName?.toLowerCase?.() ?? '';
+    const action = log.action?.toLowerCase?.() ?? '';
+    const details = log.details?.toLowerCase?.() ?? '';
+
+    return (
+      userName.includes(normalizedSearchTerm) ||
+      action.includes(normalizedSearchTerm) ||
+      details.includes(normalizedSearchTerm)
+    );
+  });
 
   const handleExport = () => {
     toast.success('Logs exportados com sucesso!');

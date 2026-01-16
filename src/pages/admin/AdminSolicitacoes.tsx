@@ -37,12 +37,17 @@ import {
 
 interface PendingRequest {
   id: string;
-  tenantName: string;
-  tenantEmail: string;
-  requestType: string;
+  name: string;
+  cpfCnpj: string;
+  email: string;
+  phone: string;
+  plan: string;
+  type: string;
   status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  details: string;
+  submittedAt: string;
+  propertyName?: string;
+  source?: string;
+  notes?: string;
 }
 
 export default function AdminSolicitacoes() {
@@ -54,7 +59,7 @@ export default function AdminSolicitacoes() {
     const loadRequests = async () => {
       try {
         const data = await adminService.getPendingUsers();
-        setRequests(data as any);
+        setRequests(data as unknown as PendingRequest[]);
       } catch (error) {
         console.error('Erro ao carregar solicitações:', error);
         toast.error('Erro ao carregar solicitações');

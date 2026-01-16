@@ -83,8 +83,13 @@ export default function MobileHome() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (!user || !selectedProperty) {
+    if (!user) {
       navigate('/login');
+      return;
+    }
+
+    if (!selectedProperty) {
+      navigate('/selecionar-propriedade');
       return;
     }
 

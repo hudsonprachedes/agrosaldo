@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactApexChart from 'react-apexcharts';
 import { TrendingUp, Users, DollarSign, Activity, Calendar } from 'lucide-react';
-import { adminService } from '@/services/api.service';
+import { adminService, AdminDashboardStats } from '@/services/api.service';
 import { toast } from 'sonner';
 
 export default function AdminAnalises() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
 
   useEffect(() => {
     const loadStats = async () => {

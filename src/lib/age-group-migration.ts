@@ -14,7 +14,31 @@
  */
 
 import { calculateAgeGroup } from './utils';
-import { CattleBalance, MovementRecord, ageGroups } from '@/mocks/mock-bovinos';
+
+export interface MovementRecord {
+  id: string;
+  propertyId: string;
+  type: 'birth' | string;
+  date: string;
+  quantity: number;
+  sex?: 'male' | 'female';
+  ageGroupId?: string;
+  birthDate?: string;
+  description?: string;
+}
+
+export interface CattleBalanceGroup {
+  previousBalance: number;
+  entries: number;
+  exits: number;
+  currentBalance: number;
+}
+
+export interface CattleBalance {
+  ageGroupId: string;
+  male: CattleBalanceGroup;
+  female: CattleBalanceGroup;
+}
 
 export interface AgeGroupMigrationResult {
   migratedCount: number;

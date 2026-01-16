@@ -6,31 +6,45 @@ export async function seedLivestock(prisma: PrismaClient) {
     return;
   }
 
-  const livestock = [
-    {
-      especie: 'bovino',
-      faixaEtaria: '0-4',
-      sexo: 'macho' as const,
-      cabecas: 157,
-      propriedadeId: properties[0].id,
-    },
-    {
-      especie: 'bovino',
-      faixaEtaria: '0-4',
-      sexo: 'femea' as const,
-      cabecas: 152,
-      propriedadeId: properties[0].id,
-    },
-    {
-      especie: 'bovino',
-      faixaEtaria: '24-36',
-      sexo: 'femea' as const,
-      cabecas: 380,
-      propriedadeId: properties[0].id,
-    },
-  ];
+  const ageGroups = ['0-4', '5-12', '12-24', '24-36', '36+'] as const;
 
-  for (const item of livestock) {
-    await (prisma as any).rebanho.create({ data: item });
+  for (const property of properties) {
+    await (prisma as any).rebanho.deleteMany({ where: { propriedadeId: property.id } });
+
+    const totalTarget = property.quantidadeGado ?? 0;
+
+    // Distribuição base por faixa (soma 100)
+    const weightsByAge: Record<(typeof ageGroups)[number], number> = {
+      '0-4': 12,
+      '5-12': 18,
+      '12-24': 22,
+      '24-36': 26,
+      '36+': 22,
+    };
+
+    for (const ageGroup of ageGroups) {
+      const groupTotal = Math.max(0, Math.round((totalTarget * weightsByAge[ageGroup]) / 100));
+
+      // 48% machos, 52% fêmeas
+      const male = Math.round(groupTotal * 0.48);
+      const female = Math.max(0, groupTotal - male);
+
+      const entries = [
+        { sexo: 'macho', cabecas: male },
+        { sexo: 'femea', cabecas: female },
+      ];
+
+      for (const entry of entries) {
+        await (prisma as any).rebanho.create({
+          data: {
+            propriedadeId: property.id,
+            especie: 'bovino',
+            faixaEtaria: ageGroup,
+            sexo: entry.sexo,
+            cabecas: entry.cabecas,
+          },
+        });
+      }
+    }
   }
 }

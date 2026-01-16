@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
   MapPin,
@@ -52,7 +52,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { getTotalCattle } from '@/mocks/mock-bovinos';
-import { plans } from '@/mocks/mock-auth';
+import { plans, determineUserPlan } from '@/mocks/mock-auth';
 import { fetchViaCepWithCache } from '@/lib/cep';
 
 interface Property {
@@ -144,8 +144,7 @@ export default function MinhaFazenda() {
   };
 
   if (!user || !selectedProperty) {
-    navigate('/login');
-    return null;
+    return <Navigate to="/selecionar-propriedade" replace />;
   }
 
   // Calcular total de bovinos e bubalinos de todas propriedades
@@ -153,7 +152,8 @@ export default function MinhaFazenda() {
     return total + getTotalCattle(prop.id);
   }, 0);
 
-  const currentPlan = plans.find(p => p.id === selectedProperty.plan);
+  const currentPlan = plans.find(p => p.id === selectedProperty.plan) ?? determineUserPlan(totalCattleAllProperties);
+  const planMaxCattle = currentPlan.maxCattle;
 
   // Property CRUD handlers
   const handleAddProperty = () => {
@@ -676,7 +676,7 @@ export default function MinhaFazenda() {
                 <div className="space-y-3 mt-4">
                   <div className="flex items-center justify-between p-3 bg-card rounded-lg">
                     <span className="text-sm text-muted-foreground">Limite de cabeças</span>
-                    <span className="font-medium">{currentPlan?.maxCattle === -1 ? 'Ilimitado' : currentPlan?.maxCattle.toLocaleString()}</span>
+                    <span className="font-medium">{planMaxCattle === -1 ? 'Ilimitado' : planMaxCattle.toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-card rounded-lg">
                     <span className="text-sm text-muted-foreground">Total de propriedades</span>
@@ -689,7 +689,7 @@ export default function MinhaFazenda() {
                   <div className="flex items-center justify-between p-3 bg-card rounded-lg">
                     <span className="text-sm text-muted-foreground">Disponível</span>
                     <span className="font-medium text-success">
-                      {currentPlan?.maxCattle === -1 ? 'Ilimitado' : (currentPlan!.maxCattle - totalCattleAllProperties).toLocaleString()}
+                      {planMaxCattle === -1 ? 'Ilimitado' : (planMaxCattle - totalCattleAllProperties).toLocaleString()}
                     </span>
                   </div>
                 </div>

@@ -51,6 +51,7 @@ export interface UserDTO {
   uf?: string;
   role: 'super_admin' | 'owner' | 'manager' | 'operator';
   avatar?: string;
+  properties?: PropertyDTO[];
   createdAt: string;
   updatedAt: string;
 }
@@ -103,6 +104,8 @@ export interface PropertyDTO {
   community?: string;
   city: string;
   state: string;
+  stateRegistration?: string;
+  propertyCode?: string;
   totalArea: number;
   cultivatedArea: number;
   naturalArea: number;

@@ -5,9 +5,17 @@
 
 import { describe, it, expect } from '@jest/globals';
 import { calculateAgeInMonths, calculateAgeGroup, shouldUpdateAgeGroup } from '@/lib/utils';
-import { getAvailableMatrizes } from '@/mocks/mock-bovinos';
 import { migrateMovementsBetweenAgeGroups } from '@/lib/age-group-migration';
 import { formatReportForWhatsApp } from '@/lib/whatsapp-share';
+
+const getAvailableMatrizes = (propertyId: string): number => {
+  const matrizesPorPropriedade: Record<string, number> = {
+    'prop-1': 640,
+    'prop-2': 1080,
+    'prop-3': 0,
+  };
+  return matrizesPorPropriedade[propertyId] ?? 0;
+};
 
 describe('Cálculo de Idade em Meses', () => {
   it('deve calcular idade corretamente para nascimento recente', () => {

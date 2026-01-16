@@ -304,7 +304,7 @@ export default function AdminFinanceiro() {
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">{payment.tenantName}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{payment.plan.toUpperCase()}</Badge>
+                            <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                           </TableCell>
                           <TableCell>
                             R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -390,7 +390,7 @@ export default function AdminFinanceiro() {
                           <TableRow key={payment.id}>
                             <TableCell className="font-medium">{payment.tenantName}</TableCell>
                             <TableCell>
-                              <Badge variant="outline">{payment.plan.toUpperCase()}</Badge>
+                              <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                             </TableCell>
                             <TableCell className="text-red-600 font-semibold">
                               R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -450,7 +450,7 @@ export default function AdminFinanceiro() {
                         </TableCell>
                         <TableCell className="font-medium">{payment.tenantName}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{payment.plan.toUpperCase()}</Badge>
+                          <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                         </TableCell>
                         <TableCell>
                           R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -512,7 +512,7 @@ export default function AdminFinanceiro() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Plano:</span>
-                  <Badge variant="outline">{selectedPayment?.plan.toUpperCase()}</Badge>
+                  <Badge variant="outline">{selectedPayment?.plan?.toUpperCase?.() ?? '—'}</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Valor:</span>

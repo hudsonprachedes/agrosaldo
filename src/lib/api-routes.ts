@@ -256,6 +256,33 @@ export const API_ROUTES = {
   // ADMIN - TENANTS E SOLICITAÇÕES
   // =========================================================================
   ADMIN: {
+    DASHBOARD_STATS: '/admin/dashboard/stats',
+    // GET /admin/dashboard/stats
+
+    PENDING_USERS: '/admin/pendencias',
+    // GET /admin/pendencias
+
+    TENANTS: '/admin/tenants',
+    // GET /admin/tenants
+
+    APPROVE_USER: '/admin/usuarios/:id/aprovar',
+    // PATCH /admin/usuarios/:id/aprovar
+
+    REGULATIONS: '/admin/regulamentacoes',
+    // GET|POST /admin/regulamentacoes
+
+    REGULATIONS_ID: '/admin/regulamentacoes/:id',
+    // PATCH|DELETE /admin/regulamentacoes/:id
+
+    PAYMENTS: '/admin/financeiro/pagamentos',
+    // GET|POST /admin/financeiro/pagamentos
+
+    PIX_CONFIG: '/admin/financeiro/pix-config',
+    // GET|POST /admin/financeiro/pix-config
+
+    AUDIT_LOGS: '/admin/auditoria',
+    // GET /admin/auditoria
+
     GET_TENANTS: '/admin/tenants',
     // GET /admin/tenants
     // Headers: { Authorization: Bearer token (super_admin) }

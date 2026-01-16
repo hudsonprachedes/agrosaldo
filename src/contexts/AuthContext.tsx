@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/api-client';
 import { CreateUserRequest, UserDTO, PropertyDTO } from '@/types';
+import { livestockService } from '@/services/api.service';
 
 type RegisterData = CreateUserRequest & { password: string };
 
@@ -21,6 +22,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserDTO | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<PropertyDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const runAgeGroupRecalculation = async () => {
+      if (!selectedProperty?.id) {
+        return;
+      }
+
+      const key = `agrosaldo_last_age_recalc_${selectedProperty.id}`;
+      const lastRun = localStorage.getItem(key);
+      if (lastRun) {
+        const lastDate = new Date(lastRun);
+        const today = new Date();
+        if (lastDate.toDateString() === today.toDateString()) {
+          return;
+        }
+      }
+
+      try {
+        await livestockService.recalculateAgeGroups(selectedProperty.id);
+        localStorage.setItem(key, new Date().toISOString());
+      } catch (error) {
+        console.error('Erro ao recalcular faixas etárias no backend:', error);
+      }
+    };
+
+    void runAgeGroupRecalculation();
+  }, [selectedProperty?.id]);
 
   useEffect(() => {
     const loadSession = async () => {

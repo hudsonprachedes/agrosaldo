@@ -59,6 +59,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return null;
   }
 
+  const properties = user.properties ?? [];
+
   const handleChangeProperty = () => {
     clearSelectedProperty();
   };
@@ -84,6 +86,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className="h-8 w-auto object-contain"
                 loading="eager"
               />
+              <span className="font-semibold text-sidebar-foreground">AgroSaldo</span>
             </div>
           </div>
 
@@ -107,7 +110,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                {user.properties.map((prop) => (
+                {properties.map((prop) => (
                   <DropdownMenuItem
                     key={prop.id}
                     onClick={() => handleSelectProperty(prop.id)}
@@ -118,7 +121,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <div className="flex-1">
                       <p className="font-medium">{prop.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {prop.cattleCount.toLocaleString()} cabeças
+                        {(prop.cattleCount ?? 0).toLocaleString()} cabeças
                       </p>
                     </div>
                     {prop.id === selectedProperty.id && (
@@ -155,51 +158,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </NavLink>
             ))}
           </nav>
-
-            {/* Status de Sincronização */}
-            <div className="px-4 py-3 border-t border-sidebar-border">
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-sidebar-accent/50">
-                {isSyncing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-warning" />
-                    <span className="text-xs text-sidebar-foreground">Sincronizando...</span>
-                  </>
-                ) : !isOnline ? (
-                  <>
-                    <WifiOff className="w-4 h-4 text-error" />
-                    <span className="text-xs text-sidebar-foreground">Offline</span>
-                  </>
-                ) : status === 'synced' ? (
-                  <>
-                    <Cloud className="w-4 h-4 text-success" />
-                    <span className="text-xs text-sidebar-foreground">Sincronizado</span>
-                  </>
-                ) : status === 'error' ? (
-                  <>
-                    <CloudOff className="w-4 h-4 text-error" />
-                    <span className="text-xs text-sidebar-foreground">Erro na sincronização</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4 text-warning" />
-                    <span className="text-xs text-sidebar-foreground">
-                      {pendingCount} pendente{pendingCount !== 1 ? 's' : ''}
-                    </span>
-                  </>
-                )}
-              
-                {isOnline && !isSyncing && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 ml-auto"
-                    onClick={syncNow}
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-            </div>
 
           {/* User Menu & Sync Status */}
           <div className="p-4 border-t border-sidebar-border space-y-2">

@@ -204,13 +204,13 @@ const App = () => (
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/cadastros" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminCadastros /></ProtectedRoute>
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminCadastros /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/analises" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminAnalises /></ProtectedRoute>
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAnalises /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/regulamentacoes" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminRegulamentacoes /></ProtectedRoute>
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminRegulamentacoes /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/solicitacoes" element={
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminSolicitacoes /></AdminLayout></ProtectedRoute>
@@ -225,7 +225,7 @@ const App = () => (
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminPlanos /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/financeiro" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminFinanceiro /></ProtectedRoute>
+              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminFinanceiro /></AdminLayout></ProtectedRoute>
             } />
             <Route path="/admin/comunicacao" element={
               <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminComunicacao /></AdminLayout></ProtectedRoute>

@@ -44,7 +44,7 @@ export default function AdminCadastros() {
     const loadSignups = async () => {
       try {
         const data = await adminService.getPendingUsers();
-        setSignups(data as any);
+        setSignups(data as unknown as PendingSignup[]);
       } catch (error) {
         console.error('Erro ao carregar cadastros:', error);
         toast.error('Erro ao carregar cadastros');
@@ -60,7 +60,7 @@ export default function AdminCadastros() {
     if (!selectedSignup) return;
 
     try {
-      await adminService.approveUser(selectedSignup.id);
+      await adminService.approveUser(selectedSignup.id, 'ativo');
       const updated = signups.map(s =>
         s.id === selectedSignup.id
           ? { ...s, status: 'approved' as const }

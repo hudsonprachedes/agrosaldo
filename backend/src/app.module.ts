@@ -11,6 +11,7 @@ import { MovementsModule } from './modules/movements/movements.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PropertiesModule } from './modules/properties/properties.module';
 import { UsersModule } from './modules/users/users.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { UsersModule } from './modules/users/users.module';
     LivestockModule,
     MovementsModule,
     AdminModule,
+    AnalyticsModule,
     HealthModule,
   ],
   controllers: [AppController],

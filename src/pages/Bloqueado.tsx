@@ -1,15 +1,44 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, MessageCircle, CreditCard, Copy, QrCode } from 'lucide-react';
-import { mockPixConfig } from '@/mocks/mock-admin';
 import { toast } from '@/hooks/use-toast';
+import { adminService, PixConfig } from '@/services/api.service';
 
 export default function Bloqueado() {
-  const { user } = useAuth();
+  const { user, selectedProperty } = useAuth();
+  const [pixConfig, setPixConfig] = useState<PixConfig | null>(null);
+  const [pixLoading, setPixLoading] = useState(true);
+  const [pixError, setPixError] = useState(false);
+
+  useEffect(() => {
+    const loadPix = async () => {
+      try {
+        setPixLoading(true);
+        setPixError(false);
+        const config = await adminService.getPixConfig();
+        setPixConfig(config);
+      } catch (error) {
+        console.error('Erro ao carregar configuração PIX:', error);
+        setPixConfig(null);
+        setPixError(true);
+      }
+      setPixLoading(false);
+    };
+
+    void loadPix();
+  }, []);
+
+  const effectivePixKey = useMemo(() => {
+    return pixConfig?.pixKey;
+  }, [pixConfig?.pixKey]);
+
+  const effectiveQrCodeImage = useMemo(() => {
+    return pixConfig?.qrCodeImage;
+  }, [pixConfig?.qrCodeImage]);
 
   const handleWhatsAppSupport = () => {
     const userIdentifier = user?.cpfCnpj || 'Usuário não identificado';
@@ -18,12 +47,19 @@ export default function Bloqueado() {
     );
     
     // Número do suporte (substitua pelo número real)
-    const whatsappNumber = '5565999999999';
+    const whatsappNumber = '5544991147084';
     window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
   };
 
   const handleCopyPixKey = () => {
-    navigator.clipboard.writeText(mockPixConfig.pixKey);
+    if (!effectivePixKey) {
+      toast({
+        title: 'PIX indisponível',
+        description: 'Não foi possível carregar a chave PIX no momento. Tente novamente.',
+      });
+      return;
+    }
+    navigator.clipboard.writeText(effectivePixKey);
     toast({
       title: 'Chave PIX Copiada',
       description: 'A chave PIX foi copiada para a área de transferência.',
@@ -39,7 +75,7 @@ export default function Bloqueado() {
     barao: 499.90,
   };
 
-  const userPlan = user?.properties?.[0]?.plan || 'porteira';
+  const userPlan = selectedProperty?.plan || 'porteira';
   const amountDue = planPrices[userPlan] || planPrices.porteira;
 
   return (
@@ -120,30 +156,45 @@ export default function Bloqueado() {
                     Forma mais rápida - Liberação automática em até 10 minutos
                   </p>
 
-                  <div className="bg-white border border-green-300 rounded-lg p-3 mb-3">
-                    <Label className="text-xs text-gray-600 block mb-1">Chave PIX:</Label>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-sm font-mono bg-gray-100 p-2 rounded">
-                        {mockPixConfig.pixKey}
-                      </code>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCopyPixKey}
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
+                  {pixLoading ? (
+                    <div className="bg-white border border-green-300 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-gray-600">Carregando dados do PIX...</p>
                     </div>
-                  </div>
+                  ) : pixError ? (
+                    <div className="bg-white border border-destructive/30 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-destructive">
+                        Não foi possível carregar os dados do PIX via backend.
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Tente novamente mais tarde ou entre em contato com o suporte.
+                      </p>
+                    </div>
+                  ) : effectivePixKey ? (
+                    <div className="bg-white border border-green-300 rounded-lg p-3 mb-3">
+                      <Label className="text-xs text-gray-600 block mb-1">Chave PIX:</Label>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-sm font-mono bg-gray-100 p-2 rounded">
+                          {effectivePixKey}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCopyPixKey}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
 
-                  {mockPixConfig.qrCodeImage && (
+                  {!!effectiveQrCodeImage && !pixLoading && !pixError && (
                     <div className="bg-white border border-green-300 rounded-lg p-3">
                       <Label className="text-xs text-gray-600 block mb-2">
                         Ou escaneie o QR Code:
                       </Label>
                       <div className="flex justify-center">
                         <img
-                          src={mockPixConfig.qrCodeImage}
+                          src={effectiveQrCodeImage}
                           alt="QR Code PIX"
                           className="w-48 h-48 object-contain"
                         />

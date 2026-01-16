@@ -5,44 +5,75 @@ export async function seedMovements(prisma: PrismaClient) {
   if (!properties || properties.length === 0) {
     return;
   }
-  const property = properties[0];
 
-  const movements = [
-    {
-      propriedadeId: property.id,
-      tipo: 'nascimento' as const,
-      data: new Date('2024-01-15'),
-      quantidade: 12,
-      sexo: 'macho' as const,
-      faixaEtaria: '0-4',
-      descricao: 'Nascimento - Lote Janeiro',
-    },
-    {
-      propriedadeId: property.id,
-      tipo: 'morte' as const,
-      data: new Date('2024-01-18'),
-      quantidade: 2,
-      sexo: 'macho' as const,
-      faixaEtaria: '0-4',
-      descricao: 'Morte natural - Complicações pós-parto',
-      causa: 'Complicações pós-parto',
-    },
-    {
-      propriedadeId: property.id,
-      tipo: 'venda' as const,
-      data: new Date('2024-01-20'),
-      quantidade: 45,
-      faixaEtaria: '24-36',
-      descricao: 'Venda para Frigorífico JBS',
-      destino: 'Frigorífico JBS - Cuiabá',
-      valor: 157500,
-      numeroGta: 'GTA-2024-001234',
-    },
-  ];
+  const now = new Date();
 
-  for (const movement of movements) {
-    await (prisma as any).movimento.create({
-      data: movement as any,
-    });
+  for (const property of properties) {
+    await (prisma as any).movimento.deleteMany({ where: { propriedadeId: property.id } });
+
+    const movements: any[] = [];
+
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 15);
+      const monthLabel = monthDate.toLocaleString('pt-BR', { month: 'long' });
+
+      // Nascimentos
+      movements.push({
+        propriedadeId: property.id,
+        tipo: 'nascimento',
+        data: new Date(monthDate.getFullYear(), monthDate.getMonth(), 10),
+        quantidade: 60 + (11 - i) * 2,
+        sexo: 'femea',
+        faixaEtaria: '0-4',
+        descricao: `Nascimento - Lote ${monthLabel}`,
+      });
+      movements.push({
+        propriedadeId: property.id,
+        tipo: 'nascimento',
+        data: new Date(monthDate.getFullYear(), monthDate.getMonth(), 12),
+        quantidade: 55 + (11 - i) * 2,
+        sexo: 'macho',
+        faixaEtaria: '0-4',
+        descricao: `Nascimento - Lote ${monthLabel}`,
+      });
+
+      // Mortes
+      movements.push({
+        propriedadeId: property.id,
+        tipo: 'morte',
+        data: new Date(monthDate.getFullYear(), monthDate.getMonth(), 18),
+        quantidade: Math.max(2, 6 - Math.floor((11 - i) / 3)),
+        sexo: 'macho',
+        faixaEtaria: '0-4',
+        descricao: 'Morte natural - causas diversas',
+        causa: 'Causas naturais',
+      });
+
+      // Vendas
+      movements.push({
+        propriedadeId: property.id,
+        tipo: 'venda',
+        data: new Date(monthDate.getFullYear(), monthDate.getMonth(), 22),
+        quantidade: 18 + (11 - i),
+        faixaEtaria: '24-36',
+        descricao: 'Venda para frigorífico',
+        destino: 'Frigorífico (seed)',
+        valor: 18_000 + (11 - i) * 800,
+        numeroGta: `GTA-${monthDate.getFullYear()}-${String(i + 1).padStart(2, '0')}0001`,
+      });
+
+      // Vacinas
+      movements.push({
+        propriedadeId: property.id,
+        tipo: 'vacina',
+        data: new Date(monthDate.getFullYear(), monthDate.getMonth(), 5),
+        quantidade: 250 + (11 - i) * 5,
+        descricao: 'Vacinação - campanha mensal',
+      });
+    }
+
+    for (const movement of movements) {
+      await (prisma as any).movimento.create({ data: movement });
+    }
   }
 }

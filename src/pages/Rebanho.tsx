@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { 
   mockCattleBalance,
@@ -45,8 +45,7 @@ export default function Rebanho() {
   const { toast } = useToast();
 
   if (!selectedProperty) {
-    navigate('/login');
-    return null;
+    return <Navigate to="/selecionar-propriedade" replace />;
   }
 
   const balances = mockCattleBalance[selectedProperty.id] || [];

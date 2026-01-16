@@ -70,6 +70,8 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
     return null;
   }
 
+  const properties = user.properties ?? [];
+
   return (
     <div className="h-screen bg-background flex flex-col">
       {/* Header */}
@@ -94,7 +96,7 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
-              {user.properties.map((prop) => (
+              {properties.map((prop) => (
                 <DropdownMenuItem
                   key={prop.id}
                   onClick={() => {
@@ -109,7 +111,7 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
                   <div className="flex-1">
                     <p className="font-medium">{prop.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {prop.cattleCount.toLocaleString()} cabeças
+                      {(prop.cattleCount ?? 0).toLocaleString()} cabeças
                     </p>
                   </div>
                 </DropdownMenuItem>

@@ -644,7 +644,7 @@ export default function LandingPage() {
                 <h2 className="mt-4 font-display text-4xl text-white">Escolha o plano ideal para o seu rebanho</h2>
                 <p className="mt-2 text-lg text-white/70">Usuários ilimitados e suporte humano em todos os planos.</p>
               </div>
-              <div className="mt-12 grid gap-6 md:grid-cols-३ lg:grid-cols-5">
+              <div className="mt-12 grid gap-6 md:grid-cols-3 lg:grid-cols-5">
                 {[...plans].sort((a, b) => a.price - b.price).map((plan, index) => (
                   <Card
                     key={plan.id}

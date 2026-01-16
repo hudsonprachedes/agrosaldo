@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard,
@@ -10,9 +10,7 @@ import {
   DollarSign,
   Megaphone,
   Shield,
-  MapPin,
   LogOut,
-  ChevronLeft,
   UserPlus,
   BarChart3,
   FileText,
@@ -39,8 +37,7 @@ const navItems = [
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
@@ -83,14 +80,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Footer */}
         <div className="p-4 border-t border-border space-y-2">
-          <Button 
-            variant="outline" 
-            className="w-full justify-start"
-            onClick={() => navigate('/dashboard')}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Voltar ao App
-          </Button>
           <Button 
             variant="ghost" 
             className="w-full justify-start text-muted-foreground hover:text-destructive"

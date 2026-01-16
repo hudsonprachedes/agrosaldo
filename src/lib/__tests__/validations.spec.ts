@@ -5,7 +5,15 @@
 
 import { describe, it, expect } from '@jest/globals';
 import { validateGTA, validateCPF, validateCNPJ, isGTAValid } from '@/lib/gta-validation';
-import { getAvailableMatrizes } from '@/mocks/mock-bovinos';
+
+const getAvailableMatrizes = (propertyId: string): number => {
+  const matrizesPorPropriedade: Record<string, number> = {
+    'prop-1': 640,
+    'prop-2': 1080,
+    'prop-3': 0,
+  };
+  return matrizesPorPropriedade[propertyId] ?? 0;
+};
 
 describe('Validações Críticas do AgroSaldo', () => {
   describe('getAvailableMatrizes - Validação de Nascimentos', () => {

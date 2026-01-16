@@ -12,6 +12,33 @@ export class AuthService {
     private readonly jwtService: JwtService
   ) {}
 
+  private mapPropertyToDto(property: any, userId: string) {
+    return {
+      id: property.id,
+      userId,
+      name: property.nome,
+      cep: property.cep ?? undefined,
+      accessRoute: property.viaAcesso ?? undefined,
+      community: property.comunidade ?? undefined,
+      city: property.cidade,
+      state: property.estado,
+      stateRegistration: property.inscricaoEstadual ?? undefined,
+      propertyCode: property.codigoPropriedade ?? undefined,
+      totalArea: property.areaTotal,
+      cultivatedArea: property.areaCultivada,
+      naturalArea: property.areaNatural,
+      pastureNaturalHa: property.pastoNaturalHa ?? undefined,
+      pastureCultivatedHa: property.pastoCultivadoHa ?? undefined,
+      areaTotalHa: property.areaTotalHa ?? undefined,
+      cattleCount: property.quantidadeGado,
+      status: property.status,
+      plan: property.plano,
+      speciesEnabled: property.especiesHabilitadas ?? undefined,
+      createdAt: property.criadoEm?.toISOString ? property.criadoEm.toISOString() : property.criadoEm,
+      updatedAt: property.atualizadoEm?.toISOString ? property.atualizadoEm.toISOString() : property.atualizadoEm,
+    };
+  }
+
   async login(dto: LoginDto) {
     const user = await (this.prisma as any).usuario.findUnique({
       where: { cpfCnpj: dto.cpfCnpj },
@@ -34,7 +61,9 @@ export class AuthService {
         phone: user.telefone,
         role: user.papel,
         status: user.status,
-        properties: user.propriedades ? user.propriedades.map(item => item.propriedade) : [],
+        properties: user.propriedades
+          ? user.propriedades.map((item: any) => this.mapPropertyToDto(item.propriedade, user.id))
+          : [],
       },
       token,
     };
@@ -83,7 +112,7 @@ export class AuthService {
       phone: user.telefone,
       role: user.papel,
       status: user.status,
-      properties: user.propriedades.map(item => item.propriedade),
+      properties: user.propriedades.map((item: any) => this.mapPropertyToDto(item.propriedade, user.id)),
     };
   }
 }

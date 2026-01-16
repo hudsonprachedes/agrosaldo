@@ -75,26 +75,6 @@ export default function AdminClientes() {
   const [selectedTenant, setSelectedTenant] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const loadTenants = async () => {
-      try {
-        const tenants = await adminService.getTenants();
-        setTenantsData(tenants);
-      } catch (error) {
-        console.error('Erro ao carregar tenants:', error);
-        toast.error('Erro ao carregar clientes');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void loadTenants();
-  }, []);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
-  }
-  
   // Dialogs state
   const [changePlanDialog, setChangePlanDialog] = useState(false);
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
@@ -102,7 +82,7 @@ export default function AdminClientes() {
   const [impersonateDialog, setImpersonateDialog] = useState(false);
   const [historyDialog, setHistoryDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
-  
+
   // Form state
   const [newPlan, setNewPlan] = useState('');
   const [blockReason, setBlockReason] = useState('');
@@ -123,6 +103,26 @@ export default function AdminClientes() {
       details: 'Senha resetada via painel admin',
     },
   ]);
+
+  useEffect(() => {
+    const loadTenants = async () => {
+      try {
+        const tenants = await adminService.getTenants();
+        setTenantsData(tenants);
+      } catch (error) {
+        console.error('Erro ao carregar tenants:', error);
+        toast.error('Erro ao carregar clientes');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadTenants();
+  }, []);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
   
   const filteredTenants = tenantsData.filter((tenant) => {
     const term = searchTerm.trim();

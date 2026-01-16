@@ -2,19 +2,12 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { initializeAgeGroupMigration } from "./lib/age-group-migration";
-import { mockMovements } from "./mocks/mock-bovinos";
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
-
-// Inicializar migração automática de faixas etárias
-initializeAgeGroupMigration(mockMovements, (result) => {
-	console.log(`🐄 Migração automática: ${result.migratedCount} animais atualizados`);
-});
 
 // Registrar Service Worker para offline-first (apenas em produção)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

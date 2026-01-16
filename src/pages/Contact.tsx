@@ -37,7 +37,7 @@ const contactSchema = z.object({
 
 type ContactFormData = z.infer<typeof contactSchema>;
 
-const WHATSAPP_NUMBER = '5567999999999'; // Substituir pelo número real
+const WHATSAPP_NUMBER = '5544991147084'; // Substituir pelo número real
 
 export default function Contact() {
   const form = useForm<ContactFormData>({

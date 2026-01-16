@@ -49,8 +49,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should return 401 for invalid credentials', () => {
-      // @ts-ignore
-      (prismaService as any).usuario.findUnique = jest.fn().mockResolvedValue(null);
+      jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(null);
 
       return request(app.getHttpServer())
         .post('/auth/login')
@@ -104,10 +103,10 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should return 409 if user already exists', () => {
-      // @ts-ignore
-      (prismaService as any).usuario.findUnique = jest.fn()
-        .mockResolvedValueOnce(null) // Primeiro findUnique retorna null
-        .mockResolvedValueOnce({ // Segundo findUnique retorna usuário existente
+      jest
+        .spyOn(prismaService.usuario, 'findUnique')
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
           id: '1',
           email: 'existing@example.com',
           cpfCnpj: '12345678901',
@@ -118,7 +117,7 @@ describe('AuthController (e2e)', () => {
           criadoEm: new Date(),
           atualizadoEm: new Date(),
           telefone: null,
-        });
+        } as any);
 
       return request(app.getHttpServer())
         .post('/auth/register')

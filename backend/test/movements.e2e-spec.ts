@@ -38,24 +38,24 @@ describe('MovementsController (e2e)', () => {
       telefone: null,
     };
 
-    // @ts-ignore
-    (prismaService as any).usuario = {
-      findUnique: jest.fn().mockResolvedValue(mockUser),
-      findMany: jest.fn().mockResolvedValue([mockUser]),
-      create: jest.fn().mockResolvedValue(mockUser),
-      update: jest.fn().mockResolvedValue(mockUser),
-      delete: jest.fn().mockResolvedValue(mockUser),
-      count: jest.fn().mockResolvedValue(1),
-    };
+    jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(mockUser as any);
+    jest.spyOn(prismaService.usuario, 'findMany').mockResolvedValue([mockUser] as any);
+    jest.spyOn(prismaService.usuario, 'create').mockResolvedValue(mockUser as any);
+    jest.spyOn(prismaService.usuario, 'update').mockResolvedValue(mockUser as any);
+    jest.spyOn(prismaService.usuario, 'delete').mockResolvedValue(mockUser as any);
+    jest.spyOn(prismaService.usuario, 'count').mockResolvedValue(1);
 
-    // @ts-ignore
-    (prismaService as any).movimento = {
-      findMany: jest.fn().mockResolvedValue([]),
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: '1', tipo: 'nascimento' }),
-      update: jest.fn().mockResolvedValue({ id: '1', tipo: 'nascimento' }),
-      delete: jest.fn().mockResolvedValue({ id: '1', tipo: 'nascimento' }),
-    };
+    jest.spyOn(prismaService.movimento, 'findMany').mockResolvedValue([] as any);
+    jest.spyOn(prismaService.movimento, 'findUnique').mockResolvedValue(null);
+    jest
+      .spyOn(prismaService.movimento, 'create')
+      .mockResolvedValue({ id: '1', tipo: 'nascimento' } as any);
+    jest
+      .spyOn(prismaService.movimento, 'update')
+      .mockResolvedValue({ id: '1', tipo: 'nascimento' } as any);
+    jest
+      .spyOn(prismaService.movimento, 'delete')
+      .mockResolvedValue({ id: '1', tipo: 'nascimento' } as any);
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
