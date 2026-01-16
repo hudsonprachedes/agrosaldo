@@ -4,33 +4,32 @@ jest.mock('../src/prisma/prisma.service', () => {
     id: 'user-1',
     email: 'test@example.com',
     cpfCnpj: '12345678901',
-    name: 'Test User',
-    password: '$2b$10$hashedpassword',
-    role: 'user',
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    phone: null,
-    properties: [
+    nome: 'Test User',
+    senha: '$2b$10$hashedpassword',
+    papel: 'operador',
+    status: 'ativo',
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
+    telefone: null,
+    propriedades: [
       {
         id: 'up-1',
-        userId: 'user-1',
-        propertyId: 'prop-1',
-        role: 'owner',
-        createdAt: new Date(),
-        property: {
+        usuarioId: 'user-1',
+        propriedadeId: 'prop-1',
+        criadoEm: new Date(),
+        propriedade: {
           id: 'prop-1',
-          name: 'Test Property',
-          city: 'São Paulo',
-          state: 'SP',
-          totalArea: 1000,
-          cultivatedArea: 800,
-          naturalArea: 200,
-          cattleCount: 500,
-          status: 'active',
-          plan: 'premium',
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          nome: 'Test Property',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          areaTotal: 1000,
+          areaCultivada: 800,
+          areaNatural: 200,
+          quantidadeGado: 500,
+          status: 'ativa',
+          plano: 'porteira',
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
         }
       }
     ],
@@ -38,7 +37,7 @@ jest.mock('../src/prisma/prisma.service', () => {
 
   return {
     PrismaService: jest.fn().mockImplementation(() => ({
-      user: {
+      usuario: {
         findMany: jest.fn().mockResolvedValue([mockUser]),
         findUnique: jest.fn().mockImplementation(async (args: any) => {
           if (args.where.cpfCnpj === '12345678901') {
@@ -54,31 +53,31 @@ jest.mock('../src/prisma/prisma.service', () => {
         delete: jest.fn().mockResolvedValue(mockUser),
         count: jest.fn().mockResolvedValue(1),
       },
-      property: {
+      propriedade: {
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: '1', name: 'Test Property' }),
-        update: jest.fn().mockResolvedValue({ id: '1', name: 'Test Property' }),
+        create: jest.fn().mockResolvedValue({ id: '1', nome: 'Test Property' }),
+        update: jest.fn().mockResolvedValue({ id: '1', nome: 'Test Property' }),
         delete: jest.fn().mockResolvedValue({ id: '1' }),
       },
-      livestock: {
+      rebanho: {
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: '1', species: 'cattle' }),
-        update: jest.fn().mockResolvedValue({ id: '1', species: 'cattle' }),
+        create: jest.fn().mockResolvedValue({ id: '1', especie: 'bovino' }),
+        update: jest.fn().mockResolvedValue({ id: '1', especie: 'bovino' }),
         delete: jest.fn().mockResolvedValue({ id: '1' }),
         groupBy: jest.fn().mockResolvedValue([]),
       },
-      movement: {
+      movimento: {
         findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: '1', type: 'birth' }),
-        update: jest.fn().mockResolvedValue({ id: '1', type: 'birth' }),
+        create: jest.fn().mockResolvedValue({ id: '1', tipo: 'nascimento' }),
+        update: jest.fn().mockResolvedValue({ id: '1', tipo: 'nascimento' }),
         delete: jest.fn().mockResolvedValue({ id: '1' }),
       },
-      userProperty: {
+      usuarioPropriedade: {
         findMany: jest.fn().mockResolvedValue([]),
-        create: jest.fn().mockResolvedValue({ userId: 'user-1', propertyId: 'prop-1' }),
+        create: jest.fn().mockResolvedValue({ usuarioId: 'user-1', propriedadeId: 'prop-1' }),
       },
       $connect: jest.fn().mockResolvedValue(undefined),
       $disconnect: jest.fn().mockResolvedValue(undefined),

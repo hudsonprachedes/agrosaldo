@@ -7,27 +7,27 @@ export async function seedUsers(prisma: PrismaClient) {
 
   const users = [
     {
-      name: 'João Silva',
+      nome: 'João Silva',
       email: 'joao@fazendaexemplo.com',
       cpfCnpj: '123.456.789-00',
-      phone: '(65) 98765-4321',
-      password: passwordHash,
-      role: 'owner' as const,
-      status: 'active' as const,
+      telefone: '(65) 98765-4321',
+      senha: passwordHash,
+      papel: 'proprietario' as const,
+      status: 'ativo' as const,
     },
     {
-      name: 'Admin Master',
+      nome: 'Admin Master',
       email: 'admin@agrosaldo.com',
       cpfCnpj: '00.000.000/0001-00',
-      phone: '(65) 90000-0000',
-      password: adminPasswordHash,
-      role: 'super_admin' as const,
-      status: 'active' as const,
+      telefone: '(65) 90000-0000',
+      senha: adminPasswordHash,
+      papel: 'super_admin' as const,
+      status: 'ativo' as const,
     },
   ];
 
   for (const user of users) {
-    await prisma.user.upsert({
+    await (prisma as any).usuario.upsert({
       where: { cpfCnpj: user.cpfCnpj },
       update: user,
       create: user,

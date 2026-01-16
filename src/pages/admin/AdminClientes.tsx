@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { mockTenants, Tenant } from '@/mocks/mock-admin';
-import { plans } from '@/mocks/mock-auth';
+import React, { useState, useEffect } from 'react';
+import { adminService, User } from '@/services/api.service';
+import { toast } from 'sonner';
 import {
   Search,
   MoreHorizontal,
-  User,
+  User as UserIcon,
   Lock,
   Unlock,
   UserCheck,
@@ -61,7 +61,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
 
 interface ActionLog {
   timestamp: Date;
@@ -72,8 +71,29 @@ interface ActionLog {
 
 export default function AdminClientes() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [tenantsData, setTenantsData] = useState<Tenant[]>(mockTenants);
-  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [tenantsData, setTenantsData] = useState<User[]>([]);
+  const [selectedTenant, setSelectedTenant] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTenants = async () => {
+      try {
+        const tenants = await adminService.getTenants();
+        setTenantsData(tenants);
+      } catch (error) {
+        console.error('Erro ao carregar tenants:', error);
+        toast.error('Erro ao carregar clientes');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadTenants();
+  }, []);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
   
   // Dialogs state
   const [changePlanDialog, setChangePlanDialog] = useState(false);
@@ -177,34 +197,34 @@ export default function AdminClientes() {
     setSelectedTenant(null);
   };
 
-  const openChangePlanDialog = (tenant: Tenant) => {
+  const openChangePlanDialog = (tenant: User) => {
     setSelectedTenant(tenant);
-    setNewPlan(tenant.plan);
+    setNewPlan('');
     setChangePlanDialog(true);
   };
 
-  const openResetPasswordDialog = (tenant: Tenant) => {
+  const openResetPasswordDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setResetPasswordDialog(true);
   };
 
-  const openBlockDialog = (tenant: Tenant) => {
+  const openBlockDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setBlockReason('');
     setBlockDialog(true);
   };
 
-  const openImpersonateDialog = (tenant: Tenant) => {
+  const openImpersonateDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setImpersonateDialog(true);
   };
 
-  const openHistoryDialog = (tenant: Tenant) => {
+  const openHistoryDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setHistoryDialog(true);
   };
 
-  const openEditDialog = (tenant: Tenant) => {
+  const openEditDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setEditCpfCnpj(tenant.cpfCnpj || '');
     setEditPhone(tenant.phone || '');
@@ -295,12 +315,10 @@ export default function AdminClientes() {
             <TableHeader>
               <TableRow>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Cabeças</TableHead>
-                <TableHead>Último Login</TableHead>
-                <TableHead>Versão App</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead>Papel</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Financeiro</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -310,7 +328,7 @@ export default function AdminClientes() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary" />
+                        <UserIcon className="w-5 h-5 text-primary" />
                       </div>
                       <div>
                         <p className="font-medium">{tenant.name}</p>
@@ -318,20 +336,16 @@ export default function AdminClientes() {
                       </div>
                     </div>
                   </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {tenant.email}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {tenant.phone || '-'}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{tenant.plan}</Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {tenant.totalCattle.toLocaleString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {new Date(tenant.lastLogin).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {tenant.appVersion}
+                    <Badge variant="outline">{tenant.role}</Badge>
                   </TableCell>
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
-                  <TableCell>{getFinancialBadge(tenant.financialStatus)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -345,7 +359,7 @@ export default function AdminClientes() {
                           Acessar como cliente
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openEditDialog(tenant)}>
-                          <User className="w-4 h-4 mr-2" />
+                          <UserIcon className="w-4 h-4 mr-2" />
                           Editar dados
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openChangePlanDialog(tenant)}>
@@ -412,22 +426,17 @@ export default function AdminClientes() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Plano Atual</Label>
-              <Input value={selectedTenant?.plan} disabled />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="newPlan">Novo Plano</Label>
               <Select value={newPlan} onValueChange={setNewPlan}>
                 <SelectTrigger id="newPlan">
                   <SelectValue placeholder="Selecione o novo plano" />
                 </SelectTrigger>
                 <SelectContent>
-                  {plans.map(plan => (
-                    <SelectItem key={plan.id} value={plan.name}>
-                      {plan.name} - R$ {plan.price.toFixed(2)} 
-                      ({plan.maxCattle === Infinity ? 'Ilimitado' : `${plan.maxCattle} cabeças`})
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="porteira">Porteira - R$ 29,90 (até 500 cabeças)</SelectItem>
+                  <SelectItem value="piquete">Piquete - R$ 69,90 (até 1500 cabeças)</SelectItem>
+                  <SelectItem value="retiro">Retiro - R$ 129,90 (até 3000 cabeças)</SelectItem>
+                  <SelectItem value="estancia">Estância - R$ 249,90 (até 6000 cabeças)</SelectItem>
+                  <SelectItem value="barao">Barão - R$ 399,90 (Ilimitado)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

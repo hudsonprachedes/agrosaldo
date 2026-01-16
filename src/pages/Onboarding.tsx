@@ -55,17 +55,19 @@ const stockSchema = z.object({
 // COMPONENTES
 // ============================================================================
 
+type StockFormValues = z.infer<typeof stockSchema>;
+
 interface StockInputProps {
   species: SpeciesType;
   sex: 'male' | 'female';
   ageGroupId: string;
   label: string;
-  control: Control<FieldValues>;
+  control: Control<StockFormValues>;
   errors?: Record<string, unknown>;
 }
 
 function StockInput({ species, sex, ageGroupId, label, control, errors }: StockInputProps) {
-  const fieldName = `${species}_${sex}_${ageGroupId.replace(/\D/g, '')}` as const;
+  const fieldName = `${species}_${sex}_${ageGroupId.replace(/\D/g, '')}` as keyof StockFormValues;
 
   return (
     <FormField
@@ -75,14 +77,36 @@ function StockInput({ species, sex, ageGroupId, label, control, errors }: StockI
         <FormItem>
           <FormLabel className="text-sm">{label}</FormLabel>
           <FormControl>
-            <Input
-              type="number"
-              placeholder="0"
-              {...field}
-              value={field.value ?? 0}
-              onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
-              className="text-center"
-            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => field.onChange(Math.max(0, (field.value ?? 0) - 1))}
+                aria-label="Diminuir"
+              >
+                −
+              </Button>
+              <Input
+                type="number"
+                placeholder="0"
+                {...field}
+                value={field.value ?? 0}
+                onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                className="text-center flex-1 min-w-0"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => field.onChange((field.value ?? 0) + 1)}
+                aria-label="Aumentar"
+              >
+                +
+              </Button>
+            </div>
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -93,7 +117,7 @@ function StockInput({ species, sex, ageGroupId, label, control, errors }: StockI
 
 interface SpeciesTableProps {
   species: SpeciesType;
-  control: Control<FieldValues>;
+  control: Control<StockFormValues>;
   errors?: Record<string, unknown>;
   speciesLabel: string;
 }
@@ -111,7 +135,7 @@ function SpeciesTable({ species, control, errors, speciesLabel }: SpeciesTablePr
       {sexes.map(sex => (
         <div key={sex.key}>
           <h4 className="text-sm font-medium text-gray-700 mb-2">{sex.label}</h4>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
             {AGE_GROUP_BRACKETS.map(bracket => (
               <StockInput
                 key={`${species}-${sex.key}-${bracket.id}`}
@@ -159,7 +183,7 @@ const Onboarding: React.FC = () => {
   });
 
   // Form para estoque inicial
-  const stockForm = useForm<z.infer<typeof stockSchema>>({
+  const stockForm = useForm<StockFormValues>({
     resolver: zodResolver(stockSchema),
     defaultValues: {
       bovino_male_0_4m: 0,
@@ -387,44 +411,46 @@ const Onboarding: React.FC = () => {
                 Preencha a quantidade atual por sexo e faixa etária
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6 max-h-96 overflow-y-auto">
+            <CardContent className="pt-6">
               <Form {...stockForm}>
                 <form
                   onSubmit={stockForm.handleSubmit(handleStep3Submit)}
-                  className="space-y-6"
+                  className="flex flex-col max-h-[75vh]"
                 >
-                  {selectedSpecies.bovino && (
-                    <SpeciesTable
-                      species="bovino"
-                      control={stockForm.control}
-                      speciesLabel="🐄 Bovinos"
-                      errors={stockForm.formState.errors}
-                    />
-                  )}
+                  <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-1">
+                    {selectedSpecies.bovino && (
+                      <SpeciesTable
+                        species="bovino"
+                        control={stockForm.control}
+                        speciesLabel="🐄 Bovinos"
+                        errors={stockForm.formState.errors}
+                      />
+                    )}
 
-                  {selectedSpecies.bubalino && (
-                    <SpeciesTable
-                      species="bubalino"
-                      control={stockForm.control}
-                      speciesLabel="🐃 Bubalinos"
-                      errors={stockForm.formState.errors}
-                    />
-                  )}
+                    {selectedSpecies.bubalino && (
+                      <SpeciesTable
+                        species="bubalino"
+                        control={stockForm.control}
+                        speciesLabel="🐃 Bubalinos"
+                        errors={stockForm.formState.errors}
+                      />
+                    )}
 
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p className="text-xs text-gray-600">
-                      💡 Você pode deixar em branco (zero) para faixas que não existem em sua
-                      propriedade. Esses dados são importantes para o cálculo correto da evolução
-                      do seu rebanho.
-                    </p>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p className="text-xs text-gray-600">
+                        💡 Você pode deixar em branco (zero) para faixas que não existem em sua
+                        propriedade. Esses dados são importantes para o cálculo correto da evolução
+                        do seu rebanho.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                     <Button
                       type="button"
                       variant="outline"
-                      size="lg"
-                      className="flex-1"
+                      size="sm"
+                      className="w-full py-2 text-sm sm:flex-1 sm:text-base"
                       onClick={() => setStep(2)}
                       disabled={isLoading}
                     >
@@ -432,8 +458,8 @@ const Onboarding: React.FC = () => {
                     </Button>
                     <Button
                       type="submit"
-                      size="lg"
-                      className="flex-1 bg-purple-600 hover:bg-purple-700"
+                      size="sm"
+                      className="w-full bg-purple-600 py-2 text-sm hover:bg-purple-700 sm:flex-1 sm:text-base"
                       disabled={isLoading}
                     >
                       {isLoading ? 'Salvando...' : 'Finalizar Onboarding ✓'}

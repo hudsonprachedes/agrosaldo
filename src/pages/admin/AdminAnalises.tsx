@@ -1,21 +1,37 @@
-import React, { useState } from 'react';
-import AdminLayout from '@/components/layout/AdminLayout';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactApexChart from 'react-apexcharts';
 import { TrendingUp, Users, DollarSign, Activity, Calendar } from 'lucide-react';
-import { mockTenants } from '@/mocks/mock-admin';
+import { adminService } from '@/services/api.service';
+import { toast } from 'sonner';
 
 export default function AdminAnalises() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await adminService.getDashboardStats();
+        setStats(data);
+      } catch (error) {
+        console.error('Erro ao carregar análises:', error);
+        toast.error('Erro ao carregar dados de análise');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadStats();
+  }, []);
 
   // Dados agregados
-  const totalTenants = mockTenants.length;
-  const activeTenants = mockTenants.filter(t => t.status === 'active').length;
-  const totalRevenue = mockTenants
-    .filter(t => t.status === 'active')
-    .reduce((sum, t) => sum + t.monthlyRevenue, 0);
-  const totalCattle = mockTenants.reduce((sum, t) => sum + t.totalCattle, 0);
+  const totalTenants = stats?.totalTenants || 0;
+  const activeTenants = stats?.activeTenants || 0;
+  const totalRevenue = stats?.mrr || 0;
+  const totalCattle = stats?.totalCattle || 0;
 
   // Gráfico de crescimento de clientes
   const clientGrowthOptions: ApexCharts.ApexOptions = {
@@ -222,9 +238,12 @@ export default function AdminAnalises() {
     { name: 'Rejeitados', data: [1, 1, 2, 1, 0, 1] },
   ];
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando análises...</div>;
+  }
+
   return (
-    <AdminLayout>
-      <div className="p-6">
+    <div className="space-y-6 p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Análises e Indicadores</h1>
@@ -394,7 +413,6 @@ export default function AdminAnalises() {
             />
           </CardContent>
         </Card>
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

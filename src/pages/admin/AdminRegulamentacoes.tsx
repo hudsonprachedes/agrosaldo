@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import AdminLayout from '@/components/layout/AdminLayout';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,8 +17,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Edit, Save, Shield } from 'lucide-react';
-import { mockStateRegulations, StateRegulation } from '@/mocks/mock-admin';
-import { toast } from '@/hooks/use-toast';
+import { adminService, StateRegulation } from '@/services/api.service';
+import { toast } from 'sonner';
 
 const UF_NAMES: Record<string, string> = {
   AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia',
@@ -32,10 +31,11 @@ const UF_NAMES: Record<string, string> = {
 };
 
 export default function AdminRegulamentacoes() {
-  const [regulations, setRegulations] = useState<StateRegulation[]>(mockStateRegulations);
+  const [regulations, setRegulations] = useState<StateRegulation[]>([]);
   const [selectedReg, setSelectedReg] = useState<StateRegulation | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [formData, setFormData] = useState<Partial<StateRegulation>>({
     uf: '',
@@ -47,6 +47,22 @@ export default function AdminRegulamentacoes() {
     gtaRequired: true,
     observations: '',
   });
+
+  useEffect(() => {
+    const loadRegulations = async () => {
+      try {
+        const data = await adminService.getRegulations();
+        setRegulations(data);
+      } catch (error) {
+        console.error('Erro ao carregar regulamentações:', error);
+        toast.error('Erro ao carregar regulamentações');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadRegulations();
+  }, []);
 
   const openEditDialog = (reg: StateRegulation) => {
     setSelectedReg(reg);
@@ -71,39 +87,42 @@ export default function AdminRegulamentacoes() {
     setShowDialog(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.uf || !formData.stateName) {
-      toast({
-        title: 'Erro',
-        description: 'Preencha todos os campos obrigatórios',
-        variant: 'destructive',
-      });
+      toast.error('Preencha todos os campos obrigatórios');
       return;
     }
 
-    const newReg: StateRegulation = {
-      id: isEditing ? selectedReg!.id : `reg-${formData.uf?.toLowerCase()}`,
-      uf: formData.uf!,
-      stateName: formData.stateName!,
-      reportingDeadline: formData.reportingDeadline || 15,
-      requiredDocuments: formData.requiredDocuments || [],
-      saldoReportFrequency: formData.saldoReportFrequency || 'monthly',
-      saldoReportDay: formData.saldoReportDay || 10,
-      gtaRequired: formData.gtaRequired ?? true,
-      observations: formData.observations || '',
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'Admin Master',
-    };
+    try {
+      const newReg: StateRegulation = {
+        id: isEditing ? selectedReg!.id : `reg-${formData.uf?.toLowerCase()}`,
+        uf: formData.uf!,
+        stateName: formData.stateName!,
+        reportingDeadline: formData.reportingDeadline || 15,
+        requiredDocuments: formData.requiredDocuments || [],
+        saldoReportFrequency: formData.saldoReportFrequency || 'monthly',
+        saldoReportDay: formData.saldoReportDay || 10,
+        gtaRequired: formData.gtaRequired ?? true,
+        observations: formData.observations || '',
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'Admin Master',
+      };
 
-    if (isEditing) {
-      setRegulations(regulations.map(r => r.id === selectedReg!.id ? newReg : r));
-      toast({ title: 'Sucesso', description: 'Regulamentação atualizada' });
-    } else {
-      setRegulations([...regulations, newReg]);
-      toast({ title: 'Sucesso', description: 'Regulamentação criada' });
+      if (isEditing) {
+        await adminService.updateRegulation(selectedReg!.id, newReg);
+        setRegulations(regulations.map(r => r.id === selectedReg!.id ? newReg : r));
+        toast.success('Regulamentação atualizada');
+      } else {
+        await adminService.createRegulation(newReg);
+        setRegulations([...regulations, newReg]);
+        toast.success('Regulamentação criada');
+      }
+
+      setShowDialog(false);
+    } catch (error) {
+      console.error('Erro ao salvar regulamentação:', error);
+      toast.error('Erro ao salvar regulamentação');
     }
-
-    setShowDialog(false);
   };
 
   const getFrequencyLabel = (freq: string) => {
@@ -116,9 +135,12 @@ export default function AdminRegulamentacoes() {
     return labels[freq as keyof typeof labels] || freq;
   };
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando regulamentações...</div>;
+  }
+
   return (
-    <AdminLayout>
-      <div className="p-6">
+    <div className="space-y-6 p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Regulamentações Estaduais</h1>
@@ -342,7 +364,6 @@ export default function AdminRegulamentacoes() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

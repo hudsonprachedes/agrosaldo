@@ -20,22 +20,22 @@ export class MovementsController {
 
   @Post('nascimento')
   createBirth(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
-    return this.movementsService.create(propertyId, { ...dto, type: 'birth' });
+    return this.movementsService.create(propertyId, { ...dto, type: 'nascimento' });
   }
 
   @Post('mortalidade')
   createDeath(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
-    return this.movementsService.create(propertyId, { ...dto, type: 'death' });
+    return this.movementsService.create(propertyId, { ...dto, type: 'morte' });
   }
 
   @Post('venda')
   createSale(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
-    return this.movementsService.create(propertyId, { ...dto, type: 'sale' });
+    return this.movementsService.create(propertyId, { ...dto, type: 'venda' });
   }
 
   @Post('vacina')
   createVaccine(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
-    return this.movementsService.create(propertyId, { ...dto, type: 'vaccine' });
+    return this.movementsService.create(propertyId, { ...dto, type: 'vacina' });
   }
 
   @Get()

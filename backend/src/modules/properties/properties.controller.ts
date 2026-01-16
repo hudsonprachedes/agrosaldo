@@ -14,7 +14,7 @@ import { PropertiesService } from './properties.service';
 export class PropertiesController {
   constructor(private readonly propertiesService: PropertiesService) {}
 
-  @Roles('super_admin', 'owner')
+  @Roles('super_admin', 'proprietario')
   @Post()
   create(@Body() dto: CreatePropertyDto) {
     return this.propertiesService.create(dto);
@@ -30,13 +30,13 @@ export class PropertiesController {
     return this.propertiesService.findOne(id);
   }
 
-  @Roles('super_admin', 'owner')
+  @Roles('super_admin', 'proprietario')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdatePropertyDto) {
     return this.propertiesService.update(id, dto);
   }
 
-  @Roles('super_admin', 'owner')
+  @Roles('super_admin', 'proprietario')
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.propertiesService.remove(id);

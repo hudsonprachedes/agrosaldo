@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { plans } from '@/mocks/mock-auth';
-import { savePlan, adminGetAll, adminDelete } from '@/lib/admin-crud';
+import { adminService } from '@/services/api.service';
+import { toast } from 'sonner';
 import {
   CreditCard,
   Edit2,
@@ -35,12 +35,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-// Tipagem local para planos usados nesta página (com campos opcionais usados no Admin)
 type Plan = {
   id: string;
   name: string;
@@ -48,6 +46,7 @@ type Plan = {
   maxCattle: number | typeof Infinity;
   features?: string[];
   active?: boolean;
+  description?: string;
 };
 
 const planSchema = z.object({
@@ -60,8 +59,16 @@ const planSchema = z.object({
 
 type PlanFormData = z.infer<typeof planSchema>;
 
+const DEFAULT_PLANS: Plan[] = [
+  { id: '1', name: 'Porteira', price: 29.90, maxCattle: 500, active: true },
+  { id: '2', name: 'Piquete', price: 69.90, maxCattle: 1500, active: true },
+  { id: '3', name: 'Retiro', price: 129.90, maxCattle: 3000, active: true },
+  { id: '4', name: 'Estância', price: 249.90, maxCattle: 6000, active: true },
+  { id: '5', name: 'Barão', price: 399.90, maxCattle: Infinity, active: true },
+];
+
 export default function AdminPlanos() {
-  const [plansData, setPlansData] = useState<Plan[]>(plans);
+  const [plansData, setPlansData] = useState<Plan[]>(DEFAULT_PLANS);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [deletingPlan, setDeletingPlan] = useState<Plan | null>(null);
@@ -85,44 +92,10 @@ export default function AdminPlanos() {
     },
   });
 
-  // Carregar planos do IndexedDB ao montar
   useEffect(() => {
-    loadPlans();
+    // Planos padrão já carregados
+    setPlansData(DEFAULT_PLANS);
   }, []);
-
-  const loadPlans = async () => {
-    try {
-      const savedPlans = await adminGetAll('plans');
-      if (savedPlans.length > 0) {
-        // Converter de AdminDB para Plan format
-        const convertedPlans: Plan[] = savedPlans.map(p => ({
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          maxCattle: p.maxCattle,
-          features: p.features,
-          active: p.active,
-        }));
-        setPlansData([...convertedPlans].sort((a, b) => a.price - b.price));
-      } else {
-        // Se não há planos salvos, usar os padrões e salvá-los
-        for (const plan of plans) {
-          await savePlan({
-            id: plan.id,
-            name: plan.name,
-            price: plan.price,
-            maxCattle: plan.maxCattle,
-            features: plan.features,
-            active: plan.active !== false,
-          });
-        }
-        setPlansData([...plans].sort((a, b) => a.price - b.price));
-      }
-    } catch (error) {
-      console.error('Erro ao carregar planos:', error);
-      setPlansData(plans); // Fallback para dados mock
-    }
-  };
 
   const openCreateDialog = () => {
     setEditingPlan(null);
@@ -151,45 +124,34 @@ export default function AdminPlanos() {
   const onSubmit = async (data: PlanFormData) => {
     setLoading(true);
     try {
-      const newPlan: Plan = {
-        id: editingPlan?.id || data.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
-        name: data.name,
-        price: data.price,
-        maxCattle: data.maxCattle >= 999999 ? Infinity : data.maxCattle,
-        features: data.features.split('\n').filter(f => f.trim()),
-        active: data.active,
-      };
-
-      // Salvar no IndexedDB
-      await savePlan({
-        id: newPlan.id,
-        name: newPlan.name,
-        price: newPlan.price,
-        maxCattle: newPlan.maxCattle,
-        features: newPlan.features,
-        active: newPlan.active,
-      });
-
-      // Atualizar estado local
       if (editingPlan) {
-        setPlansData(plansData.map(p => p.id === editingPlan.id ? newPlan : p));
-        toast.success(`Plano "${newPlan.name}" atualizado`, {
-          description: 'Alterações salvas com sucesso',
-        });
+        const updated: Plan = {
+          ...editingPlan,
+          name: data.name,
+          price: data.price,
+          maxCattle: data.maxCattle,
+          features: data.features.split('\n').map(f => f.trim()).filter(f => f),
+          active: data.active,
+        };
+        setPlansData(plansData.map(p => p.id === editingPlan.id ? updated : p));
+        toast.success('Plano atualizado com sucesso');
       } else {
-        setPlansData([...plansData, newPlan]);
-        toast.success(`Plano "${newPlan.name}" criado`, {
-          description: 'Novo plano disponível para assinantes',
-        });
+        const newPlan: Plan = {
+          id: `plan-${Date.now()}`,
+          name: data.name,
+          price: data.price,
+          maxCattle: data.maxCattle,
+          features: data.features.split('\n').map(f => f.trim()).filter(f => f),
+          active: data.active,
+        };
+        setPlansData([...plansData, newPlan].sort((a, b) => a.price - b.price));
+        toast.success('Plano criado com sucesso');
       }
-
       setDialogOpen(false);
       reset();
     } catch (error) {
       console.error('Erro ao salvar plano:', error);
-      toast.error('Erro ao salvar plano', {
-        description: 'Tente novamente em alguns instantes',
-      });
+      toast.error('Erro ao salvar plano');
     } finally {
       setLoading(false);
     }
@@ -197,47 +159,21 @@ export default function AdminPlanos() {
 
   const handleDelete = async () => {
     if (!deletingPlan) return;
-    
-    setLoading(true);
     try {
-      // Deletar do IndexedDB
-      await adminDelete('plans', deletingPlan.id);
-      
-      // Atualizar estado local
       setPlansData(plansData.filter(p => p.id !== deletingPlan.id));
-      toast.success(`Plano "${deletingPlan.name}" excluído`, {
-        description: 'Plano removido permanentemente',
-      });
+      toast.success('Plano deletado com sucesso');
       setDeletingPlan(null);
     } catch (error) {
       console.error('Erro ao deletar plano:', error);
-      toast.error('Erro ao deletar plano', {
-        description: 'Tente novamente em alguns instantes',
-      });
-    } finally {
-      setLoading(false);
+      toast.error('Erro ao deletar plano');
     }
   };
 
   const togglePlanStatus = async (plan: Plan) => {
     try {
       const updated = { ...plan, active: !plan.active };
-      
-      // Salvar no IndexedDB
-      await savePlan({
-        id: updated.id,
-        name: updated.name,
-        price: updated.price,
-        maxCattle: updated.maxCattle,
-        features: updated.features,
-        active: updated.active,
-      });
-      
-      // Atualizar estado local
       setPlansData(plansData.map(p => p.id === plan.id ? updated : p));
-      toast.success(`Plano "${plan.name}" ${updated.active ? 'ativado' : 'desativado'}`, {
-        description: updated.active ? 'Visível para novos assinantes' : 'Oculto para novos assinantes',
-      });
+      toast.success(`Plano "${plan.name}" ${updated.active ? 'ativado' : 'desativado'}`);
     } catch (error) {
       console.error('Erro ao alterar status do plano:', error);
       toast.error('Erro ao alterar status do plano');

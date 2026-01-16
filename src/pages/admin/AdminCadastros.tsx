@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import AdminLayout from '@/components/layout/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,61 +15,80 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserPlus, CheckCircle, XCircle, Eye, Calendar } from 'lucide-react';
-import { PendingSignup } from '@/mocks/mock-admin';
-import { toast } from '@/hooks/use-toast';
+import { adminService } from '@/services/api.service';
+import { toast } from 'sonner';
+
+interface PendingSignup {
+  id: string;
+  nome: string;
+  cpfCnpj: string;
+  email: string;
+  celular: string;
+  numeroCabecas: number;
+  municipio: string;
+  uf: string;
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  cupomIndicacao?: string;
+}
 
 export default function AdminCadastros() {
-  const [signups, setSignups] = useState<PendingSignup[]>(() => {
-    if (typeof window === 'undefined') return [];
-    return JSON.parse(localStorage.getItem('agrosaldo_pending_signups') || '[]');
-  });
+  const [signups, setSignups] = useState<PendingSignup[]>([]);
   const [selectedSignup, setSelectedSignup] = useState<PendingSignup | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [trialDays, setTrialDays] = useState(30);
   const [trialPlan, setTrialPlan] = useState<'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao'>('porteira');
 
-  const handleApprove = () => {
+  useEffect(() => {
+    const loadSignups = async () => {
+      try {
+        const data = await adminService.getPendingUsers();
+        setSignups(data as any);
+      } catch (error) {
+        console.error('Erro ao carregar cadastros:', error);
+        toast.error('Erro ao carregar cadastros');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadSignups();
+  }, []);
+
+  const handleApprove = async () => {
     if (!selectedSignup) return;
 
-    const updated = signups.map(s =>
-      s.id === selectedSignup.id
-        ? {
-            ...s,
-            status: 'approved' as const,
-            approvedAt: new Date().toISOString(),
-            approvedBy: 'Admin Master',
-            trialDays,
-            trialPlan,
-          }
-        : s
-    );
-
-    localStorage.setItem('agrosaldo_pending_signups', JSON.stringify(updated));
-    setSignups(updated);
-    setShowApprovalDialog(false);
-    setSelectedSignup(null);
-
-    toast({
-      title: 'Cadastro Aprovado',
-      description: `${selectedSignup.nome} foi aprovado com ${trialDays} dias de teste no plano ${trialPlan.toUpperCase()}.`,
-    });
+    try {
+      await adminService.approveUser(selectedSignup.id);
+      const updated = signups.map(s =>
+        s.id === selectedSignup.id
+          ? { ...s, status: 'approved' as const }
+          : s
+      );
+      setSignups(updated);
+      setShowApprovalDialog(false);
+      setSelectedSignup(null);
+      toast.success(`${selectedSignup.nome} foi aprovado`);
+    } catch (error) {
+      console.error('Erro ao aprovar cadastro:', error);
+      toast.error('Erro ao aprovar cadastro');
+    }
   };
 
-  const handleReject = (signup: PendingSignup) => {
-    const updated = signups.map(s =>
-      s.id === signup.id
-        ? { ...s, status: 'rejected' as const }
-        : s
-    );
-
-    localStorage.setItem('agrosaldo_pending_signups', JSON.stringify(updated));
-    setSignups(updated);
-
-    toast({
-      title: 'Cadastro Rejeitado',
-      description: `O cadastro de ${signup.nome} foi rejeitado.`,
-      variant: 'destructive',
-    });
+  const handleReject = async (signup: PendingSignup) => {
+    try {
+      const updated = signups.map(s =>
+        s.id === signup.id
+          ? { ...s, status: 'rejected' as const }
+          : s
+      );
+      setSignups(updated);
+      toast.success(`Cadastro de ${signup.nome} foi rejeitado`);
+    } catch (error) {
+      console.error('Erro ao rejeitar cadastro:', error);
+      toast.error('Erro ao rejeitar cadastro');
+    }
   };
 
   const openApprovalDialog = (signup: PendingSignup) => {
@@ -87,9 +105,12 @@ export default function AdminCadastros() {
 
   const pendingCount = signups.filter(s => s.status === 'pending').length;
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando cadastros...</div>;
+  }
+
   return (
-    <AdminLayout>
-      <div className="p-6">
+    <div className="space-y-6 p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestão de Cadastros</h1>
           <p className="text-gray-600">
@@ -306,7 +327,6 @@ export default function AdminCadastros() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

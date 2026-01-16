@@ -14,7 +14,7 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Roles('super_admin', 'owner')
+  @Roles('super_admin', 'proprietario')
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
@@ -30,7 +30,7 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
-  @Roles('super_admin', 'owner')
+  @Roles('super_admin', 'proprietario')
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);

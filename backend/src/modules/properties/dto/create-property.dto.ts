@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Length, Min } from 'class-validator';
 
 export class CreatePropertyDto {
   @IsString()
@@ -8,19 +8,25 @@ export class CreatePropertyDto {
   city: string;
 
   @IsString()
+  @Length(2, 2)
   state: string;
 
   @IsNumber()
+  @Min(0)
   totalArea: number;
 
   @IsNumber()
+  @Min(0)
   cultivatedArea: number;
 
   @IsNumber()
+  @Min(0)
   naturalArea: number;
 
+  @IsOptional()
   @IsNumber()
-  cattleCount: number;
+  @Min(0)
+  cattleCount?: number;
 
   @IsOptional()
   @IsString()
@@ -29,4 +35,8 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsString()
   plan?: string;
+
+  @IsOptional()
+  @IsString()
+  plano?: string;
 }

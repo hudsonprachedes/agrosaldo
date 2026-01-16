@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -8,22 +8,57 @@ export class PropertiesService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(dto: CreatePropertyDto) {
-    return this.prisma.property.create({ data: dto as any });
+    const plan = dto.plan ?? (dto as any).plano;
+    return this.prisma.propriedade.create({
+      data: {
+        nome: dto.name,
+        cidade: dto.city,
+        estado: dto.state,
+        areaTotal: dto.totalArea,
+        areaCultivada: dto.cultivatedArea,
+        areaNatural: dto.naturalArea,
+        quantidadeGado: dto.cattleCount,
+        status: dto.status as any,
+        plano: plan as any,
+      } as any,
+    });
   }
 
   findAll() {
-    return this.prisma.property.findMany();
+    return this.prisma.propriedade.findMany();
   }
 
-  findOne(id: string) {
-    return this.prisma.property.findUnique({ where: { id } });
+  async findOne(id: string) {
+    const property = await this.prisma.propriedade.findUnique({ where: { id } });
+    if (!property) {
+      throw new NotFoundException('Propriedade não encontrada');
+    }
+    return property;
   }
 
   update(id: string, dto: UpdatePropertyDto) {
-    return this.prisma.property.update({ where: { id }, data: dto as any });
+    const plan = dto.plan ?? (dto as any).plano;
+    return this.prisma.propriedade.update({
+      where: { id },
+      data: {
+        nome: dto.name,
+        cidade: dto.city,
+        estado: dto.state,
+        areaTotal: dto.totalArea,
+        areaCultivada: dto.cultivatedArea,
+        areaNatural: dto.naturalArea,
+        quantidadeGado: dto.cattleCount,
+        status: dto.status as any,
+        plano: plan as any,
+      } as any,
+    });
   }
 
-  remove(id: string) {
-    return this.prisma.property.delete({ where: { id } });
+  async remove(id: string) {
+    try {
+      return await this.prisma.propriedade.delete({ where: { id } });
+    } catch {
+      throw new NotFoundException('Propriedade não encontrada');
+    }
   }
 }

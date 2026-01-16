@@ -13,56 +13,56 @@ describe('Livestock (e2e)', () => {
   const mockUser = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     cpfCnpj: '12345678901',
-    password: '$2b$10$hashedpassword',
-    role: 'user',
-    status: 'active',
+    senha: '$2b$10$q/.GykwS6X6A1ZFTSPAWneDIhOePOCCM6dOOdAoN/v.lJpflVUkjG',
+    papel: 'operador',
+    status: 'ativo',
   };
 
   const mockLivestock = [
     {
       id: '1',
-      propertyId,
-      species: 'cattle',
-      ageGroup: 'calf',
-      sex: 'male',
-      headcount: 50,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      propriedadeId: propertyId,
+      especie: 'bovino',
+      faixaEtaria: 'calf',
+      sexo: 'macho',
+      cabecas: 50,
+      criadoEm: new Date(),
+      atualizadoEm: new Date(),
     },
     {
       id: '2',
-      propertyId,
-      species: 'cattle',
-      ageGroup: 'heifer',
-      sex: 'female',
-      headcount: 30,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      propriedadeId: propertyId,
+      especie: 'bovino',
+      faixaEtaria: 'heifer',
+      sexo: 'femea',
+      cabecas: 30,
+      criadoEm: new Date(),
+      atualizadoEm: new Date(),
     },
   ];
 
   const mockMovements = [
     {
       id: '1',
-      propertyId,
-      type: 'birth',
-      date: new Date('2026-01-01'),
-      quantity: 10,
-      sex: 'male',
-      ageGroup: 'calf',
-      description: 'Nascimentos',
-      createdAt: new Date(),
+      propriedadeId: propertyId,
+      tipo: 'nascimento',
+      data: new Date('2026-01-01'),
+      quantidade: 10,
+      sexo: 'macho',
+      faixaEtaria: 'calf',
+      descricao: 'Nascimentos',
+      criadoEm: new Date(),
     },
     {
       id: '2',
-      propertyId,
-      type: 'death',
-      date: new Date('2026-01-05'),
-      quantity: 2,
-      sex: 'female',
-      ageGroup: 'heifer',
-      description: 'Mortalidade',
-      createdAt: new Date(),
+      propriedadeId: propertyId,
+      tipo: 'morte',
+      data: new Date('2026-01-05'),
+      quantidade: 2,
+      sexo: 'femea',
+      faixaEtaria: 'heifer',
+      descricao: 'Mortalidade',
+      criadoEm: new Date(),
     },
   ];
 
@@ -77,22 +77,26 @@ describe('Livestock (e2e)', () => {
 
     prismaService = app.get<PrismaService>(PrismaService);
 
-    jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUser as any);
-    jest.spyOn(prismaService.livestock, 'findMany').mockResolvedValue(mockLivestock as any);
-    jest.spyOn(prismaService.movement, 'findMany').mockResolvedValue(mockMovements as any);
-    jest.spyOn(prismaService.livestock, 'groupBy').mockResolvedValue([
-      { ageGroup: 'calf', _sum: { headcount: 50 } },
-      { ageGroup: 'heifer', _sum: { headcount: 30 } },
+    jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(mockUser as any);
+    jest.spyOn(prismaService.rebanho, 'findMany').mockResolvedValue(mockLivestock as any);
+    jest.spyOn(prismaService.movimento, 'findMany').mockResolvedValue(mockMovements as any);
+    jest.spyOn(prismaService.rebanho, 'groupBy').mockResolvedValue([
+      { faixaEtaria: 'calf', _sum: { cabecas: 50 } },
+      { faixaEtaria: 'heifer', _sum: { cabecas: 30 } },
     ] as any);
+
+    if (!(prismaService.rebanho as any).updateMany) {
+      (prismaService.rebanho as any).updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    }
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({
         cpfCnpj: '12345678901',
-        password: 'senha123',
+        password: 'password123',
       });
 
-    authToken = loginResponse.body.access_token;
+    authToken = loginResponse.body.token;
   });
 
   afterAll(async () => {
@@ -188,8 +192,8 @@ describe('Livestock (e2e)', () => {
         .expect(200);
 
       if (response.body.length > 0) {
-        expect(response.body[0]).toHaveProperty('date');
-        expect(response.body[0]).toHaveProperty('type');
+        expect(response.body[0]).toHaveProperty('data');
+        expect(response.body[0]).toHaveProperty('tipo');
       }
     });
   });
@@ -220,7 +224,7 @@ describe('Livestock (e2e)', () => {
 
   describe('POST /rebanho/:propertyId/recalcular-faixas', () => {
     it('should recalculate age groups', async () => {
-      jest.spyOn(prismaService.livestock, 'updateMany').mockResolvedValue({ count: 5 } as any);
+      jest.spyOn(prismaService.rebanho, 'updateMany').mockResolvedValue({ count: 5 } as any);
 
       const response = await request(app.getHttpServer())
         .post(`/rebanho/${propertyId}/recalcular-faixas`)
@@ -240,7 +244,7 @@ describe('Livestock (e2e)', () => {
 
   describe('Livestock Calculations', () => {
     it('should handle empty livestock', async () => {
-      jest.spyOn(prismaService.livestock, 'findMany').mockResolvedValueOnce([]);
+      jest.spyOn(prismaService.rebanho, 'findMany').mockResolvedValueOnce([]);
 
       const response = await request(app.getHttpServer())
         .get(`/rebanho/${propertyId}`)

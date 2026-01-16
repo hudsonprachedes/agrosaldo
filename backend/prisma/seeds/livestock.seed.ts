@@ -1,36 +1,36 @@
 import { PrismaClient } from '@prisma/client';
 
 export async function seedLivestock(prisma: PrismaClient) {
-  const properties = await prisma.property.findMany();
-  if (properties.length === 0) {
+  const properties = await (prisma as any).propriedade.findMany();
+  if (!properties || properties.length === 0) {
     return;
   }
 
   const livestock = [
     {
-      species: 'bovino',
-      ageGroup: '0-4',
-      sex: 'male' as const,
-      headcount: 157,
-      propertyId: properties[0].id,
+      especie: 'bovino',
+      faixaEtaria: '0-4',
+      sexo: 'macho' as const,
+      cabecas: 157,
+      propriedadeId: properties[0].id,
     },
     {
-      species: 'bovino',
-      ageGroup: '0-4',
-      sex: 'female' as const,
-      headcount: 152,
-      propertyId: properties[0].id,
+      especie: 'bovino',
+      faixaEtaria: '0-4',
+      sexo: 'femea' as const,
+      cabecas: 152,
+      propriedadeId: properties[0].id,
     },
     {
-      species: 'bovino',
-      ageGroup: '24-36',
-      sex: 'female' as const,
-      headcount: 380,
-      propertyId: properties[0].id,
+      especie: 'bovino',
+      faixaEtaria: '24-36',
+      sexo: 'femea' as const,
+      cabecas: 380,
+      propriedadeId: properties[0].id,
     },
   ];
 
   for (const item of livestock) {
-    await prisma.livestock.create({ data: item });
+    await (prisma as any).rebanho.create({ data: item });
   }
 }

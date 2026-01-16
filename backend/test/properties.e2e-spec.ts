@@ -11,29 +11,39 @@ describe('Properties (e2e)', () => {
 
   const mockProperty = {
     id: '123e4567-e89b-12d3-a456-426614174100',
-    name: 'Fazenda Teste',
-    city: 'São Paulo',
-    state: 'SP',
-    totalArea: 1000,
-    cultivatedArea: 800,
-    naturalArea: 200,
-    cattleCount: 500,
-    status: 'active',
-    plan: 'premium',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    nome: 'Fazenda Teste',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    areaTotal: 1000,
+    areaCultivada: 800,
+    areaNatural: 200,
+    quantidadeGado: 500,
+    status: 'ativa',
+    plano: 'porteira',
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
   };
 
   const mockUser = {
     id: '123e4567-e89b-12d3-a456-426614174000',
-    name: 'Test User',
+    nome: 'Test User',
     email: 'test@example.com',
     cpfCnpj: '12345678901',
-    password: '$2b$10$hashedpassword',
-    role: 'user',
-    status: 'active',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    senha: '$2b$10$q/.GykwS6X6A1ZFTSPAWneDIhOePOCCM6dOOdAoN/v.lJpflVUkjG',
+    papel: 'proprietario',
+    status: 'ativo',
+    criadoEm: new Date(),
+    atualizadoEm: new Date(),
+    telefone: null,
+    propriedades: [
+      {
+        id: 'up-1',
+        usuarioId: '123e4567-e89b-12d3-a456-426614174000',
+        propriedadeId: '123e4567-e89b-12d3-a456-426614174100',
+        criadoEm: new Date(),
+        propriedade: mockProperty,
+      },
+    ],
   };
 
   beforeAll(async () => {
@@ -48,55 +58,64 @@ describe('Properties (e2e)', () => {
     prismaService = app.get<PrismaService>(PrismaService);
 
     // Mock Prisma User methods
-    jest.spyOn(prismaService.user, 'findUnique').mockResolvedValue(mockUser as any);
+    (prismaService as any).usuario = {
+      findUnique: jest.fn().mockImplementation(async (args: any) => {
+        if (args.where?.cpfCnpj === mockUser.cpfCnpj) {
+          return mockUser;
+        }
+        if (args.where?.id === mockUser.id) {
+          return mockUser;
+        }
+        return null;
+      }),
+    };
 
     // Mock Prisma Property methods
-    jest.spyOn(prismaService.property, 'findMany').mockResolvedValue([mockProperty] as any);
-    
-    jest.spyOn(prismaService.property, 'findUnique').mockImplementation(async (args: any) => {
-      if (args.where.id === mockProperty.id) {
-        return mockProperty as any;
-      }
-      return null;
-    });
+    (prismaService as any).propriedade = {
+      findMany: jest.fn().mockResolvedValue([mockProperty]),
+      findUnique: jest.fn().mockImplementation(async (args: any) => {
+        if (args.where.id === mockProperty.id) {
+          return mockProperty;
+        }
+        return null;
+      }),
+      create: jest.fn().mockImplementation(async (args: any) => {
+        return {
+          id: '123e4567-e89b-12d3-a456-426614174101',
+          ...args.data,
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        };
+      }),
+      update: jest.fn().mockImplementation(async (args: any) => {
+        return {
+          ...mockProperty,
+          ...args.data,
+          atualizadoEm: new Date(),
+        };
+      }),
+      delete: jest.fn().mockResolvedValue(mockProperty),
+    };
 
-    jest.spyOn(prismaService.property, 'create').mockImplementation(async (args: any) => {
-      return {
-        id: '123e4567-e89b-12d3-a456-426614174101',
-        ...args.data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any;
-    });
-
-    jest.spyOn(prismaService.property, 'update').mockImplementation(async (args: any) => {
-      return {
-        ...mockProperty,
-        ...args.data,
-        updatedAt: new Date(),
-      } as any;
-    });
-
-    jest.spyOn(prismaService.property, 'delete').mockResolvedValue(mockProperty as any);
-
-    jest.spyOn(prismaService.userProperty, 'findMany').mockResolvedValue([
-      {
-        userId: mockUser.id,
-        propertyId: mockProperty.id,
-        role: 'owner',
-        createdAt: new Date(),
-      },
-    ] as any);
+    (prismaService as any).usuarioPropriedade = {
+      findMany: jest.fn().mockResolvedValue([
+        {
+          usuarioId: mockUser.id,
+          propriedadeId: mockProperty.id,
+          criadoEm: new Date(),
+        },
+      ]),
+    };
 
     // Login to get token
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({
         cpfCnpj: '12345678901',
-        password: 'senha123',
+        password: 'password123',
       });
 
-    authToken = loginResponse.body.access_token;
+    authToken = loginResponse.body.token;
   });
 
   afterAll(async () => {
@@ -113,8 +132,8 @@ describe('Properties (e2e)', () => {
       expect(response.body).toBeInstanceOf(Array);
       expect(response.body.length).toBeGreaterThan(0);
       expect(response.body[0]).toHaveProperty('id');
-      expect(response.body[0]).toHaveProperty('name');
-      expect(response.body[0]).toHaveProperty('city');
+      expect(response.body[0]).toHaveProperty('nome');
+      expect(response.body[0]).toHaveProperty('cidade');
     });
 
     it('should return 401 without authentication', async () => {
@@ -132,13 +151,13 @@ describe('Properties (e2e)', () => {
         .expect(200);
 
       expect(response.body).toHaveProperty('id', mockProperty.id);
-      expect(response.body).toHaveProperty('name', mockProperty.name);
-      expect(response.body).toHaveProperty('city', mockProperty.city);
-      expect(response.body).toHaveProperty('state', mockProperty.state);
+      expect(response.body).toHaveProperty('nome', mockProperty.nome);
+      expect(response.body).toHaveProperty('cidade', mockProperty.cidade);
+      expect(response.body).toHaveProperty('estado', mockProperty.estado);
     });
 
     it('should return 404 for non-existent property', async () => {
-      jest.spyOn(prismaService.property, 'findUnique').mockResolvedValueOnce(null);
+      (prismaService as any).propriedade.findUnique = jest.fn().mockResolvedValueOnce(null);
 
       await request(app.getHttpServer())
         .get('/propriedades/non-existent-id')
@@ -156,7 +175,7 @@ describe('Properties (e2e)', () => {
         totalArea: 500,
         cultivatedArea: 400,
         naturalArea: 100,
-        plan: 'basic',
+        plano: 'porteira',
       };
 
       const response = await request(app.getHttpServer())
@@ -166,9 +185,9 @@ describe('Properties (e2e)', () => {
         .expect(201);
 
       expect(response.body).toHaveProperty('id');
-      expect(response.body).toHaveProperty('name', newProperty.name);
-      expect(response.body).toHaveProperty('city', newProperty.city);
-      expect(response.body).toHaveProperty('state', newProperty.state);
+      expect(response.body).toHaveProperty('nome', newProperty.name);
+      expect(response.body).toHaveProperty('cidade', newProperty.city);
+      expect(response.body).toHaveProperty('estado', newProperty.state);
     });
 
     it('should validate required fields', async () => {
@@ -191,7 +210,7 @@ describe('Properties (e2e)', () => {
         totalArea: -100,
         cultivatedArea: 50,
         naturalArea: 50,
-        plan: 'basic',
+        plano: 'porteira',
       };
 
       await request(app.getHttpServer())
@@ -209,7 +228,7 @@ describe('Properties (e2e)', () => {
         totalArea: 100,
         cultivatedArea: 50,
         naturalArea: 50,
-        plan: 'basic',
+        plano: 'porteira',
       };
 
       await request(app.getHttpServer())
@@ -233,8 +252,8 @@ describe('Properties (e2e)', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body).toHaveProperty('name', updateData.name);
-      expect(response.body).toHaveProperty('cattleCount', updateData.cattleCount);
+      expect(response.body).toHaveProperty('nome', updateData.name);
+      expect(response.body).toHaveProperty('quantidadeGado', updateData.cattleCount);
     });
 
     it('should validate area values on update', async () => {
@@ -251,7 +270,7 @@ describe('Properties (e2e)', () => {
 
     it('should update plan type', async () => {
       const updateData = {
-        plan: 'enterprise',
+        plan: 'barao',
       };
 
       const response = await request(app.getHttpServer())
@@ -260,7 +279,7 @@ describe('Properties (e2e)', () => {
         .send(updateData)
         .expect(200);
 
-      expect(response.body).toHaveProperty('plan', updateData.plan);
+      expect(response.body).toHaveProperty('plano', updateData.plan);
     });
   });
 
@@ -273,7 +292,7 @@ describe('Properties (e2e)', () => {
     });
 
     it('should return 404 when deleting non-existent property', async () => {
-      jest.spyOn(prismaService.property, 'delete').mockRejectedValueOnce(new Error('Property not found'));
+      (prismaService as any).propriedade.delete = jest.fn().mockRejectedValueOnce(new Error('Property not found'));
 
       await request(app.getHttpServer())
         .delete('/propriedades/non-existent-id')
@@ -285,7 +304,7 @@ describe('Properties (e2e)', () => {
   describe('Property Status', () => {
     it('should allow changing property status', async () => {
       const updateData = {
-        status: 'inactive',
+        status: 'suspensa',
       };
 
       const response = await request(app.getHttpServer())

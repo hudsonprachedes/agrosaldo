@@ -13,28 +13,28 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).usuario.findUnique({
       where: { cpfCnpj: dto.cpfCnpj },
-      include: { properties: { include: { property: true } } },
+      include: { propriedades: { include: { propriedade: true } } },
     });
 
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+    if (!user || !(await bcrypt.compare(dto.password, user.senha))) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    const payload = { sub: user.id, role: user.role, cpfCnpj: user.cpfCnpj };
+    const payload = { sub: user.id, role: user.papel, cpfCnpj: user.cpfCnpj };
     const token = await this.jwtService.signAsync(payload);
 
     return {
       user: {
         id: user.id,
-        name: user.name,
+        name: user.nome,
         email: user.email,
         cpfCnpj: user.cpfCnpj,
-        phone: user.phone,
-        role: user.role,
+        phone: user.telefone,
+        role: user.papel,
         status: user.status,
-        properties: user.properties ? user.properties.map(item => item.property) : [],
+        properties: user.propriedades ? user.propriedades.map(item => item.propriedade) : [],
       },
       token,
     };
@@ -42,33 +42,33 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = await this.prisma.user.create({
+    const user = await (this.prisma as any).usuario.create({
       data: {
-        name: dto.name,
+        nome: dto.name,
         email: dto.email,
         cpfCnpj: dto.cpfCnpj,
-        phone: dto.phone,
-        password: passwordHash,
-        status: 'pending_approval',
-        role: 'operator',
+        telefone: dto.phone,
+        senha: passwordHash,
+        status: 'pendente_aprovacao',
+        papel: 'operador',
       },
     });
 
     return {
       id: user.id,
-      name: user.name,
+      name: user.nome,
       email: user.email,
       cpfCnpj: user.cpfCnpj,
-      phone: user.phone,
-      role: user.role,
+      phone: user.telefone,
+      role: user.papel,
       status: user.status,
     };
   }
 
   async me(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await (this.prisma as any).usuario.findUnique({
       where: { id: userId },
-      include: { properties: { include: { property: true } } },
+      include: { propriedades: { include: { propriedade: true } } },
     });
 
     if (!user) {
@@ -77,13 +77,13 @@ export class AuthService {
 
     return {
       id: user.id,
-      name: user.name,
+      name: user.nome,
       email: user.email,
       cpfCnpj: user.cpfCnpj,
-      phone: user.phone,
-      role: user.role,
+      phone: user.telefone,
+      role: user.papel,
       status: user.status,
-      properties: user.properties.map(item => item.property),
+      properties: user.propriedades.map(item => item.propriedade),
     };
   }
 }

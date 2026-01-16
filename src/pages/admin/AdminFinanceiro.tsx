@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import AdminLayout from '@/components/layout/AdminLayout';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,18 +27,45 @@ import {
   Upload,
   Settings,
 } from 'lucide-react';
-import { mockTenants, mockFinancialPayments, FinancialPayment, mockPixConfig, updatePixConfig } from '@/mocks/mock-admin';
-import { toast } from '@/hooks/use-toast';
+import { adminService, FinancialPayment, PixConfig } from '@/services/api.service';
+import { toast } from 'sonner';
 
 export default function AdminFinanceiro() {
-  const [payments, setPayments] = useState<FinancialPayment[]>(mockFinancialPayments);
+  const [payments, setPayments] = useState<FinancialPayment[]>([]);
+  const [pixConfig, setPixConfig] = useState<PixConfig | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<FinancialPayment | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPixConfigDialog, setShowPixConfigDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const [pixKey, setPixKey] = useState(mockPixConfig.pixKey);
-  const [pixKeyType, setPixKeyType] = useState(mockPixConfig.pixKeyType);
-  const [qrCodeImage, setQrCodeImage] = useState<string | undefined>(mockPixConfig.qrCodeImage);
+  const [pixKey, setPixKey] = useState('');
+  const [pixKeyType, setPixKeyType] = useState('cpf');
+  const [qrCodeImage, setQrCodeImage] = useState<string | undefined>();
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [paymentsData, pixConfigData] = await Promise.all([
+          adminService.getPayments(),
+          adminService.getPixConfig(),
+        ]);
+        setPayments(paymentsData);
+        setPixConfig(pixConfigData);
+        if (pixConfigData) {
+          setPixKey(pixConfigData.pixKey);
+          setPixKeyType(pixConfigData.pixKeyType);
+          setQrCodeImage(pixConfigData.qrCodeImage);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados financeiros:', error);
+        toast.error('Erro ao carregar dados financeiros');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadData();
+  }, []);
 
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card' | 'debit_card' | 'bank_slip' | 'cash'>('pix');
 
@@ -67,51 +93,48 @@ export default function AdminFinanceiro() {
       p.id === paymentId ? { ...p, status: 'pending' as const, paidAt: undefined } : p
     );
     setPayments(updated);
-    toast({
-      title: 'Pagamento revertido',
-      description: 'O pagamento foi marcado como pendente.',
-    });
+    toast.success('Pagamento revertido para pendente');
   };
 
-  const handlePaymentConfirmation = () => {
+  const handlePaymentConfirmation = async () => {
     if (!selectedPayment) return;
 
-    const updated = payments.map(p =>
-      p.id === selectedPayment.id
-        ? { ...p, status: 'paid' as const, paidAt: new Date().toISOString() }
-        : p
-    );
+    try {
+      await adminService.createPayment({
+        ...selectedPayment,
+        status: 'paid',
+        paidAt: new Date().toISOString(),
+      });
 
-    setPayments(updated);
-    setShowPaymentDialog(false);
+      const updated = payments.map(p =>
+        p.id === selectedPayment.id
+          ? { ...p, status: 'paid' as const, paidAt: new Date().toISOString() }
+          : p
+      );
 
-    toast({
-      title: 'Pagamento Confirmado',
-      description: `Recebimento de ${selectedPayment.tenantName} registrado com sucesso.`,
-    });
-
-    // Atualiza status do tenant
-    const tenant = mockTenants.find(t => t.id === selectedPayment.tenantId);
-    if (tenant) {
-      tenant.financialStatus = 'ok';
-      if (tenant.status === 'suspended') {
-        tenant.status = 'active';
-      }
+      setPayments(updated);
+      setShowPaymentDialog(false);
+      toast.success(`Recebimento de ${selectedPayment.tenantName} registrado com sucesso`);
+    } catch (error) {
+      console.error('Erro ao confirmar pagamento:', error);
+      toast.error('Erro ao confirmar pagamento');
     }
   };
 
-  const handlePixConfigSave = () => {
-    updatePixConfig({
-      pixKey,
-      pixKeyType: pixKeyType as 'cpf' | 'cnpj' | 'email' | 'phone' | 'random',
-      qrCodeImage,
-    });
+  const handlePixConfigSave = async () => {
+    try {
+      await adminService.updatePixConfig({
+        pixKey,
+        pixKeyType: pixKeyType as 'cpf' | 'cnpj' | 'email' | 'phone' | 'random',
+        qrCodeImage,
+      });
 
-    setShowPixConfigDialog(false);
-    toast({
-      title: 'Configuração Salva',
-      description: 'Dados do PIX atualizados com sucesso.',
-    });
+      setShowPixConfigDialog(false);
+      toast.success('Configuração do PIX atualizada com sucesso');
+    } catch (error) {
+      console.error('Erro ao salvar configuração PIX:', error);
+      toast.error('Erro ao salvar configuração do PIX');
+    }
   };
 
   const handleQrCodeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,9 +180,12 @@ export default function AdminFinanceiro() {
     return labels[freq] || freq;
   };
 
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando dados financeiros...</div>;
+  }
+
   return (
-    <AdminLayout>
-      <div className="p-6">
+    <div className="space-y-6 p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Financeiro</h1>
@@ -624,7 +650,6 @@ export default function AdminFinanceiro() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </AdminLayout>
+    </div>
   );
 }

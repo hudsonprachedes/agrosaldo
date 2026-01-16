@@ -87,6 +87,11 @@ export interface Livestock {
   headcount: number;
   createdAt: string;
   updatedAt: string;
+  // Aliases para compatibilidade com Prisma PT-BR
+  especie?: string;
+  faixaEtaria?: string;
+  sexo?: string;
+  cabecas?: number;
 }
 
 export interface CattleReport {
@@ -202,5 +207,135 @@ export const livestockService = {
 
   async getSummary(propertyId: string): Promise<LivestockSummary> {
     return apiClient.get<LivestockSummary>(API_ROUTES.CATTLE.GET_SUMMARY.replace(':propertyId', propertyId));
+  },
+};
+
+// --- Admin Interfaces ---
+
+export interface AdminDashboardStats {
+  totalTenants: number;
+  activeTenants: number;
+  totalCattle: number;
+  mrr: number;
+  pendingRequests: number;
+  overdueCount: number;
+}
+
+export interface StateRegulation {
+  id: string;
+  uf: string;
+  stateName: string;
+  reportingDeadline: number;
+  requiredDocuments: string[];
+  saldoReportFrequency: string;
+  saldoReportDay: number;
+  gtaRequired: boolean;
+  observations: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface CreateRegulationDto {
+  uf: string;
+  stateName: string;
+  reportingDeadline: number;
+  requiredDocuments: string[];
+  saldoReportFrequency: string;
+  saldoReportDay: number;
+  gtaRequired: boolean;
+  observations: string;
+}
+
+export interface FinancialPayment {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  plan: string;
+  amount: number;
+  paymentMethod: string;
+  paymentFrequency: string;
+  status: string;
+  dueDate: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export interface PixConfig {
+  id: string;
+  pixKey: string;
+  pixKeyType: string;
+  qrCodeImage?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
+  ip: string;
+  timestamp: string;
+  dataHora?: string; // Backend usa dataHora
+}
+
+export const adminService = {
+  async getDashboardStats(): Promise<AdminDashboardStats> {
+    return apiClient.get<AdminDashboardStats>(API_ROUTES.ADMIN.DASHBOARD_STATS);
+  },
+
+  async getPendingUsers(): Promise<User[]> {
+    return apiClient.get<User[]>(API_ROUTES.ADMIN.PENDING_USERS);
+  },
+
+  async getTenants(): Promise<User[]> {
+    return apiClient.get<User[]>(API_ROUTES.ADMIN.TENANTS);
+  },
+
+  async approveUser(userId: string, status: string): Promise<User> {
+    return apiClient.patch<User>(API_ROUTES.ADMIN.APPROVE_USER.replace(':id', userId), { status });
+  },
+
+  async getRegulations(): Promise<StateRegulation[]> {
+    return apiClient.get<StateRegulation[]>(API_ROUTES.ADMIN.REGULATIONS);
+  },
+
+  async createRegulation(data: CreateRegulationDto): Promise<StateRegulation> {
+    return apiClient.post<StateRegulation>(API_ROUTES.ADMIN.REGULATIONS, data);
+  },
+
+  async updateRegulation(id: string, data: Partial<CreateRegulationDto>): Promise<StateRegulation> {
+    return apiClient.patch<StateRegulation>(API_ROUTES.ADMIN.REGULATIONS_ID.replace(':id', id), data);
+  },
+
+  async deleteRegulation(id: string): Promise<void> {
+    await apiClient.delete(API_ROUTES.ADMIN.REGULATIONS_ID.replace(':id', id));
+  },
+
+  async getPayments(): Promise<FinancialPayment[]> {
+    return apiClient.get<FinancialPayment[]>(API_ROUTES.ADMIN.PAYMENTS);
+  },
+
+  async createPayment(data: Partial<FinancialPayment>): Promise<FinancialPayment> {
+    return apiClient.post<FinancialPayment>(API_ROUTES.ADMIN.PAYMENTS, data);
+  },
+
+  async getPixConfig(): Promise<PixConfig> {
+    return apiClient.get<PixConfig>(API_ROUTES.ADMIN.PIX_CONFIG);
+  },
+
+  async updatePixConfig(data: Partial<PixConfig>): Promise<PixConfig> {
+    return apiClient.post<PixConfig>(API_ROUTES.ADMIN.PIX_CONFIG, data);
+  },
+
+  async getAuditLogs(): Promise<AuditLog[]> {
+    const logs = await apiClient.get<AuditLog[]>(API_ROUTES.ADMIN.AUDIT_LOGS);
+    // Mapear dataHora para timestamp se necessário, ou ajustar a interface
+    return logs.map(log => ({
+      ...log,
+      timestamp: log.dataHora || log.timestamp
+    }));
   },
 };

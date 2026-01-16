@@ -4,117 +4,226 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-enum UserRole {
+enum PapelUsuario {
   super_admin
-  owner
-  manager
-  operator
+  proprietario @map("owner")
+  gerente @map("manager")
+  operador @map("operator")
+
+  @@map("UserRole")
 }
 
-enum UserStatus {
-  active
-  pending_approval
-  suspended
+enum StatusUsuario {
+  ativo @map("active")
+  pendente_aprovacao @map("pending_approval")
+  suspenso @map("suspended")
+
+  @@map("UserStatus")
 }
 
-enum PropertyStatus {
-  active
-  pending
-  suspended
+enum StatusFinanceiro {
+  ok @map("ok")
+  atrasado @map("late")
+  inadimplente @map("overdue")
+  pendente @map("pending")
+
+  @@map("FinancialStatus")
 }
 
-enum PlanType {
+enum StatusPropriedade {
+  ativa @map("active")
+  pendente @map("pending")
+  suspensa @map("suspended")
+
+  @@map("PropertyStatus")
+}
+
+enum TipoPlano {
   porteira
   piquete
   retiro
   estancia
   barao
+
+  @@map("PlanType")
 }
 
-enum MovementType {
-  birth
-  death
-  sale
-  purchase
-  vaccine
-  adjustment
+enum TipoMovimento {
+  nascimento @map("birth")
+  morte @map("death")
+  venda @map("sale")
+  compra @map("purchase")
+  vacina @map("vaccine")
+  ajuste @map("adjustment")
+
+  @@map("MovementType")
 }
 
-enum SexType {
-  male
-  female
+enum TipoSexo {
+  macho @map("male")
+  femea @map("female")
+
+  @@map("SexType")
 }
 
-model User {
-  id         String         @id @default(uuid())
-  name       String
-  email      String         @unique
-  cpfCnpj    String         @unique
-  phone      String?
-  password   String
-  role       UserRole       @default(operator)
-  status     UserStatus     @default(pending_approval)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  properties UserProperty[]
+model Usuario {
+  id                String          @id @default(uuid()) @map("id")
+  nome              String          @map("name")
+  email             String          @unique @map("email")
+  cpfCnpj           String          @unique @map("cpfCnpj")
+  telefone          String?         @map("phone")
+  senha             String          @map("password")
+  papel             PapelUsuario    @default(operador) @map("role")
+  status            StatusUsuario   @default(pendente_aprovacao) @map("status")
+  ultimoLogin       DateTime?       @map("lastLogin")
+  versaoApp         String?         @map("appVersion")
+  statusFinanceiro  StatusFinanceiro? @map("financialStatus")
+  receitaMensal     Float?          @map("monthlyRevenue")
+  criadoEm          DateTime        @default(now()) @map("createdAt")
+  atualizadoEm      DateTime        @updatedAt @map("updatedAt")
+  propriedades      UsuarioPropriedade[]
+
+  @@map("User")
 }
 
-model Property {
-  id              String         @id @default(uuid())
-  name            String         @unique
-  city            String
-  state           String
-  totalArea       Float
-  cultivatedArea  Float
-  naturalArea     Float
-  cattleCount     Int
-  status          PropertyStatus @default(active)
-  plan            PlanType       @default(porteira)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  users           UserProperty[]
-  livestock       Livestock[]
-  movements       Movement[]
+model Propriedade {
+  id              String             @id @default(uuid()) @map("id")
+  nome            String             @unique @map("name")
+  cidade          String             @map("city")
+  estado          String             @map("state")
+  areaTotal       Float              @map("totalArea")
+  areaCultivada   Float              @map("cultivatedArea")
+  areaNatural     Float              @map("naturalArea")
+  quantidadeGado  Int                @map("cattleCount")
+  status          StatusPropriedade  @default(ativa) @map("status")
+  plano           TipoPlano          @default(porteira) @map("plan")
+  criadoEm        DateTime           @default(now()) @map("createdAt")
+  atualizadoEm    DateTime           @updatedAt @map("updatedAt")
+  usuarios        UsuarioPropriedade[]
+  rebanho         Rebanho[]
+  movimentos      Movimento[]
+
+  @@map("Property")
 }
 
-model UserProperty {
-  id         String   @id @default(uuid())
-  userId     String
-  propertyId String
-  user       User     @relation(fields: [userId], references: [id])
-  property   Property @relation(fields: [propertyId], references: [id])
+model UsuarioPropriedade {
+  id            String       @id @default(uuid()) @map("id")
+  usuarioId     String       @map("userId")
+  propriedadeId String       @map("propertyId")
+  usuario       Usuario      @relation(fields: [usuarioId], references: [id])
+  propriedade   Propriedade  @relation(fields: [propriedadeId], references: [id])
 
-  @@unique([userId, propertyId])
+  @@unique([usuarioId, propriedadeId])
+  @@map("UserProperty")
 }
 
-model Livestock {
-  id          String   @id @default(uuid())
-  propertyId  String
-  species     String
-  ageGroup    String
-  sex         SexType
-  headcount   Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  property    Property @relation(fields: [propertyId], references: [id])
+model Rebanho {
+  id            String    @id @default(uuid()) @map("id")
+  propriedadeId String    @map("propertyId")
+  especie       String    @map("species")
+  faixaEtaria   String    @map("ageGroup")
+  sexo          TipoSexo  @map("sex")
+  cabecas       Int       @map("headcount")
+  criadoEm      DateTime  @default(now()) @map("createdAt")
+  atualizadoEm  DateTime  @updatedAt @map("updatedAt")
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@map("Livestock")
 }
 
-model Movement {
-  id          String       @id @default(uuid())
-  propertyId  String
-  type        MovementType
-  date        DateTime
-  quantity    Int
-  sex         SexType?
-  ageGroup    String?
-  description String
-  destination String?
-  value       Float?
-  gtaNumber   String?
-  photoUrl    String?
-  cause       String?
-  createdAt   DateTime     @default(now())
-  property    Property     @relation(fields: [propertyId], references: [id])
+model Movimento {
+  id            String       @id @default(uuid()) @map("id")
+  propriedadeId String       @map("propertyId")
+  tipo          TipoMovimento @map("type")
+  especie       String?      @default("bovino") @map("species")
+  data          DateTime     @map("date")
+  quantidade    Int          @map("quantity")
+  sexo          TipoSexo?    @map("sex")
+  faixaEtaria   String?      @map("ageGroup")
+  descricao     String       @map("description")
+  destino       String?      @map("destination")
+  valor         Float?       @map("value")
+  numeroGta     String?      @map("gtaNumber")
+  fotoUrl       String?      @map("photoUrl")
+  causa         String?      @map("cause")
+  criadoEm      DateTime     @default(now()) @map("createdAt")
+  propriedade   Propriedade  @relation(fields: [propriedadeId], references: [id])
+
+  @@map("Movement")
+}
+
+model SolicitacaoPendente {
+  id               String   @id @default(uuid()) @map("id")
+  nome             String   @map("name")
+  cpfCnpj          String   @map("cpfCnpj")
+  email            String   @map("email")
+  telefone         String   @map("phone")
+  plano            String   @map("plan")
+  tipo             String   @map("type")
+  status           String   @map("status")
+  enviadoEm        DateTime @map("submittedAt")
+  origem           String?  @map("source")
+  nomePropriedade  String?  @map("propertyName")
+  observacoes      String?  @map("notes")
+
+  @@map("PendingRequest")
+}
+
+model RegulamentacaoEstadual {
+  id                 String   @id @default(uuid()) @map("id")
+  uf                 String   @map("uf")
+  nomeEstado         String   @map("stateName")
+  prazoEntrega       Int      @map("reportingDeadline")
+  documentosObrigatorios String[] @map("requiredDocuments")
+  frequenciaRelatorioSaldo String @map("saldoReportFrequency")
+  diaRelatorioSaldo  Int      @map("saldoReportDay")
+  gtaObrigatoria     Boolean  @map("gtaRequired")
+  observacoes        String   @map("observations")
+  atualizadoEm       DateTime @default(now()) @map("updatedAt")
+  atualizadoPor      String   @map("updatedBy")
+
+  @@map("StateRegulation")
+}
+
+model PagamentoFinanceiro {
+  id                String   @id @default(uuid()) @map("id")
+  tenantId          String   @map("tenantId")
+  tenantName        String   @map("tenantName")
+  plano             String   @map("plan")
+  valor             Float    @map("amount")
+  metodoPagamento   String   @map("paymentMethod")
+  frequenciaPagamento String @map("paymentFrequency")
+  status            String   @map("status")
+  vencimentoEm      DateTime @map("dueDate")
+  pagoEm            DateTime? @map("paidAt")
+  criadoEm          DateTime @default(now()) @map("createdAt")
+
+  @@map("FinancialPayment")
+}
+
+model ConfiguracaoPix {
+  id            String   @id @default(uuid()) @map("id")
+  chavePix      String   @map("pixKey")
+  tipoChavePix  String   @map("pixKeyType")
+  imagemQrCode  String?  @map("qrCodeImage")
+  ativo         Boolean  @default(true) @map("active")
+  criadoEm      DateTime @default(now()) @map("createdAt")
+  atualizadoEm  DateTime @updatedAt @map("updatedAt")
+
+  @@map("PixConfig")
+}
+
+model LogAuditoria {
+  id        String   @id @default(uuid()) @map("id")
+  usuarioId String   @map("userId")
+  usuarioNome String @map("userName")
+  acao      String   @map("action")
+  detalhes  String   @map("details")
+  ip        String   @map("ip")
+  dataHora  DateTime @default(now()) @map("timestamp")
+
+  @@map("AuditLog")
 }

@@ -1,5 +1,6 @@
-import React from 'react';
-import { getAdminKPIs } from '@/mocks/mock-admin';
+import React, { useEffect, useState } from 'react';
+import { adminService, AdminDashboardStats } from '@/services/api.service';
+import { toast } from 'sonner';
 import {
   Users,
   Beef,
@@ -14,7 +15,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export default function AdminDashboard() {
-  const kpis = getAdminKPIs();
+  const [kpis, setKpis] = useState<AdminDashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const stats = await adminService.getDashboardStats();
+        setKpis(stats);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas:', error);
+        toast.error('Erro ao carregar dados do dashboard');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadStats();
+  }, []);
+
+  if (isLoading || !kpis) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
 
   const kpiCards = [
     {

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { mockAuditLogs } from '@/mocks/mock-admin';
+import React, { useState, useEffect } from 'react';
+import { adminService } from '@/services/api.service';
+import { toast } from 'sonner';
 import {
   Shield,
   Search,
@@ -14,7 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { toast } from 'sonner';
 
 const actionColors: Record<string, string> = {
   'login': 'bg-success/10 text-success',
@@ -44,9 +44,27 @@ const actionLabels: Record<string, string> = {
 
 export default function AdminAuditoria() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredLogs = mockAuditLogs.filter(log =>
-    log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  useEffect(() => {
+    const loadLogs = async () => {
+      try {
+        const data = await adminService.getAuditLogs();
+        setLogs(data);
+      } catch (error) {
+        console.error('Erro ao carregar auditoria:', error);
+        toast.error('Erro ao carregar logs de auditoria');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadLogs();
+  }, []);
+
+  const filteredLogs = logs.filter(log =>
+    log.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.details.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -89,14 +107,14 @@ export default function AdminAuditoria() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{mockAuditLogs.length}</p>
+            <p className="text-2xl font-bold text-primary">{logs.length}</p>
             <p className="text-xs text-muted-foreground">Total de Logs</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-success">
-              {mockAuditLogs.filter(l => l.action === 'login').length}
+              {logs.filter(l => l.action === 'login').length}
             </p>
             <p className="text-xs text-muted-foreground">Logins Hoje</p>
           </CardContent>
@@ -104,7 +122,7 @@ export default function AdminAuditoria() {
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-warning">
-              {mockAuditLogs.filter(l => l.action === 'impersonate').length}
+              {logs.filter(l => l.action === 'impersonate').length}
             </p>
             <p className="text-xs text-muted-foreground">Impersonates</p>
           </CardContent>
@@ -112,7 +130,7 @@ export default function AdminAuditoria() {
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-error">
-              {mockAuditLogs.filter(l => l.action === 'block' || l.action === 'reject').length}
+              {logs.filter(l => l.action === 'block' || l.action === 'reject').length}
             </p>
             <p className="text-xs text-muted-foreground">Ações Restritivas</p>
           </CardContent>

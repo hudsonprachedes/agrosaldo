@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { mockPendingRequests, PendingRequest } from '@/mocks/mock-admin';
+import React, { useState, useEffect } from 'react';
+import { adminService } from '@/services/api.service';
+import { toast } from 'sonner';
 import {
   CheckCircle,
   XCircle,
@@ -33,11 +34,37 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
+
+interface PendingRequest {
+  id: string;
+  tenantName: string;
+  tenantEmail: string;
+  requestType: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  details: string;
+}
 
 export default function AdminSolicitacoes() {
-  const [requests, setRequests] = useState<PendingRequest[]>(mockPendingRequests);
+  const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRequests = async () => {
+      try {
+        const data = await adminService.getPendingUsers();
+        setRequests(data as any);
+      } catch (error) {
+        console.error('Erro ao carregar solicitações:', error);
+        toast.error('Erro ao carregar solicitações');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadRequests();
+  }, []);
   const [rejectDialog, setRejectDialog] = useState(false);
   const [approveDialog, setApproveDialog] = useState(false);
   const [viewDialog, setViewDialog] = useState(false);

@@ -1,59 +1,59 @@
-import { PrismaClient, type Property } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 export async function seedProperties(prisma: PrismaClient) {
   const properties = [
     {
-      name: 'Fazenda Santa Rita',
-      city: 'Cuiabá',
-      state: 'MT',
-      totalArea: 1500,
-      cultivatedArea: 800,
-      naturalArea: 700,
-      cattleCount: 2340,
-      status: 'active' as const,
-      plan: 'porteira' as const,
+      nome: 'Fazenda Santa Rita',
+      cidade: 'Cuiabá',
+      estado: 'MT',
+      areaTotal: 1500,
+      areaCultivada: 800,
+      areaNatural: 700,
+      quantidadeGado: 2340,
+      status: 'ativa' as const,
+      plano: 'porteira' as const,
     },
     {
-      name: 'Fazenda Ouro Verde',
-      city: 'Rondonópolis',
-      state: 'MT',
-      totalArea: 3200,
-      cultivatedArea: 2000,
-      naturalArea: 1200,
-      cattleCount: 4520,
-      status: 'active' as const,
-      plan: 'barao' as const,
+      nome: 'Fazenda Ouro Verde',
+      cidade: 'Rondonópolis',
+      estado: 'MT',
+      areaTotal: 3200,
+      areaCultivada: 2000,
+      areaNatural: 1200,
+      quantidadeGado: 4520,
+      status: 'ativa' as const,
+      plano: 'barao' as const,
     },
   ];
 
-  const createdProperties: Property[] = [];
+  const createdProperties: Array<{ id: string; nome: string }> = [];
 
   for (const property of properties) {
-    const created = await prisma.property.upsert({
-      where: { name: property.name },
+    const created = await prisma.propriedade.upsert({
+      where: { nome: property.nome },
       update: property as any,
       create: property as any,
     });
-    createdProperties.push(created);
+    createdProperties.push(created as any);
   }
 
-  const owner = await prisma.user.findUnique({
+  const owner = await prisma.usuario.findUnique({
     where: { cpfCnpj: '123.456.789-00' },
   });
 
   if (owner) {
     for (const property of createdProperties) {
-      await prisma.userProperty.upsert({
+      await prisma.usuarioPropriedade.upsert({
         where: {
-          userId_propertyId: {
-            userId: owner.id,
-            propertyId: property.id,
+          usuarioId_propriedadeId: {
+            usuarioId: owner.id,
+            propriedadeId: property.id,
           },
         },
         update: {},
         create: {
-          userId: owner.id,
-          propertyId: property.id,
+          usuarioId: owner.id,
+          propriedadeId: property.id,
         },
       });
     }
