@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+
 import {
   Bell,
   Send,
@@ -48,6 +49,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { adminService, AdminCommunication } from '@/services/api.service';
 
 interface Notification {
   id: string;
@@ -62,42 +64,6 @@ interface Notification {
   startDate?: string;
   endDate?: string;
 }
-
-const initialNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'push',
-    title: 'Campanha de Aftosa Iniciada!',
-    message: 'A campanha de vacinação contra aftosa começou. Atualize seus registros.',
-    sentAt: '2024-01-15',
-    recipients: 245,
-    status: 'sent',
-    targetAudience: 'all',
-  },
-  {
-    id: '2',
-    type: 'banner',
-    title: 'Manutenção Programada',
-    message: 'O sistema ficará indisponível no dia 20/01 das 02h às 04h.',
-    sentAt: '2024-01-14',
-    recipients: 312,
-    status: 'active',
-    targetAudience: 'all',
-    color: 'warning',
-    startDate: '2024-01-14',
-    endDate: '2024-01-21',
-  },
-  {
-    id: '3',
-    type: 'push',
-    title: 'Lembrete de Pagamento',
-    message: 'Sua fatura vence em 3 dias. Regularize para manter o acesso.',
-    sentAt: '2024-01-12',
-    recipients: 48,
-    status: 'sent',
-    targetAudience: 'overdue',
-  },
-];
 
 const bannerColors = [
   { id: 'primary', label: 'Primário', class: 'bg-primary' },
@@ -115,12 +81,56 @@ const audienceOptions = [
 ];
 
 export default function AdminComunicacao() {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const rows = await adminService.listCommunications();
+        const mapped: Notification[] = rows.map((r: AdminCommunication) => {
+          const type = (r.type ?? r.tipo ?? 'push') as 'push' | 'banner';
+          const title = r.title ?? r.titulo ?? '';
+          const message = r.message ?? r.mensagem ?? '';
+          const sentAt = r.sentAt ?? r.enviadoEm ?? new Date().toISOString();
+          const recipients = r.recipients ?? r.destinatarios ?? 0;
+          const status = (r.status ?? 'sent') as Notification['status'];
+          const targetAudience = (r.targetAudience ?? r.publicoAlvo ?? 'all') as Notification['targetAudience'];
+          const color = (r.color ?? r.cor ?? undefined) as string | undefined;
+          const startDate = r.startDate ?? r.inicioEm ?? undefined;
+          const endDate = r.endDate ?? r.fimEm ?? undefined;
+          return {
+            id: r.id,
+            type,
+            title,
+            message,
+            sentAt: typeof sentAt === 'string' ? sentAt : String(sentAt),
+            recipients,
+            status,
+            targetAudience,
+            color,
+            startDate,
+            endDate,
+          };
+        });
+        setNotifications(mapped);
+      } catch (error) {
+        console.error('Erro ao carregar comunicações:', error);
+        toast.error('Erro ao carregar comunicações');
+        setNotifications([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, []);
 
   // Push form state
   const [pushTitle, setPushTitle] = useState('');
@@ -161,19 +171,37 @@ export default function AdminComunicacao() {
     }
 
     const audience = audienceOptions.find(a => a.value === pushAudience);
-    const newNotification: Notification = {
-      id: Date.now().toString(),
+    const payload = {
       type: 'push',
       title: pushTitle,
       message: pushMessage,
-      sentAt: pushScheduled ? pushScheduleDate : new Date().toISOString().split('T')[0],
+      sentAt: pushScheduled ? pushScheduleDate : new Date().toISOString(),
       recipients: audience?.count || 312,
       status: pushScheduled ? 'scheduled' : 'sent',
       targetAudience: pushAudience,
     };
 
-    setNotifications([newNotification, ...notifications]);
-    
+    void (async () => {
+      try {
+        const created = await adminService.createCommunication(payload);
+        const normalized: Notification = {
+          id: created.id,
+          type: 'push',
+          title: created.title ?? created.titulo ?? pushTitle,
+          message: created.message ?? created.mensagem ?? pushMessage,
+          sentAt: created.sentAt ?? created.enviadoEm ?? payload.sentAt,
+          recipients: created.recipients ?? created.destinatarios ?? payload.recipients,
+          status: (created.status ?? payload.status) as Notification['status'],
+          targetAudience: (created.targetAudience ?? created.publicoAlvo ?? payload.targetAudience) as Notification['targetAudience'],
+        };
+        setNotifications([normalized, ...notifications]);
+      } catch (error) {
+        console.error('Erro ao enviar push:', error);
+        toast.error('Erro ao enviar push');
+        return;
+      }
+    })();
+
     if (pushScheduled) {
       toast.success('Push agendada com sucesso!', {
         description: `Será enviada em ${new Date(pushScheduleDate).toLocaleDateString('pt-BR')} para ${audience?.count} usuários`,
@@ -184,7 +212,7 @@ export default function AdminComunicacao() {
         icon: '🔔',
       });
     }
-    
+
     resetPushForm();
     setPushDialogOpen(false);
   };
@@ -195,48 +223,81 @@ export default function AdminComunicacao() {
       return;
     }
 
-    const newNotification: Notification = {
-      id: Date.now().toString(),
+    const payload = {
       type: 'banner',
       title: bannerTitle,
       message: bannerMessage,
-      sentAt: bannerStartDate,
+      sentAt: new Date(bannerStartDate).toISOString(),
       recipients: 312,
       status: 'active',
       targetAudience: 'all',
       color: bannerColor,
       startDate: bannerStartDate,
-      endDate: bannerEndDate,
+      endDate: bannerEndDate || undefined,
     };
 
-    setNotifications([newNotification, ...notifications]);
+    void (async () => {
+      try {
+        const created = await adminService.createCommunication(payload);
+        const normalized: Notification = {
+          id: created.id,
+          type: 'banner',
+          title: created.title ?? created.titulo ?? bannerTitle,
+          message: created.message ?? created.mensagem ?? bannerMessage,
+          sentAt: created.sentAt ?? created.enviadoEm ?? payload.sentAt,
+          recipients: created.recipients ?? created.destinatarios ?? payload.recipients,
+          status: (created.status ?? payload.status) as Notification['status'],
+          targetAudience: (created.targetAudience ?? created.publicoAlvo ?? payload.targetAudience) as Notification['targetAudience'],
+          color: created.color ?? created.cor ?? bannerColor,
+          startDate: created.startDate ?? created.inicioEm ?? bannerStartDate,
+          endDate: created.endDate ?? created.fimEm ?? bannerEndDate,
+        };
+        setNotifications([normalized, ...notifications]);
+      } catch (error) {
+        console.error('Erro ao criar banner:', error);
+        toast.error('Erro ao criar banner');
+        return;
+      }
+    })();
+
     toast.success('Banner criado e ativado!', {
       description: 'O banner está visível para todos os usuários',
       icon: '🎨',
     });
-    
+
     resetBannerForm();
     setBannerDialogOpen(false);
   };
 
   const handleDelete = () => {
     if (!selectedNotification) return;
-    
-    setNotifications(notifications.filter(n => n.id !== selectedNotification.id));
-    toast.success(`${selectedNotification.type === 'push' ? 'Push' : 'Banner'} excluído(a)`);
-    setDeleteDialogOpen(false);
-    setSelectedNotification(null);
+
+    void (async () => {
+      try {
+        await adminService.deleteCommunication(selectedNotification.id);
+        setNotifications(notifications.filter(n => n.id !== selectedNotification.id));
+        toast.success(`${selectedNotification.type === 'push' ? 'Push' : 'Banner'} excluído(a)`);
+        setDeleteDialogOpen(false);
+        setSelectedNotification(null);
+      } catch (error) {
+        console.error('Erro ao excluir comunicação:', error);
+        toast.error('Erro ao excluir comunicação');
+      }
+    })();
   };
 
   const handleToggleBanner = (notification: Notification) => {
-    setNotifications(notifications.map(n => {
-      if (n.id === notification.id) {
-        const newStatus = n.status === 'active' ? 'expired' : 'active';
+    void (async () => {
+      try {
+        const newStatus = notification.status === 'active' ? 'expired' : 'active';
+        await adminService.updateCommunication(notification.id, { status: newStatus });
+        setNotifications(notifications.map(n => n.id === notification.id ? { ...n, status: newStatus } : n));
         toast.success(`Banner ${newStatus === 'active' ? 'ativado' : 'desativado'}`);
-        return { ...n, status: newStatus };
+      } catch (error) {
+        console.error('Erro ao alterar status do banner:', error);
+        toast.error('Erro ao alterar status do banner');
       }
-      return n;
-    }));
+    })();
   };
 
   const getAudienceLabel = (audience: string) => {
@@ -248,6 +309,10 @@ export default function AdminComunicacao() {
     activeBanners: notifications.filter(n => n.type === 'banner' && n.status === 'active').length,
     totalReach: notifications.reduce((sum, n) => sum + n.recipients, 0),
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -264,7 +329,13 @@ export default function AdminComunicacao() {
         </div>
 
         <div className="flex gap-2">
-          <Dialog open={pushDialogOpen} onOpenChange={(open) => { setPushDialogOpen(open); if (!open) resetPushForm(); }}>
+          <Dialog
+            open={pushDialogOpen}
+            onOpenChange={(open) => {
+              setPushDialogOpen(open);
+              if (!open) resetPushForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Bell className="w-4 h-4 mr-2" />
@@ -281,17 +352,18 @@ export default function AdminComunicacao() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Título *</Label>
-                  <Input 
-                    placeholder="Ex: Campanha de Aftosa" 
+                  <Input
+                    placeholder="Ex: Campanha de Aftosa"
                     value={pushTitle}
                     onChange={(e) => setPushTitle(e.target.value)}
                     maxLength={60}
                   />
                   <p className="text-xs text-muted-foreground text-right">{pushTitle.length}/60</p>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Mensagem *</Label>
-                  <Textarea 
+                  <Textarea
                     placeholder="Digite a mensagem que será enviada..."
                     rows={4}
                     value={pushMessage}
@@ -300,9 +372,13 @@ export default function AdminComunicacao() {
                   />
                   <p className="text-xs text-muted-foreground text-right">{pushMessage.length}/200</p>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Destinatários</Label>
-                  <Select value={pushAudience} onValueChange={(v: 'all' | 'premium' | 'free') => setPushAudience(v)}>
+                  <Select
+                    value={pushAudience}
+                    onValueChange={(v: 'all' | 'active' | 'overdue' | 'new') => setPushAudience(v)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -318,6 +394,7 @@ export default function AdminComunicacao() {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                   <div>
                     <Label className="font-medium">Agendar envio</Label>
@@ -325,11 +402,12 @@ export default function AdminComunicacao() {
                   </div>
                   <Switch checked={pushScheduled} onCheckedChange={setPushScheduled} />
                 </div>
+
                 {pushScheduled && (
                   <div className="space-y-2">
                     <Label>Data de Envio</Label>
-                    <Input 
-                      type="datetime-local" 
+                    <Input
+                      type="datetime-local"
                       value={pushScheduleDate}
                       onChange={(e) => setPushScheduleDate(e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
@@ -349,7 +427,13 @@ export default function AdminComunicacao() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={bannerDialogOpen} onOpenChange={(open) => { setBannerDialogOpen(open); if (!open) resetBannerForm(); }}>
+          <Dialog
+            open={bannerDialogOpen}
+            onOpenChange={(open) => {
+              setBannerDialogOpen(open);
+              if (!open) resetBannerForm();
+            }}
+          >
             <DialogTrigger asChild>
               <Button>
                 <Image className="w-4 h-4 mr-2" />
@@ -366,15 +450,16 @@ export default function AdminComunicacao() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Título *</Label>
-                  <Input 
-                    placeholder="Ex: Promoção Especial" 
+                  <Input
+                    placeholder="Ex: Promoção Especial"
                     value={bannerTitle}
                     onChange={(e) => setBannerTitle(e.target.value)}
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label>Mensagem *</Label>
-                  <Textarea 
+                  <Textarea
                     placeholder="Conteúdo do banner..."
                     rows={3}
                     value={bannerMessage}

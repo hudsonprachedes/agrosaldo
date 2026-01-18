@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Ticket,
   Users,
@@ -29,99 +29,108 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-
-const mockCoupons = [
-  {
-    id: '1',
-    code: 'AGRO2024',
-    type: 'discount',
-    value: 20,
-    usageCount: 45,
-    maxUsage: 100,
-    commission: 0,
-    createdBy: 'Admin',
-    status: 'active',
-  },
-  {
-    id: '2',
-    code: 'PARCEIRO10',
-    type: 'referral',
-    value: 10,
-    usageCount: 23,
-    maxUsage: null,
-    commission: 15,
-    createdBy: 'João Silva',
-    status: 'active',
-  },
-  {
-    id: '3',
-    code: 'PRIMEIROMES',
-    type: 'discount',
-    value: 100,
-    usageCount: 12,
-    maxUsage: 50,
-    commission: 0,
-    createdBy: 'Admin',
-    status: 'active',
-  },
-];
-
-const mockReferrers = [
-  {
-    id: '1',
-    name: 'João Silva',
-    code: 'JOAO2024',
-    referrals: 15,
-    totalCommission: 1250.00,
-    pendingCommission: 350.00,
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Maria Oliveira',
-    code: 'MARIA2024',
-    referrals: 8,
-    totalCommission: 680.00,
-    pendingCommission: 120.00,
-    status: 'active',
-  },
-];
+import { adminService, AdminCoupon, AdminReferrer } from '@/services/api.service';
 
 export default function AdminIndicacao() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
+  const [referrers, setReferrers] = useState<AdminReferrer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [newCode, setNewCode] = useState('');
+  const [newType, setNewType] = useState<'discount' | 'referral'>('discount');
+  const [newValue, setNewValue] = useState<number>(10);
+  const [newMaxUsage, setNewMaxUsage] = useState<number | ''>('');
+  const [newCommission, setNewCommission] = useState<number>(0);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [c, r] = await Promise.all([
+          adminService.listCoupons(),
+          adminService.listReferrers(),
+        ]);
+        setCoupons(c);
+        setReferrers(r);
+      } catch (error) {
+        console.error('Erro ao carregar indicação:', error);
+        toast.error('Erro ao carregar indicação');
+        setCoupons([]);
+        setReferrers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void load();
+  }, []);
 
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
     toast.success('Cupom copiado!');
   };
 
+  const handleCreateCoupon = async () => {
+    if (!newCode.trim()) {
+      toast.error('Informe o código do cupom');
+      return;
+    }
+
+    try {
+      const created = await adminService.createCoupon({
+        code: newCode.trim().toUpperCase(),
+        type: newType,
+        value: Number(newValue),
+        maxUsage: newMaxUsage === '' ? null : Number(newMaxUsage),
+        commission: newType === 'referral' ? Number(newCommission) : 0,
+        status: 'active',
+      });
+      setCoupons([created, ...coupons]);
+      toast.success('Cupom criado com sucesso!');
+      setDialogOpen(false);
+      setNewCode('');
+      setNewType('discount');
+      setNewValue(10);
+      setNewMaxUsage('');
+      setNewCommission(0);
+    } catch (error) {
+      console.error('Erro ao criar cupom:', error);
+      toast.error('Erro ao criar cupom');
+    }
+  };
+
   const kpis = [
     {
       title: 'Cupons Ativos',
-      value: mockCoupons.filter(c => c.status === 'active').length,
+      value: coupons.filter(c => (c.status ?? '').toLowerCase() === 'active').length,
       icon: Ticket,
       color: 'text-primary',
     },
     {
       title: 'Indicadores Ativos',
-      value: mockReferrers.length,
+      value: referrers.length,
       icon: Users,
       color: 'text-success',
     },
     {
       title: 'Comissões Pendentes',
-      value: `R$ ${mockReferrers.reduce((s, r) => s + r.pendingCommission, 0).toLocaleString('pt-BR')}`,
+      value: `R$ ${referrers.reduce((s, r) => s + (r.pendingCommission ?? r.comissaoPendente ?? 0), 0).toLocaleString('pt-BR')}`,
       icon: DollarSign,
       color: 'text-warning',
     },
     {
       title: 'Total Indicações',
-      value: mockReferrers.reduce((s, r) => s + r.referrals, 0),
+      value: referrers.reduce((s, r) => s + (r.referrals ?? r.indicacoes ?? 0), 0),
       icon: TrendingUp,
       color: 'text-chart-3',
     },
   ];
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -150,26 +159,35 @@ export default function AdminIndicacao() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Código do Cupom</Label>
-                <Input placeholder="Ex: AGRO2024" />
+                <Input placeholder="Ex: AGRO2024" value={newCode} onChange={(e) => setNewCode(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Tipo</Label>
-                <select className="w-full h-10 rounded-md border border-input bg-background px-3 py-2">
+                <select
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-2"
+                  value={newType}
+                  onChange={(e) => setNewType(e.target.value as 'discount' | 'referral')}
+                >
                   <option value="discount">Desconto (%)</option>
                   <option value="referral">Indicação (com comissão)</option>
                 </select>
               </div>
               <div className="space-y-2">
                 <Label>Valor do Desconto (%)</Label>
-                <Input type="number" placeholder="10" />
+                <Input type="number" placeholder="10" value={String(newValue)} onChange={(e) => setNewValue(Number(e.target.value))} />
               </div>
               <div className="space-y-2">
                 <Label>Limite de Uso (vazio = ilimitado)</Label>
-                <Input type="number" placeholder="100" />
+                <Input type="number" placeholder="100" value={newMaxUsage === '' ? '' : String(newMaxUsage)} onChange={(e) => setNewMaxUsage(e.target.value === '' ? '' : Number(e.target.value))} />
               </div>
+              {newType === 'referral' && (
+                <div className="space-y-2">
+                  <Label>Comissão (%)</Label>
+                  <Input type="number" placeholder="15" value={String(newCommission)} onChange={(e) => setNewCommission(Number(e.target.value))} />
+                </div>
+              )}
               <Button className="w-full" onClick={() => {
-                toast.success('Cupom criado com sucesso!');
-                setDialogOpen(false);
+                void handleCreateCoupon();
               }}>
                 Criar Cupom
               </Button>
@@ -216,20 +234,28 @@ export default function AdminIndicacao() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCoupons.map((coupon) => (
+              {coupons
+                .filter((coupon) => {
+                  const term = searchTerm.trim().toLowerCase();
+                  if (!term) return true;
+                  const code = (coupon.code ?? coupon.codigo ?? '').toLowerCase();
+                  const type = (coupon.type ?? coupon.tipo ?? '').toLowerCase();
+                  return code.includes(term) || type.includes(term);
+                })
+                .map((coupon) => (
                 <TableRow key={coupon.id}>
-                  <TableCell className="font-mono font-bold">{coupon.code}</TableCell>
+                  <TableCell className="font-mono font-bold">{coupon.code ?? coupon.codigo}</TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {coupon.type === 'discount' ? 'Desconto' : 'Indicação'}
+                      {(coupon.type ?? coupon.tipo) === 'discount' ? 'Desconto' : 'Indicação'}
                     </Badge>
                   </TableCell>
-                  <TableCell>{coupon.value}%</TableCell>
+                  <TableCell>{coupon.value ?? coupon.valor}%</TableCell>
                   <TableCell>
-                    {coupon.usageCount}/{coupon.maxUsage || '∞'}
+                    {(coupon.usageCount ?? coupon.quantidadeUso ?? 0)}/{coupon.maxUsage ?? coupon.maxUso ?? '∞'}
                   </TableCell>
                   <TableCell>
-                    {coupon.commission > 0 ? `${coupon.commission}%` : '-'}
+                    {(coupon.commission ?? coupon.comissao ?? 0) > 0 ? `${coupon.commission ?? coupon.comissao}%` : '-'}
                   </TableCell>
                   <TableCell>
                     <Badge className="bg-success/10 text-success">Ativo</Badge>
@@ -238,7 +264,7 @@ export default function AdminIndicacao() {
                     <Button 
                       variant="ghost" 
                       size="icon"
-                      onClick={() => copyToClipboard(coupon.code)}
+                      onClick={() => copyToClipboard(String(coupon.code ?? coupon.codigo ?? ''))}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -268,16 +294,16 @@ export default function AdminIndicacao() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockReferrers.map((referrer) => (
+              {referrers.map((referrer) => (
                 <TableRow key={referrer.id}>
-                  <TableCell className="font-medium">{referrer.name}</TableCell>
-                  <TableCell className="font-mono">{referrer.code}</TableCell>
-                  <TableCell>{referrer.referrals}</TableCell>
+                  <TableCell className="font-medium">{referrer.name ?? referrer.nome}</TableCell>
+                  <TableCell className="font-mono">{referrer.code ?? referrer.codigo}</TableCell>
+                  <TableCell>{referrer.referrals ?? referrer.indicacoes}</TableCell>
                   <TableCell className="text-success font-medium">
-                    R$ {referrer.totalCommission.toLocaleString('pt-BR')}
+                    R$ {(referrer.totalCommission ?? referrer.comissaoTotal ?? 0).toLocaleString('pt-BR')}
                   </TableCell>
                   <TableCell className="text-warning font-medium">
-                    R$ {referrer.pendingCommission.toLocaleString('pt-BR')}
+                    R$ {(referrer.pendingCommission ?? referrer.comissaoPendente ?? 0).toLocaleString('pt-BR')}
                   </TableCell>
                   <TableCell>
                     <Badge className="bg-success/10 text-success">Ativo</Badge>

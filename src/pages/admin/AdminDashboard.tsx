@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { adminService, AdminDashboardStats, AdminMrrSeriesPoint } from '@/services/api.service';
+import { adminService, AdminDashboardActivityItem, AdminDashboardStats, AdminMrrSeriesPoint } from '@/services/api.service';
 import { toast } from 'sonner';
 import {
   Users,
@@ -18,18 +18,21 @@ import ReactApexChart from 'react-apexcharts';
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState<AdminDashboardStats | null>(null);
   const [mrrSeries, setMrrSeries] = useState<AdminMrrSeriesPoint[]>([]);
+  const [activity, setActivity] = useState<AdminDashboardActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const [stats, series] = await Promise.all([
+        const [stats, series, recent] = await Promise.all([
           adminService.getDashboardStats(),
           adminService.getMrrSeries(12),
+          adminService.getDashboardActivity(8),
         ]);
 
         setKpis(stats);
         setMrrSeries(series);
+        setActivity(recent);
       } catch (error) {
         console.error('Erro ao carregar estatísticas:', error);
         toast.error('Erro ao carregar dados do dashboard');
@@ -213,33 +216,47 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">Atividade Recente</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-success" />
+            {activity.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                Sem atividades recentes
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Nova conta aprovada</p>
-                <p className="text-xs text-muted-foreground">Fazenda Alto Bonito - há 2 min</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-warning" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Upgrade de plano solicitado</p>
-                <p className="text-xs text-muted-foreground">Fazenda Nova Era - há 15 min</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center">
-                <XCircle className="w-5 h-5 text-error" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Pagamento rejeitado</p>
-                <p className="text-xs text-muted-foreground">Rancho Estrela - há 1 hora</p>
-              </div>
-            </div>
+            ) : (
+              activity.map((item) => {
+                const icon =
+                  item.action === 'USER_APPROVED' ? (
+                    <CheckCircle className="w-5 h-5 text-success" />
+                  ) : item.action === 'USER_REJECTED' ? (
+                    <XCircle className="w-5 h-5 text-error" />
+                  ) : item.action === 'approve' ? (
+                    <CheckCircle className="w-5 h-5 text-success" />
+                  ) : item.action === 'reject' ? (
+                    <XCircle className="w-5 h-5 text-error" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-warning" />
+                  );
+
+                const iconBg =
+                  item.action === 'USER_APPROVED' || item.action === 'approve'
+                    ? 'bg-success/10'
+                    : item.action === 'USER_REJECTED' || item.action === 'reject'
+                      ? 'bg-error/10'
+                      : 'bg-warning/10';
+
+                return (
+                  <div key={item.id} className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center`}>
+                      {icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{item.details}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.userName} • {new Date(item.timestamp).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </CardContent>
         </Card>
       </div>

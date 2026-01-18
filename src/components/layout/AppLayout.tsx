@@ -46,7 +46,7 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, selectedProperty, logout, clearSelectedProperty, selectProperty } = useAuth();
+  const { user, selectedProperty, logout, clearSelectedProperty, selectProperty, stopImpersonation } = useAuth();
   const isMobile = useIsMobile();
   const { pendingCount, isOnline, isSyncing } = useSyncStatus();
 
@@ -55,6 +55,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
 
   const properties = user.properties ?? [];
+
+  const isImpersonating = localStorage.getItem('agrosaldo_is_impersonating') === 'true';
 
   const handleChangeProperty = () => {
     clearSelectedProperty();
@@ -217,6 +219,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                {isImpersonating && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        void stopImpersonation();
+                      }}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Voltar ao Admin
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={logout}>
                   <LogOut className="w-4 h-4 mr-2" />
                   Sair

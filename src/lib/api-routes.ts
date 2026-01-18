@@ -268,6 +268,12 @@ export const API_ROUTES = {
     DASHBOARD_MRR_SERIES: '/admin/dashboard/mrr-series',
     // GET /admin/dashboard/mrr-series?months=12
 
+    DASHBOARD_ACTIVITY: '/admin/dashboard/activity',
+    // GET /admin/dashboard/activity?limit=10
+
+    ANALYTICS: '/admin/analises',
+    // GET /admin/analises?period=30d
+
     PLANS: '/admin/planos',
     // GET|POST /admin/planos
 
@@ -294,6 +300,24 @@ export const API_ROUTES = {
 
     APPROVE_USER: '/admin/usuarios/:id/aprovar',
     // PATCH /admin/usuarios/:id/aprovar
+
+    REJECT_USER: '/admin/usuarios/:id/rejeitar',
+    // PATCH /admin/usuarios/:id/rejeitar
+
+    UPDATE_USER_STATUS: '/admin/usuarios/:id/status',
+    // PATCH /admin/usuarios/:id/status
+
+    RESET_USER_PASSWORD: '/admin/usuarios/:id/reset-senha',
+    // POST /admin/usuarios/:id/reset-senha
+
+    UPDATE_USER: '/admin/usuarios/:id',
+    // PATCH /admin/usuarios/:id
+
+    UPDATE_USER_PLAN: '/admin/usuarios/:id/plano',
+    // PATCH /admin/usuarios/:id/plano
+
+    IMPERSONATE_USER: '/admin/usuarios/:id/impersonate',
+    // POST /admin/usuarios/:id/impersonate
 
     REGULATIONS: '/admin/regulamentacoes',
     // GET|POST /admin/regulamentacoes

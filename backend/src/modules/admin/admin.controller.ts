@@ -31,6 +31,19 @@ export class AdminController {
     return this.adminService.getMrrSeries(parsed);
   }
 
+  @Roles('super_admin')
+  @Get('dashboard/activity')
+  getDashboardActivity(@Query('limit') limit?: string) {
+    const parsed = limit ? Number(limit) : undefined;
+    return this.adminService.getDashboardActivity(parsed);
+  }
+
+  @Roles('super_admin')
+  @Get('analises')
+  getAnalytics(@Query('period') period?: string) {
+    return this.adminService.getAnalytics(period);
+  }
+
   // --- User Management ---
 
   @Roles('super_admin')
@@ -49,6 +62,42 @@ export class AdminController {
   @Patch('usuarios/:id/aprovar')
   approveUser(@Param('id') id: string, @Body() dto: ApproveUserDto) {
     return this.adminService.approveUser(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Patch('usuarios/:id/rejeitar')
+  rejectUser(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.rejectUser(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Patch('usuarios/:id/status')
+  updateUserStatus(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateUserStatus(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Post('usuarios/:id/reset-senha')
+  resetUserPassword(@Param('id') id: string) {
+    return this.adminService.resetUserPassword(id);
+  }
+
+  @Roles('super_admin')
+  @Patch('usuarios/:id')
+  updateUser(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateUser(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Patch('usuarios/:id/plano')
+  updateUserPlan(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateUserPlan(id, dto);
+  }
+
+  @Roles('super_admin')
+  @Post('usuarios/:id/impersonate')
+  impersonateUser(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.impersonateUser({ id: req.user?.id, cpfCnpj: req.user?.cpfCnpj }, id);
   }
 
   // --- Regulations ---
@@ -182,8 +231,8 @@ export class AdminController {
 
   @Roles('super_admin')
   @Get('auditoria')
-  listAuditLogs() {
-    return this.adminService.listAuditLogs();
+  getAuditLogs(@Query('userId') userId?: string) {
+    return this.adminService.listAuditLogs(userId);
   }
 
   @Roles('super_admin')

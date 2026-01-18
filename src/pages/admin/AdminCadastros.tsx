@@ -32,6 +32,23 @@ interface PendingSignup {
   cupomIndicacao?: string;
 }
 
+type ApiPendingUser = {
+  id: string;
+  nome: string;
+  cpfCnpj: string;
+  email: string;
+  telefone?: string | null;
+  criadoEm?: string;
+  status?: string;
+  propriedades?: Array<{
+    propriedade?: {
+      cidade?: string;
+      estado?: string;
+      quantidadeGado?: number;
+    };
+  }>;
+};
+
 export default function AdminCadastros() {
   const [signups, setSignups] = useState<PendingSignup[]>([]);
   const [selectedSignup, setSelectedSignup] = useState<PendingSignup | null>(null);
@@ -44,7 +61,23 @@ export default function AdminCadastros() {
     const loadSignups = async () => {
       try {
         const data = await adminService.getPendingUsers();
-        setSignups(data as unknown as PendingSignup[]);
+        const mapped: PendingSignup[] = (data as unknown as ApiPendingUser[]).map((u) => {
+          const property = u.propriedades?.[0]?.propriedade;
+          return {
+            id: u.id,
+            nome: u.nome,
+            cpfCnpj: u.cpfCnpj,
+            email: u.email,
+            celular: u.telefone ?? '',
+            numeroCabecas: property?.quantidadeGado ?? 0,
+            municipio: property?.cidade ?? '',
+            uf: property?.estado ?? '',
+            requestDate: u.criadoEm ?? new Date().toISOString(),
+            status: u.status === 'ativo' ? 'approved' : u.status === 'rejeitado' ? 'rejected' : 'pending',
+            cupomIndicacao: undefined,
+          };
+        });
+        setSignups(mapped);
       } catch (error) {
         console.error('Erro ao carregar cadastros:', error);
         toast.error('Erro ao carregar cadastros');
@@ -78,6 +111,7 @@ export default function AdminCadastros() {
 
   const handleReject = async (signup: PendingSignup) => {
     try {
+      await adminService.rejectUser(signup.id);
       const updated = signups.map(s =>
         s.id === signup.id
           ? { ...s, status: 'rejected' as const }

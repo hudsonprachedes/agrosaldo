@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { adminService, User } from '@/services/api.service';
+import { adminService, AuditLog, User } from '@/services/api.service';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Search,
   MoreHorizontal,
@@ -71,6 +73,8 @@ interface ActionLog {
 }
 
 export default function AdminClientes() {
+  const navigate = useNavigate();
+  const { startImpersonation } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [tenantsData, setTenantsData] = useState<User[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<User | null>(null);
@@ -90,20 +94,7 @@ export default function AdminClientes() {
   const [editCpfCnpj, setEditCpfCnpj] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [actionLogs] = useState<ActionLog[]>([
-    {
-      timestamp: new Date('2026-01-10T14:30:00'),
-      action: 'Alteração de Plano',
-      adminUser: 'Admin Master',
-      details: 'Plano alterado de Piquete para Retiro',
-    },
-    {
-      timestamp: new Date('2026-01-08T09:15:00'),
-      action: 'Reset de Senha',
-      adminUser: 'Admin Master',
-      details: 'Senha resetada via painel admin',
-    },
-  ]);
+  const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
 
   useEffect(() => {
     const loadTenants = async () => {
@@ -142,11 +133,18 @@ export default function AdminClientes() {
 
   const handleResetPassword = () => {
     if (!selectedTenant) return;
-    
-    const tempPassword = Math.random().toString(36).slice(-8);
-    toast.success(`Senha resetada para ${selectedTenant.name}. Nova senha: ${tempPassword}`);
-    setResetPasswordDialog(false);
-    setSelectedTenant(null);
+
+    void (async () => {
+      try {
+        const result = await adminService.resetUserPassword(selectedTenant.id);
+        toast.success(`Senha resetada para ${selectedTenant.name}. Nova senha: ${result.tempPassword}`);
+        setResetPasswordDialog(false);
+        setSelectedTenant(null);
+      } catch (error) {
+        console.error('Erro ao resetar senha:', error);
+        toast.error('Erro ao resetar senha');
+      }
+    })();
   };
 
   const handleToggleBlock = () => {
@@ -154,30 +152,42 @@ export default function AdminClientes() {
       toast.error('Informe o motivo do bloqueio');
       return;
     }
-    
-    const isBlocking = selectedTenant.status !== 'blocked';
-    
-    setTenantsData(tenantsData.map(t => 
-      t.id === selectedTenant.id 
-        ? { ...t, status: isBlocking ? 'blocked' : 'active' }
-        : t
-    ));
-    
-    toast.success(isBlocking ? 'Cliente bloqueado' : 'Cliente desbloqueado');
-    setBlockDialog(false);
-    setBlockReason('');
-    setSelectedTenant(null);
+
+    const isBlocking = selectedTenant.status !== 'suspenso';
+    const nextStatus = isBlocking ? 'suspenso' : 'ativo';
+
+    void (async () => {
+      try {
+        const updated = await adminService.updateUserStatus(selectedTenant.id, nextStatus, blockReason.trim());
+        setTenantsData(tenantsData.map(t => (t.id === selectedTenant.id ? { ...t, status: updated.status } : t)));
+        toast.success(isBlocking ? 'Cliente bloqueado' : 'Cliente desbloqueado');
+        setBlockDialog(false);
+        setBlockReason('');
+        setSelectedTenant(null);
+      } catch (error) {
+        console.error('Erro ao alterar status do cliente:', error);
+        toast.error('Erro ao alterar status do cliente');
+      }
+    })();
   };
 
   const handleImpersonate = () => {
     if (!selectedTenant) return;
-    
-    toast.info(`Acessando como ${selectedTenant.name}...`);
-    setTimeout(() => {
-      toast.success(`Agora você está operando como ${selectedTenant.name}`);
-      setImpersonateDialog(false);
-      setSelectedTenant(null);
-    }, 1500);
+
+    void (async () => {
+      try {
+        toast.info(`Acessando como ${selectedTenant.name}...`);
+        const result = await adminService.impersonateUser(selectedTenant.id);
+        await startImpersonation(result.token);
+        setImpersonateDialog(false);
+        setSelectedTenant(null);
+        navigate('/selecionar-propriedade');
+        toast.success(`Agora você está operando como ${selectedTenant.name}`);
+      } catch (error) {
+        console.error('Erro ao impersonar cliente:', error);
+        toast.error('Erro ao acessar como cliente');
+      }
+    })();
   };
 
   const handleChangePlan = () => {
@@ -185,17 +195,19 @@ export default function AdminClientes() {
       toast.error('Selecione um plano');
       return;
     }
-    
-    setTenantsData(tenantsData.map(t => 
-      t.id === selectedTenant.id 
-        ? { ...t, plan: newPlan }
-        : t
-    ));
-    
-    toast.success(`Plano de ${selectedTenant.name} alterado para ${newPlan}`);
-    setChangePlanDialog(false);
-    setNewPlan('');
-    setSelectedTenant(null);
+
+    void (async () => {
+      try {
+        await adminService.updateUserPlan(selectedTenant.id, newPlan);
+        toast.success(`Plano de ${selectedTenant.name} alterado para ${newPlan}`);
+        setChangePlanDialog(false);
+        setNewPlan('');
+        setSelectedTenant(null);
+      } catch (error) {
+        console.error('Erro ao alterar plano:', error);
+        toast.error('Erro ao alterar plano');
+      }
+    })();
   };
 
   const openChangePlanDialog = (tenant: User) => {
@@ -223,6 +235,22 @@ export default function AdminClientes() {
   const openHistoryDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setHistoryDialog(true);
+    void (async () => {
+      try {
+        const logs = await adminService.getAuditLogs(tenant.id);
+        const mapped: ActionLog[] = logs.map((l: AuditLog) => ({
+          timestamp: new Date(l.timestamp),
+          action: l.action,
+          adminUser: l.userName,
+          details: l.details,
+        }));
+        setActionLogs(mapped);
+      } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+        toast.error('Erro ao carregar histórico');
+        setActionLogs([]);
+      }
+    })();
   };
 
   const openEditDialog = (tenant: User) => {
@@ -247,25 +275,40 @@ export default function AdminClientes() {
       return;
     }
 
-    setTenantsData(tenantsData.map((t) => (
-      t.id === selectedTenant.id
-        ? { ...t, cpfCnpj: editCpfCnpj, phone: editPhone, email: editEmail }
-        : t
-    )));
+    void (async () => {
+      try {
+        const updated = await adminService.updateUser(selectedTenant.id, {
+          cpfCnpj: editCpfCnpj,
+          phone: editPhone,
+          email: editEmail,
+        });
 
-    toast.success('Dados do cliente atualizados');
-    setEditDialog(false);
-    setSelectedTenant(null);
+        setTenantsData(tenantsData.map((t) => (
+          t.id === selectedTenant.id
+            ? { ...t, cpfCnpj: updated.cpfCnpj, phone: updated.phone, email: updated.email }
+            : t
+        )));
+
+        toast.success('Dados do cliente atualizados');
+        setEditDialog(false);
+        setSelectedTenant(null);
+      } catch (error) {
+        console.error('Erro ao atualizar dados do cliente:', error);
+        toast.error('Erro ao atualizar dados do cliente');
+      }
+    })();
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'ativo':
         return <Badge className="bg-success/10 text-success border-success/30">Ativo</Badge>;
-      case 'blocked':
+      case 'suspenso':
         return <Badge className="bg-error/10 text-error border-error/30">Bloqueado</Badge>;
-      case 'pending':
+      case 'pendente_aprovacao':
         return <Badge className="bg-warning/10 text-warning border-warning/30">Pendente</Badge>;
+      case 'rejeitado':
+        return <Badge className="bg-muted text-muted-foreground border-border">Rejeitado</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -377,9 +420,9 @@ export default function AdminClientes() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={() => openBlockDialog(tenant)}
-                          className={tenant.status === 'blocked' ? 'text-success' : 'text-error'}
+                          className={tenant.status === 'suspenso' ? 'text-success' : 'text-error'}
                         >
-                          {tenant.status === 'blocked' ? (
+                          {tenant.status === 'suspenso' ? (
                             <>
                               <Unlock className="w-4 h-4 mr-2" />
                               Desbloquear
@@ -477,10 +520,10 @@ export default function AdminClientes() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {selectedTenant?.status === 'blocked' ? 'Desbloquear' : 'Bloquear'} Cliente
+              {selectedTenant?.status === 'suspenso' ? 'Desbloquear' : 'Bloquear'} Cliente
             </DialogTitle>
             <DialogDescription>
-              {selectedTenant?.status === 'blocked' 
+              {selectedTenant?.status === 'suspenso' 
                 ? `Informe o motivo do desbloqueio de ${selectedTenant?.name}`
                 : `Informe o motivo do bloqueio de ${selectedTenant?.name}`}
             </DialogDescription>
@@ -503,9 +546,9 @@ export default function AdminClientes() {
             </Button>
             <Button 
               onClick={handleToggleBlock}
-              variant={selectedTenant?.status === 'blocked' ? 'default' : 'destructive'}
+              variant={selectedTenant?.status === 'suspenso' ? 'default' : 'destructive'}
             >
-              {selectedTenant?.status === 'blocked' ? (
+              {selectedTenant?.status === 'suspenso' ? (
                 <>
                   <Unlock className="w-4 h-4 mr-2" />
                   Desbloquear

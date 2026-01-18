@@ -37,7 +37,9 @@ const navItems = [
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
-  const { logout } = useAuth();
+  const { logout, stopImpersonation } = useAuth();
+
+  const isImpersonating = localStorage.getItem('agrosaldo_is_impersonating') === 'true';
 
   return (
     <div className="h-screen bg-background flex overflow-hidden">
@@ -80,6 +82,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Footer */}
         <div className="p-4 border-t border-border space-y-2">
+          {isImpersonating && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                void stopImpersonation();
+              }}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Voltar ao Admin
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             className="w-full justify-start text-muted-foreground hover:text-destructive"

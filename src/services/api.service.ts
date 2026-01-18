@@ -237,6 +237,38 @@ export interface AdminMrrSeriesPoint {
   value: number;
 }
 
+export interface AdminDashboardActivityItem {
+  id: string;
+  action: string;
+  details: string;
+  userName: string;
+  timestamp: string;
+}
+
+export interface AdminAnalyticsResponse {
+  kpis: AdminDashboardStats;
+  categories: string[];
+  clientGrowth: {
+    activeTenants: number[];
+    newSignups: number[];
+  };
+  revenue: {
+    mrr: number[];
+  };
+  planDistribution: {
+    labels: string[];
+    series: number[];
+  };
+  cattle: {
+    total: number[];
+  };
+  conversion: {
+    approved: number[];
+    pending: number[];
+    rejected: number[];
+  };
+}
+
 export interface AdminPlan {
   id: string;
   nome?: string;
@@ -378,6 +410,16 @@ export const adminService = {
     return apiClient.get<AdminMrrSeriesPoint[]>(`${API_ROUTES.ADMIN.DASHBOARD_MRR_SERIES}${params}`);
   },
 
+  async getDashboardActivity(limit = 10): Promise<AdminDashboardActivityItem[]> {
+    const params = limit ? `?limit=${limit}` : '';
+    return apiClient.get<AdminDashboardActivityItem[]>(`${API_ROUTES.ADMIN.DASHBOARD_ACTIVITY}${params}`);
+  },
+
+  async getAnalytics(period: '7d' | '30d' | '90d' | '1y' = '30d'): Promise<AdminAnalyticsResponse> {
+    const params = period ? `?period=${period}` : '';
+    return apiClient.get<AdminAnalyticsResponse>(`${API_ROUTES.ADMIN.ANALYTICS}${params}`);
+  },
+
   async getPendingUsers(): Promise<User[]> {
     return apiClient.get<User[]>(API_ROUTES.ADMIN.PENDING_USERS);
   },
@@ -388,6 +430,34 @@ export const adminService = {
 
   async approveUser(userId: string, status: string): Promise<User> {
     return apiClient.patch<User>(API_ROUTES.ADMIN.APPROVE_USER.replace(':id', userId), { status });
+  },
+
+  async rejectUser(userId: string, reason?: string): Promise<User> {
+    return apiClient.patch<User>(API_ROUTES.ADMIN.REJECT_USER.replace(':id', userId), { reason });
+  },
+
+  async updateUserStatus(userId: string, status: string, reason?: string): Promise<User> {
+    return apiClient.patch<User>(API_ROUTES.ADMIN.UPDATE_USER_STATUS.replace(':id', userId), { status, reason });
+  },
+
+  async resetUserPassword(userId: string): Promise<{ tempPassword: string }> {
+    return apiClient.post<{ tempPassword: string }>(API_ROUTES.ADMIN.RESET_USER_PASSWORD.replace(':id', userId), {});
+  },
+
+  async updateUser(userId: string, data: Partial<{ cpfCnpj: string; phone: string | null; email: string }>): Promise<User> {
+    return apiClient.patch<User>(API_ROUTES.ADMIN.UPDATE_USER.replace(':id', userId), {
+      ...(data.cpfCnpj !== undefined ? { cpfCnpj: data.cpfCnpj } : {}),
+      ...(data.phone !== undefined ? { telefone: data.phone } : {}),
+      ...(data.email !== undefined ? { email: data.email } : {}),
+    } as any);
+  },
+
+  async updateUserPlan(userId: string, plan: string): Promise<unknown> {
+    return apiClient.patch(API_ROUTES.ADMIN.UPDATE_USER_PLAN.replace(':id', userId), { plan });
+  },
+
+  async impersonateUser(userId: string): Promise<{ token: string }> {
+    return apiClient.post<{ token: string }>(API_ROUTES.ADMIN.IMPERSONATE_USER.replace(':id', userId), {});
   },
 
   async getRegulations(): Promise<StateRegulation[]> {
@@ -422,12 +492,17 @@ export const adminService = {
     return apiClient.post<PixConfig>(API_ROUTES.ADMIN.PIX_CONFIG, data);
   },
 
-  async getAuditLogs(): Promise<AuditLog[]> {
-    const logs = await apiClient.get<AuditLog[]>(API_ROUTES.ADMIN.AUDIT_LOGS);
+  async getAuditLogs(userId?: string): Promise<AuditLog[]> {
+    const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    const logs = await apiClient.get<AuditLog[]>(`${API_ROUTES.ADMIN.AUDIT_LOGS}${params}`);
     // Mapear dataHora para timestamp se necessário, ou ajustar a interface
     return logs.map(log => ({
       ...log,
-      timestamp: log.dataHora || log.timestamp
+      timestamp: (log as any).dataHora ?? log.timestamp,
+      userId: (log as any).usuarioId ?? log.userId,
+      userName: (log as any).usuarioNome ?? log.userName,
+      action: (log as any).acao ?? log.action,
+      details: (log as any).detalhes ?? log.details,
     }));
   },
 

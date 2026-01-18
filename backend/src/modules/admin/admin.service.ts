@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import bcrypt from 'bcryptjs';
+import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApproveUserDto } from './dto/approve-user.dto';
 import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
@@ -7,7 +9,25 @@ import { UpdatePixConfigDto } from './dto/pix-config.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService
+  ) {}
+
+  private monthKey(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private buildMonthlyCategories(start: Date, end: Date) {
+    const categories: string[] = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (cursor <= endMonth) {
+      categories.push(this.monthKey(cursor));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return categories;
+  }
 
   // --- Dashboard & KPIs ---
 
@@ -90,6 +110,108 @@ export class AdminService {
     return series;
   }
 
+  async getAnalytics(period?: string) {
+    const now = new Date();
+    const normalized = (period ?? '30d').toLowerCase();
+
+    const months = normalized === '7d' ? 1 : normalized === '90d' ? 3 : normalized === '1y' ? 12 : 6;
+    const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+    const categories = this.buildMonthlyCategories(start, now);
+
+    const [kpis, payments, tenantUsers, properties] = await Promise.all([
+      this.getDashboardStats(),
+      this.prisma.pagamentoFinanceiro.findMany({
+        where: {
+          status: 'paid',
+          pagoEm: { not: null, gte: start },
+        },
+        select: { pagoEm: true, valor: true },
+        orderBy: { pagoEm: 'asc' },
+      }),
+      this.prisma.usuario.findMany({
+        where: {
+          papel: { in: ['proprietario', 'operador'] as any },
+          criadoEm: { gte: start },
+        },
+        select: { criadoEm: true, status: true },
+        orderBy: { criadoEm: 'asc' },
+      }),
+      this.prisma.propriedade.findMany({
+        select: { criadoEm: true, plano: true, quantidadeGado: true },
+        orderBy: { criadoEm: 'asc' },
+      }),
+    ]);
+
+    const revenueByMonth = new Map<string, number>();
+    for (const row of payments) {
+      if (!row.pagoEm) continue;
+      const key = this.monthKey(row.pagoEm);
+      revenueByMonth.set(key, (revenueByMonth.get(key) ?? 0) + row.valor);
+    }
+
+    const revenueSeries = categories.map((c) => Number((revenueByMonth.get(c) ?? 0).toFixed(2)));
+
+    const newSignupsByMonth = new Map<string, number>();
+    const approvedByMonth = new Map<string, number>();
+    const pendingByMonth = new Map<string, number>();
+    const rejectedByMonth = new Map<string, number>();
+
+    for (const u of tenantUsers) {
+      const key = this.monthKey(u.criadoEm);
+      newSignupsByMonth.set(key, (newSignupsByMonth.get(key) ?? 0) + 1);
+      if ((u.status as any) === 'ativo') approvedByMonth.set(key, (approvedByMonth.get(key) ?? 0) + 1);
+      else if ((u.status as any) === 'rejeitado') rejectedByMonth.set(key, (rejectedByMonth.get(key) ?? 0) + 1);
+      else pendingByMonth.set(key, (pendingByMonth.get(key) ?? 0) + 1);
+    }
+
+    const newSignupsSeries = categories.map((c) => newSignupsByMonth.get(c) ?? 0);
+    const approvedSeries = categories.map((c) => approvedByMonth.get(c) ?? 0);
+    const pendingSeries = categories.map((c) => pendingByMonth.get(c) ?? 0);
+    const rejectedSeries = categories.map((c) => rejectedByMonth.get(c) ?? 0);
+
+    // Cálculo simples de "clientes ativos" por mês (aprox): acumulado de aprovados
+    let activeAcc = 0;
+    const activeSeries = categories.map((c) => {
+      activeAcc += approvedByMonth.get(c) ?? 0;
+      return activeAcc;
+    });
+
+    const planLabels = ['porteira', 'piquete', 'retiro', 'estancia', 'barao'];
+    const planCounts = new Map<string, number>();
+    for (const p of properties) {
+      const key = String(p.plano);
+      planCounts.set(key, (planCounts.get(key) ?? 0) + 1);
+    }
+    const planSeries = planLabels.map((l) => planCounts.get(l) ?? 0);
+
+    // Não existe histórico de gado; usamos o total atual repetido como série (mantém UI)
+    const cattleSeries = categories.map(() => kpis.totalCattle);
+
+    return {
+      kpis,
+      categories,
+      clientGrowth: {
+        activeTenants: activeSeries,
+        newSignups: newSignupsSeries,
+      },
+      revenue: {
+        mrr: revenueSeries,
+      },
+      planDistribution: {
+        labels: planLabels,
+        series: planSeries,
+      },
+      cattle: {
+        total: cattleSeries,
+      },
+      conversion: {
+        approved: approvedSeries,
+        pending: pendingSeries,
+        rejected: rejectedSeries,
+      },
+    };
+  }
+
   // --- User Management ---
 
   listPendingUsers() {
@@ -118,6 +240,164 @@ export class AdminService {
       'USER_APPROVED',
       `Usuário ${user.email} aprovado com status ${updated.status}`,
       '127.0.0.1' // TODO: Get actual IP
+    );
+
+    return updated;
+  }
+
+  async impersonateUser(adminUser: { id: string; cpfCnpj?: string }, userId: string) {
+    const target = await (this.prisma as any).usuario.findUnique({
+      where: { id: userId },
+    });
+    if (!target) throw new NotFoundException('Usuário não encontrado');
+
+    const payload: any = {
+      sub: target.id,
+      role: target.papel,
+      cpfCnpj: target.cpfCnpj,
+      impersonatedBy: adminUser.id,
+      impersonatedUserId: target.id,
+    };
+
+    const token = await this.jwtService.signAsync(payload, {
+      expiresIn: 60 * 15,
+    });
+
+    await this.createAuditLog(
+      adminUser.id,
+      'SuperAdmin',
+      'ADMIN_IMPERSONATE',
+      `Impersonate iniciado para ${target.email}`,
+      '127.0.0.1'
+    );
+
+    return { token };
+  }
+
+  async updateUserStatus(userId: string, dto: { status: string; reason?: string }) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const nextStatus = (dto?.status as any) ?? user.status;
+
+    const updated = await this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        status: nextStatus,
+      },
+    });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Sistema',
+      'USER_STATUS_UPDATED',
+      `Status do usuário ${user.email} alterado para ${updated.status}${dto?.reason ? `: ${dto.reason}` : ''}`,
+      '127.0.0.1'
+    );
+
+    return updated;
+  }
+
+  async resetUserPassword(userId: string) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    await this.prisma.usuario.update({
+      where: { id: userId },
+      data: { senha: passwordHash },
+    });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Sistema',
+      'USER_PASSWORD_RESET',
+      `Senha resetada para ${user.email}`,
+      '127.0.0.1'
+    );
+
+    return { tempPassword };
+  }
+
+  async updateUser(userId: string, dto: { cpfCnpj?: string; telefone?: string | null; email?: string }) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const updated = await this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        ...(dto?.cpfCnpj !== undefined ? { cpfCnpj: dto.cpfCnpj } : {}),
+        ...(dto?.telefone !== undefined ? { telefone: dto.telefone } : {}),
+        ...(dto?.email !== undefined ? { email: dto.email } : {}),
+      },
+    });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Sistema',
+      'USER_UPDATED',
+      `Dados do usuário ${user.email} atualizados`,
+      '127.0.0.1'
+    );
+
+    return updated;
+  }
+
+  async updateUserPlan(userId: string, dto: { plan: string }) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const requested = String(dto?.plan ?? '').toLowerCase();
+
+    const latest = await this.prisma.assinatura.findFirst({
+      where: { usuarioId: userId },
+      orderBy: { inicioEm: 'desc' },
+    });
+
+    const updated = latest
+      ? await this.prisma.assinatura.update({
+          where: { id: latest.id },
+          data: { plano: requested as any },
+        })
+      : await this.prisma.assinatura.create({
+          data: {
+            usuarioId: userId,
+            plano: requested as any,
+            status: 'ativa' as any,
+            inicioEm: new Date(),
+          },
+        });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Sistema',
+      'USER_PLAN_UPDATED',
+      `Plano do usuário ${user.email} alterado para ${requested}`,
+      '127.0.0.1'
+    );
+
+    return updated;
+  }
+
+  async rejectUser(userId: string, dto?: { reason?: string }) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const updated = await this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        status: 'rejeitado' as any,
+      },
+    });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Sistema',
+      'USER_REJECTED',
+      `Usuário ${user.email} rejeitado${dto?.reason ? `: ${dto.reason}` : ''}`,
+      '127.0.0.1'
     );
 
     return updated;
@@ -388,10 +668,28 @@ export class AdminService {
     });
   }
 
+  async getDashboardActivity(limit?: number) {
+    const take = limit && Number.isFinite(limit) ? Math.max(1, Math.min(50, Math.trunc(limit))) : 10;
+
+    const logs = await (this.prisma as any).logAuditoria.findMany({
+      orderBy: { dataHora: 'desc' },
+      take,
+    });
+
+    return logs.map((l: any) => ({
+      id: l.id,
+      action: l.acao,
+      details: l.detalhes,
+      userName: l.usuarioNome,
+      timestamp: l.dataHora,
+    }));
+  }
+
   // --- Audit Logs ---
 
-  async listAuditLogs() {
+  async listAuditLogs(userId?: string) {
     return (this.prisma as any).logAuditoria.findMany({
+      where: userId ? { usuarioId: userId } : undefined,
       orderBy: { dataHora: 'desc' },
       take: 100
     });

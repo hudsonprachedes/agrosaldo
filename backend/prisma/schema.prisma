@@ -18,6 +18,7 @@ enum PapelUsuario {
 enum StatusUsuario {
   ativo @map("active")
   pendente_aprovacao @map("pending_approval")
+  rejeitado @map("rejected")
   suspenso @map("suspended")
 
   @@map("UserStatus")

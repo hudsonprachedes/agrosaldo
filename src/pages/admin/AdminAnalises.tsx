@@ -3,19 +3,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactApexChart from 'react-apexcharts';
 import { TrendingUp, Users, DollarSign, Activity, Calendar } from 'lucide-react';
-import { adminService, AdminDashboardStats } from '@/services/api.service';
+import { adminService, AdminAnalyticsResponse } from '@/services/api.service';
 import { toast } from 'sonner';
 
 export default function AdminAnalises() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const data = await adminService.getDashboardStats();
-        setStats(data);
+        const data = await adminService.getAnalytics(period);
+        setAnalytics(data);
       } catch (error) {
         console.error('Erro ao carregar análises:', error);
         toast.error('Erro ao carregar dados de análise');
@@ -25,13 +25,15 @@ export default function AdminAnalises() {
     };
 
     void loadStats();
-  }, []);
+  }, [period]);
 
   // Dados agregados
-  const totalTenants = stats?.totalTenants || 0;
-  const activeTenants = stats?.activeTenants || 0;
-  const totalRevenue = stats?.mrr || 0;
-  const totalCattle = stats?.totalCattle || 0;
+  const totalTenants = analytics?.kpis.totalTenants || 0;
+  const activeTenants = analytics?.kpis.activeTenants || 0;
+  const totalRevenue = analytics?.kpis.mrr || 0;
+  const totalCattle = analytics?.kpis.totalCattle || 0;
+
+  const categories = analytics?.categories ?? [];
 
   // Gráfico de crescimento de clientes
   const clientGrowthOptions: ApexCharts.ApexOptions = {
@@ -53,7 +55,7 @@ export default function AdminAnalises() {
       },
     },
     xaxis: {
-      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      categories,
     },
     tooltip: {
       theme: 'light',
@@ -70,11 +72,11 @@ export default function AdminAnalises() {
   const clientGrowthSeries = [
     {
       name: 'Clientes Ativos',
-      data: [8, 12, 18, 25, 32, 41, 48, 52, 58, 65, 72, 80],
+      data: analytics?.clientGrowth.activeTenants ?? [],
     },
     {
       name: 'Novos Cadastros',
-      data: [8, 5, 7, 9, 8, 11, 8, 6, 7, 8, 9, 10],
+      data: analytics?.clientGrowth.newSignups ?? [],
     },
   ];
 
@@ -103,7 +105,7 @@ export default function AdminAnalises() {
       },
     },
     xaxis: {
-      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      categories,
     },
     yaxis: {
       title: { text: 'Receita (R$)' },
@@ -122,7 +124,7 @@ export default function AdminAnalises() {
   const revenueSeries = [
     {
       name: 'MRR',
-      data: [2850, 3420, 4180, 5230, 6340, 7580, 8640, 9120, 10200, 11450, 12880, 14200],
+      data: analytics?.revenue.mrr ?? [],
     },
   ];
 
@@ -134,7 +136,7 @@ export default function AdminAnalises() {
       fontFamily: 'Inter, sans-serif',
     },
     colors: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
-    labels: ['Porteira', 'Piquete', 'Retiro', 'Estância', 'Barão'],
+    labels: analytics?.planDistribution.labels ?? ['porteira', 'piquete', 'retiro', 'estancia', 'barao'],
     legend: {
       position: 'bottom',
     },
@@ -165,7 +167,7 @@ export default function AdminAnalises() {
     },
   };
 
-  const planDistributionSeries = [15, 28, 22, 18, 12]; // Porteira, Piquete, Retiro, Estância, Barão
+  const planDistributionSeries = analytics?.planDistribution.series ?? [];
 
   // Gráfico de rebanho total
   const cattleOptions: ApexCharts.ApexOptions = {
@@ -179,7 +181,7 @@ export default function AdminAnalises() {
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 5 },
     xaxis: {
-      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      categories,
     },
     yaxis: {
       title: { text: 'Cabeças de Gado' },
@@ -198,7 +200,7 @@ export default function AdminAnalises() {
   const cattleSeries = [
     {
       name: 'Total de Cabeças',
-      data: [18200, 19800, 21500, 23400, 25800, 28200, 30500, 32800, 35200, 37800, 40500, 43200],
+      data: analytics?.cattle.total ?? [],
     },
   ];
 
@@ -219,7 +221,7 @@ export default function AdminAnalises() {
       },
     },
     xaxis: {
-      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+      categories,
     },
     legend: {
       position: 'top',
@@ -233,9 +235,9 @@ export default function AdminAnalises() {
   };
 
   const conversionSeries = [
-    { name: 'Aprovados', data: [8, 5, 7, 9, 8, 10] },
-    { name: 'Pendentes', data: [2, 3, 1, 2, 4, 3] },
-    { name: 'Rejeitados', data: [1, 1, 2, 1, 0, 1] },
+    { name: 'Aprovados', data: analytics?.conversion.approved ?? [] },
+    { name: 'Pendentes', data: analytics?.conversion.pending ?? [] },
+    { name: 'Rejeitados', data: analytics?.conversion.rejected ?? [] },
   ];
 
   if (isLoading) {

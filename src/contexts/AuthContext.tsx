@@ -24,6 +24,8 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<boolean>;
   refreshMe: () => Promise<UserDTO | null>;
   updatePreferences: (next: Partial<PreferencesDTO>) => Promise<PreferencesDTO | null>;
+  startImpersonation: (token: string) => Promise<UserDTO | null>;
+  stopImpersonation: () => Promise<UserDTO | null>;
   logout: () => void;
   selectProperty: (propertyOrId: PropertyDTO | string) => void;
   clearSelectedProperty: () => void;
@@ -60,6 +62,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Erro ao recalcular faixas etárias no backend:', error);
       }
     };
+
+  const startImpersonation = async (token: string): Promise<UserDTO | null> => {
+    const current = localStorage.getItem('auth_token');
+    if (current) {
+      localStorage.setItem('agrosaldo_admin_token_before_impersonation', current);
+      localStorage.setItem('agrosaldo_is_impersonating', 'true');
+    }
+
+    apiClient.setAuthToken(token);
+    localStorage.removeItem('agrosaldo_property_id');
+    setSelectedProperty(null);
+    return refreshMe();
+  };
+
+  const stopImpersonation = async (): Promise<UserDTO | null> => {
+    const adminToken = localStorage.getItem('agrosaldo_admin_token_before_impersonation');
+    if (!adminToken) {
+      return refreshMe();
+    }
+
+    apiClient.setAuthToken(adminToken);
+    localStorage.removeItem('agrosaldo_admin_token_before_impersonation');
+    localStorage.removeItem('agrosaldo_is_impersonating');
+    localStorage.removeItem('agrosaldo_property_id');
+    setSelectedProperty(null);
+    return refreshMe();
+  };
     void runAgeGroupRecalculation();
   }, [selectedProperty?.id]);
 
@@ -243,6 +272,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       refreshMe,
       updatePreferences,
+      startImpersonation,
+      stopImpersonation,
       logout,
       selectProperty,
       clearSelectedProperty,
