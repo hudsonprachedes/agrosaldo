@@ -40,6 +40,25 @@ export default function Rebanho() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
 
+  const getMovementTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'birth':
+        return 'Nascimento';
+      case 'death':
+        return 'Morte';
+      case 'sale':
+        return 'Venda';
+      case 'purchase':
+        return 'Compra';
+      case 'vaccine':
+        return 'Vacina';
+      case 'adjustment':
+        return 'Ajuste';
+      default:
+        return type || 'N/A';
+    }
+  };
+
   const [mirror, setMirror] = useState<LivestockMirrorDTO | null>(null);
   const [otherMirror, setOtherMirror] = useState<OtherSpeciesMirrorDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -86,7 +105,7 @@ export default function Rebanho() {
   );
   const totalCattle = mirror?.totals.total ?? 0;
 
-  const otherSpeciesBalances = otherMirror?.balances ?? [];
+  const otherSpeciesBalances = useMemo(() => otherMirror?.balances ?? [], [otherMirror?.balances]);
   const totalOtherSpecies = otherMirror?.total ?? 0;
   const otherSpecies = useMemo(
     () => [
@@ -172,6 +191,40 @@ export default function Rebanho() {
       try {
         const reportData = getReportData();
 
+        // 1) Emitir documento público (número + URL pública para QR)
+        let documentNumber: string | undefined;
+        let validationUrl: string | undefined;
+        try {
+          const doc = await apiClient.post<{
+            documentNumber: string;
+            validationUrl: string;
+            expiresAt: string;
+          }>(`/documentos-publicos/espelho-oficial/emitir?propertyCode=${encodeURIComponent(selectedProperty.propertyCode || selectedProperty.id)}`);
+          documentNumber = doc.documentNumber;
+          validationUrl = doc.validationUrl;
+        } catch (e) {
+          documentNumber = undefined;
+          validationUrl = undefined;
+        }
+
+        // 2) Buscar lançamentos e montar tabela de outras espécies
+        let otherSpeciesMovements: ReportData['otherSpeciesMovements'] | undefined;
+        try {
+          const movements = await apiClient.get<any[]>(`/lancamentos/historico?months=1`);
+          const filtered = (movements ?? [])
+            .filter((m) => String(m.especie ?? '').toLowerCase() !== 'bovino' && m.especie)
+            .slice(0, 50)
+            .map((m) => ({
+              date: m.data ? new Date(m.data).toISOString() : new Date().toISOString(),
+              species: String(m.especie),
+              typeLabel: getMovementTypeLabel(m.type ?? m.tipo),
+              quantity: Number(m.quantidade ?? m.quantity ?? 0),
+            }));
+          otherSpeciesMovements = filtered;
+        } catch (e) {
+          otherSpeciesMovements = undefined;
+        }
+
         let latestSurvey: EpidemiologySurveyDTO | null = null;
         try {
           const surveys = await apiClient.get<EpidemiologySurveyDTO[]>('/questionario-epidemiologico');
@@ -185,6 +238,9 @@ export default function Rebanho() {
         printReport({
           ...reportData,
           includeSurvey,
+          documentNumber,
+          qrCodePayload: validationUrl,
+          otherSpeciesMovements,
           latestSurvey: latestSurvey
             ? {
                 submittedAt: latestSurvey.submittedAt,
@@ -205,37 +261,58 @@ export default function Rebanho() {
   };
 
   const handleShareWhatsApp = () => {
-    try {
-      const ageDistribution = sortedBalances.map(b => ({
-        label: getAgeGroupLabel(b.ageGroupId),
-        total: b.male.currentBalance + b.female.currentBalance,
-      }));
+    void (async () => {
+      try {
+        const [freshMirror, freshOther] = await Promise.all([
+          apiClient.get<LivestockMirrorDTO>(`/rebanho/${selectedProperty.id}/espelho?months=1`),
+          apiClient.get<OtherSpeciesMirrorDTO>(`/rebanho/${selectedProperty.id}/outras-especies?months=1`),
+        ]);
 
-      const message = formatReportForWhatsApp({
-        propertyName: selectedProperty.name,
-        ownerName: user?.name || 'Proprietário',
-        state: selectedProperty.state || 'N/A',
-        totalCattle: totalCattle,
-        ageDistribution,
-        otherSpecies: activeOtherSpeciesBalances
-          .map(b => ({
+        const freshBalances = freshMirror?.balances ?? [];
+        const freshSortedBalances = freshBalances
+          .slice()
+          .sort((a, b) => compareAgeGroupIds(a.ageGroupId, b.ageGroupId));
+
+        const ageDistribution = freshSortedBalances.map((b) => ({
+          label: getAgeGroupLabel(b.ageGroupId),
+          total: (b.male?.currentBalance ?? 0) + (b.female?.currentBalance ?? 0),
+        }));
+
+        const freshOtherBalances = freshOther?.balances ?? [];
+        const activeOther = freshOtherBalances.filter((b) => {
+          const previous = (b.currentBalance ?? 0) - (b.entries ?? 0) + (b.exits ?? 0);
+          return (
+            (b.currentBalance ?? 0) > 0 ||
+            (b.entries ?? 0) > 0 ||
+            (b.exits ?? 0) > 0 ||
+            previous > 0
+          );
+        });
+
+        const message = formatReportForWhatsApp({
+          propertyName: selectedProperty.name,
+          ownerName: user?.name || 'Proprietário',
+          state: selectedProperty.state || 'N/A',
+          totalCattle: freshMirror?.totals?.total ?? 0,
+          ageDistribution,
+          otherSpecies: activeOther.map((b) => ({
             name: b.speciesName,
             balance: b.currentBalance,
             unit: b.unit,
           })),
-      });
+        });
 
-      shareViaWhatsApp(message);
-      
-      toast({ title: '✅ WhatsApp Aberto', description: 'Compartilhe o relatório' });
-    } catch (error) {
-      console.error('Erro ao compartilhar via WhatsApp:', error);
-      toast({ 
-        title: '❌ Erro ao Compartilhar', 
-        description: 'Tente novamente', 
-        variant: 'destructive' 
-      });
-    }
+        shareViaWhatsApp(message);
+        toast({ title: '✅ WhatsApp Aberto', description: 'Compartilhe o relatório' });
+      } catch (error) {
+        console.error('Erro ao compartilhar via WhatsApp:', error);
+        toast({
+          title: '❌ Erro ao Compartilhar',
+          description: 'Tente novamente',
+          variant: 'destructive',
+        });
+      }
+    })();
   };
 
   // Gráfico de Distribuição por Sexo

@@ -1,2 +1,4 @@
 
 
+npm run version:bump
+

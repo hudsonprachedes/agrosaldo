@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { getAppVersionLabel } from '@/version';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -112,6 +113,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           <LogOut className="w-4 h-4 mr-2" />
           Sair
         </Button>
+
+        <p className="pt-1 text-[10px] text-muted-foreground text-center">{getAppVersionLabel()}</p>
       </div>
     </>
   );

@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { getAppVersionLabel } from '@/version';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -239,6 +240,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </DropdownMenuContent>
             </DropdownMenu>
             </div>
+
+            <p className="px-3 pt-1 text-[10px] text-sidebar-muted text-center">{getAppVersionLabel()}</p>
           </div>
         </aside>
       )}

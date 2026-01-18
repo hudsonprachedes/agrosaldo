@@ -70,7 +70,9 @@ export class DocumentosPublicosService {
     const tokenHash = this.sha256(token);
 
     const now = new Date();
-    const record = await (this.prisma as any).validacaoDocumentoPublico.findUnique({
+    const record = await (
+      this.prisma as any
+    ).validacaoDocumentoPublico.findUnique({
       where: { tokenHash },
       select: {
         numeroDocumento: true,

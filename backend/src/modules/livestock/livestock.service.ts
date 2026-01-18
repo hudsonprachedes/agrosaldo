@@ -28,7 +28,10 @@ export class LivestockService {
   private calculateAgeGroupFromBirthDate(birthDate: Date, now: Date) {
     const ageInMonths = this.calculateAgeInMonths(birthDate, now);
     for (const bracket of this.AGE_GROUP_BRACKETS) {
-      if (ageInMonths >= bracket.minMonths && ageInMonths <= bracket.maxMonths) {
+      if (
+        ageInMonths >= bracket.minMonths &&
+        ageInMonths <= bracket.maxMonths
+      ) {
         return bracket.id;
       }
     }
@@ -262,7 +265,10 @@ export class LivestockService {
 
     for (const mv of movements as any[]) {
       const descricao = String(mv.descricao ?? '');
-      if (mv.tipo === 'ajuste' && descricao.startsWith('[SISTEMA] Evolução automática')) {
+      if (
+        mv.tipo === 'ajuste' &&
+        descricao.startsWith('[SISTEMA] Evolução automática')
+      ) {
         continue;
       }
 
@@ -393,6 +399,18 @@ export class LivestockService {
       const qty = mv.quantidade ?? 0;
       if (!qty) continue;
       const rec = ensure(id);
+      const descricao = String(mv.descricao ?? '');
+      if (
+        mv.tipo === 'ajuste' &&
+        descricao.startsWith('[SISTEMA] Ajuste de saldo - Outras espécies')
+      ) {
+        const match = descricao.match(/\bdelta\s*:\s*([+-]?\d+)\b/i);
+        const delta = match ? Number(match[1]) : 0;
+        if (delta > 0) rec.entries += delta;
+        if (delta < 0) rec.exits += Math.abs(delta);
+        continue;
+      }
+
       if (entryTypes.has(mv.tipo)) rec.entries += qty;
       if (exitTypes.has(mv.tipo)) rec.exits += qty;
     }

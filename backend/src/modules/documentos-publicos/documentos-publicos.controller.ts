@@ -1,4 +1,11 @@
-import { Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -17,7 +24,10 @@ export class DocumentosPublicosController {
     @Headers('x-public-base-url') publicBaseUrlHeader?: string,
     @Query('propertyCode') propertyCode?: string,
   ) {
-    const publicBaseUrl = publicBaseUrlHeader || process.env.PUBLIC_BASE_URL || 'http://localhost:8080';
+    const publicBaseUrl =
+      publicBaseUrlHeader ||
+      process.env.PUBLIC_BASE_URL ||
+      'http://localhost:8080';
 
     return this.service.emitirDocumentoEspelhoOficial({
       propriedadeId: propertyId,

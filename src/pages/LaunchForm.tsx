@@ -44,12 +44,11 @@ import MobileLayout from '@/components/layout/MobileLayout';
 import { 
   saveMovement, 
   savePhoto,
-  saveSpeciesBalance,
-  saveSpeciesAdjustment,
   getInitialStock,
   getMovementsByProperty,
 } from '@/lib/indexeddb';
 import { compressImage } from '@/lib/image-compression';
+import { apiClient } from '@/lib/api-client';
 
 import CameraCapture from '@/components/CameraCapture';
 interface LaunchFormProps {
@@ -71,11 +70,11 @@ const vaccineCampaigns = [
 ];
 
 const otherSpecies = [
-  { id: 'equinos', label: 'Equinos', icon: '🐴', count: 12 },
-  { id: 'muares', label: 'Muares', icon: '🫏', count: 3 },
-  { id: 'ovinos', label: 'Ovinos', icon: '🐑', count: 45 },
-  { id: 'suinos', label: 'Suínos', icon: '🐷', count: 28 },
-  { id: 'aves', label: 'Aves', icon: '🐔', count: 150 },
+  { id: 'equinos', label: 'Equinos', icon: '🐴' },
+  { id: 'muares', label: 'Muares', icon: '🫏' },
+  { id: 'ovinos', label: 'Ovinos', icon: '🐑' },
+  { id: 'suinos', label: 'Suínos', icon: '🐷' },
+  { id: 'aves', label: 'Aves', icon: '🐔' },
 ];
 
 type AgeGroupId = (typeof AGE_GROUP_BRACKETS)[number]['id'];
@@ -165,7 +164,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
 
   // Other species
   const [speciesCounts, setSpeciesCounts] = useState<Record<string, number>>(
-    Object.fromEntries(otherSpecies.map(s => [s.id, s.count]))
+    Object.fromEntries(otherSpecies.map((s) => [s.id, 0]))
   );
 
   useEffect(() => {
@@ -173,6 +172,42 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       navigate('/login');
     }
   }, [selectedProperty, navigate]);
+
+  useEffect(() => {
+    if (type !== 'outras') return;
+    if (!selectedProperty?.id) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const mirror = await apiClient.get<any>(
+          `/rebanho/${selectedProperty.id}/outras-especies?months=1`,
+        );
+
+        const next: Record<string, number> = Object.fromEntries(
+          otherSpecies.map((s) => [s.id, 0]),
+        );
+
+        for (const row of mirror?.balances ?? []) {
+          const key = String(row.speciesId ?? '').toLowerCase();
+          if (!key) continue;
+          next[key] = Number(row.currentBalance ?? 0);
+        }
+
+        if (cancelled) return;
+        setSpeciesCounts(next);
+      } catch (error) {
+        if (cancelled) return;
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProperty?.id, type]);
 
   useEffect(() => {
     const loadMatrizes = async () => {
@@ -492,36 +527,25 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           icon: '💉',
         });
       } else if (type === 'outras') {
-        // Persistir ajustes de outras espécies no IndexedDB
-        const previousCounts = Object.fromEntries(otherSpecies.map(s => [s.id, s.count]));
-        
-        for (const species of otherSpecies) {
-          const newCount = speciesCounts[species.id] || 0;
-          const previousCount = previousCounts[species.id] || 0;
-          
-          if (newCount !== previousCount) {
-            // Salvar ajuste individual
-            await saveSpeciesAdjustment({
-              propertyId: selectedProperty.id,
-              species: species.id,
-              previousCount,
-              newCount,
-              quantityChanged: newCount - previousCount,
-              reason: notes || 'Ajuste manual de saldo',
-            });
-            
-            // Atualizar saldo
-            await saveSpeciesBalance({
-              propertyId: selectedProperty.id,
-              species: species.id,
-              count: newCount,
-            });
-          }
+        if (!navigator.onLine) {
+          toast.error('Sem conexão', {
+            description: 'Conecte-se à internet para atualizar o saldo no servidor.',
+          });
+          return;
         }
-        
-        toast.success('Saldo de outras espécies atualizado', {
-          icon: '🐴',
-        });
+
+        const payload = {
+          date,
+          notes,
+          balances: otherSpecies.map((s) => ({
+            speciesId: s.id,
+            count: speciesCounts[s.id] ?? 0,
+          })),
+        };
+
+        await apiClient.post('/lancamentos/outras-especies', payload);
+
+        toast.success('Saldo de outras espécies atualizado', { icon: '🐾' });
       }
 
       navigate(-1);

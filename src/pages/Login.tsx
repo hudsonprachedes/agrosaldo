@@ -15,6 +15,7 @@ import { MaskedInput } from '@/components/ui/masked-input';
 import { validateCpfCnpj } from '@/lib/document-validation';
 import heroBackground from '@/assets/hero-background.jpg';
 import { notifyFirstFormError } from '@/lib/form-errors';
+import { getAppVersionLabel } from '@/version';
 
 // ============================================================================
 // SCHEMAS ZOD
@@ -298,6 +299,8 @@ export default function Login() {
                     Solicitar minha conta
                   </Button>
                 </div>
+
+                <p className="text-center text-xs text-muted-foreground">{getAppVersionLabel()}</p>
               </div>
             </div>
           </section>

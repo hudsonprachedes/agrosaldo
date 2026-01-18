@@ -19,6 +19,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateMovementDto } from './dto/create-movement.dto';
+import { OtherSpeciesAdjustmentDto } from './dto/other-species-adjustment.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
 import { MovementsService } from './movements.service';
 import { memoryStorage } from 'multer';
@@ -103,6 +104,14 @@ export class MovementsController {
     @Body() dto: CreateMovementDto,
   ) {
     return this.movementsService.create(propertyId, dto);
+  }
+
+  @Post('outras-especies')
+  adjustOtherSpecies(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: OtherSpeciesAdjustmentDto,
+  ) {
+    return this.movementsService.adjustOtherSpeciesBalances(propertyId, dto);
   }
 
   @Post('nascimento')

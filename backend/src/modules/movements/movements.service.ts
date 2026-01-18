@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMovementDto } from './dto/create-movement.dto';
+import { OtherSpeciesAdjustmentDto } from './dto/other-species-adjustment.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
 
 @Injectable()
@@ -29,20 +30,89 @@ export class MovementsService {
     return Math.max(0, months);
   }
 
+  async adjustOtherSpeciesBalances(
+    propertyId: string,
+    dto: OtherSpeciesAdjustmentDto,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const date = new Date(dto.date);
+      const notes = dto.notes ? String(dto.notes) : '';
+
+      for (const item of dto.balances ?? []) {
+        const speciesId = String((item as any).speciesId ?? '').trim();
+        if (!speciesId || speciesId.toLowerCase() === 'bovino') continue;
+
+        const target = Math.max(0, Number((item as any).count) || 0);
+
+        const existing = await tx.rebanho.findFirst({
+          where: {
+            propriedadeId: propertyId,
+            especie: speciesId,
+            faixaEtaria: 'unknown',
+            sexo: 'macho' as any,
+          },
+        });
+
+        const current = Number((existing as any)?.cabecas ?? 0);
+        const delta = target - current;
+
+        if (!existing) {
+          await tx.rebanho.create({
+            data: {
+              propriedadeId: propertyId,
+              especie: speciesId,
+              faixaEtaria: 'unknown',
+              sexo: 'macho' as any,
+              cabecas: target,
+            },
+          });
+        } else {
+          await tx.rebanho.update({
+            where: { id: (existing as any).id },
+            data: { cabecas: target },
+          });
+        }
+
+        if (delta !== 0) {
+          await tx.movimento.create({
+            data: {
+              propriedadeId: propertyId,
+              tipo: 'ajuste' as any,
+              especie: speciesId,
+              data: date,
+              quantidade: Math.abs(delta),
+              sexo: null,
+              faixaEtaria: null,
+              descricao:
+                `[SISTEMA] Ajuste de saldo - Outras espécies (${speciesId}): ${current} -> ${target}. delta:${delta}. ${notes}`.trim(),
+              destino: null,
+              valor: null,
+              numeroGta: null,
+              fotoUrl: null,
+              causa: null,
+            } as any,
+          });
+        }
+      }
+
+      return { success: true };
+    });
+  }
+
   private calculateAgeGroupFromBirthDate(birthDate: Date, now: Date) {
     const ageInMonths = this.calculateAgeInMonths(birthDate, now);
     for (const bracket of this.AGE_GROUP_BRACKETS) {
-      if (ageInMonths >= bracket.minMonths && ageInMonths <= bracket.maxMonths) {
+      if (
+        ageInMonths >= bracket.minMonths &&
+        ageInMonths <= bracket.maxMonths
+      ) {
         return bracket.id;
       }
     }
     return '36+m';
   }
 
-  private async ensureAgeGroupEvolution(
-    tx: PrismaService,
-    propertyId: string,
-  ) {
+  private async ensureAgeGroupEvolution(tx: PrismaService, propertyId: string) {
     const now = new Date();
 
     const births = await tx.movimento.findMany({
@@ -131,19 +201,20 @@ export class MovementsService {
     const q = typeof qty === 'number' && Number.isFinite(qty) ? qty : 0;
     if (!q) return 0;
     if (tipo === 'morte' || tipo === 'venda') return -q;
-    if (tipo === 'nascimento' || tipo === 'compra' || tipo === 'ajuste') return q;
+    if (tipo === 'nascimento' || tipo === 'compra' || tipo === 'ajuste')
+      return q;
     return 0;
   }
 
   private async applyStockDelta(
     prisma: PrismaService,
     params: {
-    propertyId: string;
-    species: string;
-    sex: 'macho' | 'femea';
-    ageGroup: string;
-    delta: number;
-  },
+      propertyId: string;
+      species: string;
+      sex: 'macho' | 'femea';
+      ageGroup: string;
+      delta: number;
+    },
   ) {
     const { propertyId, species, sex, ageGroup, delta } = params;
     if (!delta) return;
@@ -411,7 +482,10 @@ export class MovementsService {
       });
 
       const impacts = this.impactsStock(created.tipo as any);
-      const delta = this.getStockDelta(created.tipo as any, (created as any).quantidade);
+      const delta = this.getStockDelta(
+        created.tipo as any,
+        (created as any).quantidade,
+      );
       if (
         impacts &&
         delta &&
@@ -454,7 +528,10 @@ export class MovementsService {
         throw new NotFoundException('Movimento não encontrado');
       }
 
-      await this.ensureAgeGroupEvolution(tx as any, (before as any).propriedadeId);
+      await this.ensureAgeGroupEvolution(
+        tx as any,
+        (before as any).propriedadeId,
+      );
 
       const updated = await tx.movimento.update({
         where: { id },
@@ -476,8 +553,16 @@ export class MovementsService {
       const beforeImpacts = this.impactsStock(before.tipo as any);
       const afterImpacts = this.impactsStock(updated.tipo as any);
 
-      if (beforeImpacts && (before as any).sexo && (before as any).faixaEtaria && (before as any).especie) {
-        const delta = this.getStockDelta(before.tipo as any, (before as any).quantidade);
+      if (
+        beforeImpacts &&
+        (before as any).sexo &&
+        (before as any).faixaEtaria &&
+        (before as any).especie
+      ) {
+        const delta = this.getStockDelta(
+          before.tipo as any,
+          (before as any).quantidade,
+        );
         if (delta) {
           await this.applyStockDelta(tx as any, {
             propertyId: (before as any).propriedadeId,
@@ -489,8 +574,16 @@ export class MovementsService {
         }
       }
 
-      if (afterImpacts && (updated as any).sexo && (updated as any).faixaEtaria && (updated as any).especie) {
-        const delta = this.getStockDelta(updated.tipo as any, (updated as any).quantidade);
+      if (
+        afterImpacts &&
+        (updated as any).sexo &&
+        (updated as any).faixaEtaria &&
+        (updated as any).especie
+      ) {
+        const delta = this.getStockDelta(
+          updated.tipo as any,
+          (updated as any).quantidade,
+        );
         if (delta) {
           await this.applyStockDelta(tx as any, {
             propertyId: (updated as any).propriedadeId,
@@ -514,13 +607,24 @@ export class MovementsService {
         throw new NotFoundException('Movimento não encontrado');
       }
 
-      await this.ensureAgeGroupEvolution(tx as any, (before as any).propriedadeId);
+      await this.ensureAgeGroupEvolution(
+        tx as any,
+        (before as any).propriedadeId,
+      );
 
       const removed = await tx.movimento.delete({ where: { id } });
 
       const impacts = this.impactsStock(before.tipo as any);
-      if (impacts && (before as any).sexo && (before as any).faixaEtaria && (before as any).especie) {
-        const delta = this.getStockDelta(before.tipo as any, (before as any).quantidade);
+      if (
+        impacts &&
+        (before as any).sexo &&
+        (before as any).faixaEtaria &&
+        (before as any).especie
+      ) {
+        const delta = this.getStockDelta(
+          before.tipo as any,
+          (before as any).quantidade,
+        );
         if (delta) {
           await this.applyStockDelta(tx as any, {
             propertyId: (before as any).propriedadeId,

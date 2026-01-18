@@ -41,6 +41,14 @@ export interface ReportData {
 
   includeSurvey?: boolean;
 
+  documentNumber?: string;
+  otherSpeciesMovements?: Array<{
+    date: string;
+    species: string;
+    typeLabel: string;
+    quantity: number;
+  }>;
+
   reportHash?: string;
   qrCodePayload?: string;
   qrCodeDataUrl?: string;
@@ -93,6 +101,7 @@ export function generateReportHTML(data: ReportData): string {
 
   const reportHash = (data.reportHash || Math.random().toString(36).substring(2, 10)).toUpperCase();
   const qrCodePayload = data.qrCodePayload || `agrosaldo://espelho-oficial?property=${encodeURIComponent(data.propertyCode || data.propertyName)}&hash=${encodeURIComponent(reportHash)}`;
+  const documentNumber = data.documentNumber || `${(data.propertyCode || data.propertyName.substring(0, 3)).toUpperCase()}-${new Date().getFullYear()}/${new Date().getMonth() + 1}`;
 
   const surveyFieldLabels: Record<string, string> = {
     a_email: 'E-mail',
@@ -408,7 +417,7 @@ export function generateReportHTML(data: ReportData): string {
           <div class="doc-meta">
             <div class="info-item">
               <strong>DOCUMENTO Nº</strong>
-              ${(data.propertyCode || data.propertyName.substring(0, 3)).toUpperCase()}-${new Date().getFullYear()}/${new Date().getMonth() + 1}
+              ${documentNumber}
             </div>
             <div class="info-item" style="margin-top: 8px;">
               <strong>EMISSÃO</strong>
@@ -513,6 +522,32 @@ export function generateReportHTML(data: ReportData): string {
           </table>
         </div>
 
+        ${data.otherSpeciesMovements && data.otherSpeciesMovements.length > 0 ? `
+          <div class="section">
+            <h3 class="section-title">Lançamentos do Período (Outras Espécies)</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 80px;">Data</th>
+                  <th style="width: 170px;">Espécie</th>
+                  <th>Tipo</th>
+                  <th class="text-right" style="width: 80px;">Qtd.</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.otherSpeciesMovements.map(m => `
+                  <tr>
+                    <td>${new Date(m.date).toLocaleDateString('pt-BR')}</td>
+                    <td>${m.species}</td>
+                    <td>${m.typeLabel}</td>
+                    <td class="text-right font-bold">${m.quantity}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
         ${data.otherSpecies && data.otherSpecies.length > 0 ? `
           <div class="section">
             <h3 class="section-title">Outras Espécies</h3>
@@ -605,7 +640,7 @@ export function generateReportHTML(data: ReportData): string {
           <div class="system-info">
             ${data.qrCodeDataUrl ? `<img class="qr-code" src="${data.qrCodeDataUrl}" alt="QR Code de validação" />` : `<img class="qr-code" id="agrosaldo-qr" alt="QR Code de validação" />`}
             <p style="margin-top: 5px;">Gerado via AgroSaldo</p>
-            <p>Hash: ${reportHash}</p>
+            <p>Documento Nº: ${documentNumber}</p>
           </div>
         </footer>
       </div>

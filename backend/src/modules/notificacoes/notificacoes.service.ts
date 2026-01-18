@@ -132,7 +132,9 @@ export class NotificacoesService {
     const evolutionNotifs: Omit<NotificationDTO, 'status' | 'readAt'>[] = (
       evolutions as any[]
     ).map((e) => {
-      const createdAt = e.data ? new Date(e.data).toISOString() : new Date().toISOString();
+      const createdAt = e.data
+        ? new Date(e.data).toISOString()
+        : new Date().toISOString();
       return {
         id: `system-age-evolution-${propertyId}-${e.id}`,
         propertyId,

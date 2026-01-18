@@ -142,6 +142,7 @@ model Propriedade {
   rebanho         Rebanho[]
   movimentos      Movimento[]
   questionariosEpidemiologicos QuestionarioEpidemiologico[]
+  validacoesDocumentoPublico ValidacaoDocumentoPublico[]
 
   @@map("Property")
 }
