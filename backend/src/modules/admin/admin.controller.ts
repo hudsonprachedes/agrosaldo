@@ -6,7 +6,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { ApproveUserDto } from './dto/approve-user.dto';
 import { AdminService } from './admin.service';
 import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
-import { CreatePaymentDto } from './dto/payment.dto';
+import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 import { UpdatePixConfigDto } from './dto/pix-config.dto';
 
 @ApiTags('admin')
@@ -83,6 +83,12 @@ export class AdminController {
   }
 
   @Roles('super_admin')
+  @Post('usuarios/:id/liberar-acesso')
+  liberarAcessoPosPagamento(@Param('id') id: string) {
+    return this.adminService.liberarAcessoPosPagamento(id);
+  }
+
+  @Roles('super_admin')
   @Patch('usuarios/:id')
   updateUser(@Param('id') id: string, @Body() dto: any) {
     return this.adminService.updateUser(id, dto);
@@ -138,6 +144,12 @@ export class AdminController {
   @Post('financeiro/pagamentos')
   createPayment(@Body() dto: CreatePaymentDto) {
     return this.adminService.createPayment(dto);
+  }
+
+  @Roles('super_admin')
+  @Patch('financeiro/pagamentos/:id')
+  updatePayment(@Param('id') id: string, @Body() dto: UpdatePaymentDto) {
+    return this.adminService.updatePayment(id, dto);
   }
 
   @Roles('super_admin')

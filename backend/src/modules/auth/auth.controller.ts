@@ -27,4 +27,11 @@ export class AuthController {
   me(@CurrentUser() user: { id: string }) {
     return this.authService.me(user.id);
   }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('onboarding/complete')
+  completeOnboarding(@CurrentUser() user: { id: string }) {
+    return this.authService.completeOnboarding(user.id);
+  }
 }

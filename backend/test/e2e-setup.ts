@@ -37,8 +37,30 @@ jest.mock('../src/prisma/prisma.service', () => {
 
   return {
     PrismaService: jest.fn().mockImplementation(() => ({
+      $transaction: jest.fn().mockImplementation(async (fn: any) => {
+        // Executa callback da transação reaproveitando os mesmos delegates mockados.
+        return fn({
+          usuario: {
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue(mockUser),
+          },
+          propriedade: {
+            create: jest.fn().mockResolvedValue({ id: 'prop-1', nome: 'Test Property' }),
+          },
+          usuarioPropriedade: {
+            create: jest.fn().mockResolvedValue({ usuarioId: 'user-1', propriedadeId: 'prop-1' }),
+          },
+        });
+      }),
       usuario: {
         findMany: jest.fn().mockResolvedValue([mockUser]),
+        findFirst: jest.fn().mockImplementation(async (args: any) => {
+          const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
+          if (cpfCnpj === '12345678901') {
+            return mockUser;
+          }
+          return null;
+        }),
         findUnique: jest.fn().mockImplementation(async (args: any) => {
           if (args.where.cpfCnpj === '12345678901') {
             return mockUser;

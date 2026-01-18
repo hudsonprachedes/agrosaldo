@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   History,
   Save,
+  Eye,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,6 +88,7 @@ export default function AdminClientes() {
   const [impersonateDialog, setImpersonateDialog] = useState(false);
   const [historyDialog, setHistoryDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
+  const [detailsDialog, setDetailsDialog] = useState(false);
 
   // Form state
   const [newPlan, setNewPlan] = useState('');
@@ -261,6 +263,11 @@ export default function AdminClientes() {
     setEditDialog(true);
   };
 
+  const openDetailsDialog = (tenant: User) => {
+    setSelectedTenant(tenant);
+    setDetailsDialog(true);
+  };
+
   const handleSaveEdit = () => {
     if (!selectedTenant) return;
 
@@ -360,6 +367,9 @@ export default function AdminClientes() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
+                <TableHead>Plano</TableHead>
+                <TableHead>Cabeças</TableHead>
+                <TableHead>Propriedades</TableHead>
                 <TableHead>Papel</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12"></TableHead>
@@ -386,6 +396,15 @@ export default function AdminClientes() {
                     {tenant.phone || '-'}
                   </TableCell>
                   <TableCell>
+                    <Badge variant="outline">{tenant.currentPlan ?? '-'}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {typeof tenant.cattleCount === 'number' ? tenant.cattleCount : '-'}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {typeof tenant.propertyCount === 'number' ? tenant.propertyCount : (tenant.properties?.length ?? '-')}
+                  </TableCell>
+                  <TableCell>
                     <Badge variant="outline">{tenant.role}</Badge>
                   </TableCell>
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
@@ -397,6 +416,10 @@ export default function AdminClientes() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openDetailsDialog(tenant)}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Visualizar
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openImpersonateDialog(tenant)}>
                           <UserCheck className="w-4 h-4 mr-2" />
                           Acessar como cliente
@@ -680,6 +703,109 @@ export default function AdminClientes() {
             <Button onClick={handleSaveEdit}>
               <Save className="w-4 h-4 mr-2" />
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog
+        open={detailsDialog}
+        onOpenChange={(open) => {
+          setDetailsDialog(open);
+          if (!open) {
+            setSelectedTenant(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Dados do cliente</DialogTitle>
+            <DialogDescription>
+              Informações do cliente e propriedades cadastradas (dados disponíveis no sistema atual).
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedTenant ? (
+            <div className="space-y-6 py-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Nome</p>
+                  <p className="font-medium">{selectedTenant.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">CPF/CNPJ</p>
+                  <p className="font-medium">{selectedTenant.cpfCnpj}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="font-medium">{selectedTenant.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Telefone</p>
+                  <p className="font-medium">{selectedTenant.phone || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Plano atual</p>
+                  <p className="font-medium">{selectedTenant.currentPlan ?? '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total de cabeças</p>
+                  <p className="font-medium">{typeof selectedTenant.cattleCount === 'number' ? selectedTenant.cattleCount : '-'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-semibold">Propriedades</p>
+                {Array.isArray(selectedTenant.properties) && selectedTenant.properties.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedTenant.properties.map((p) => (
+                      <Card key={p.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="font-medium">{p.nome}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {p.cidade} / {p.estado}
+                              </p>
+                              {(p.cep || p.logradouro || p.numero || p.bairro || p.complemento || p.viaAcesso || p.comunidade) && (
+                                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                                  {(p.logradouro || p.numero || p.complemento) && (
+                                    <p>
+                                      {String(p.logradouro ?? '')}
+                                      {p.numero ? `, ${p.numero}` : ''}
+                                      {p.complemento ? ` - ${p.complemento}` : ''}
+                                    </p>
+                                  )}
+                                  {p.bairro && <p>Bairro: {p.bairro}</p>}
+                                  {p.cep && <p>CEP: {p.cep}</p>}
+                                  {p.viaAcesso && <p>Via de acesso: {p.viaAcesso}</p>}
+                                  {p.comunidade && <p>Comunidade: {p.comunidade}</p>}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Cabeças</p>
+                              <p className="font-medium">{p.quantidadeGado}</p>
+                              <p className="text-xs text-muted-foreground mt-1">Plano: {p.plano}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Nenhuma propriedade vinculada.</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="py-6 text-sm text-muted-foreground">Nenhum cliente selecionado.</div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailsDialog(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

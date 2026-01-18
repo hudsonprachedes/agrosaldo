@@ -49,7 +49,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should return 401 for invalid credentials', () => {
-      jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(prismaService.usuario, 'findFirst').mockResolvedValue(null);
 
       return request(app.getHttpServer())
         .post('/auth/login')
@@ -83,8 +83,21 @@ describe('AuthController (e2e)', () => {
         telefone: null,
       };
 
-      jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(null);
-      jest.spyOn(prismaService.usuario, 'create').mockResolvedValue(mockUser as any);
+      jest.spyOn(prismaService.usuario, 'findFirst').mockResolvedValue(null);
+
+      jest.spyOn(prismaService, '$transaction' as any).mockImplementation(async (fn: any) => {
+        return fn({
+          usuario: {
+            create: jest.fn().mockResolvedValue(mockUser),
+          },
+          propriedade: {
+            create: jest.fn().mockResolvedValue({ id: 'prop-1' }),
+          },
+          usuarioPropriedade: {
+            create: jest.fn().mockResolvedValue({ usuarioId: mockUser.id, propriedadeId: 'prop-1' }),
+          },
+        });
+      });
 
       return request(app.getHttpServer())
         .post('/auth/register')
@@ -103,21 +116,18 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should return 409 if user already exists', () => {
-      jest
-        .spyOn(prismaService.usuario, 'findUnique')
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: '1',
-          email: 'existing@example.com',
-          cpfCnpj: '12345678901',
-          nome: 'Existing User',
-          senha: '$2a$10$hashedpassword',
-          papel: 'proprietario',
-          status: 'ativo',
-          criadoEm: new Date(),
-          atualizadoEm: new Date(),
-          telefone: null,
-        } as any);
+      jest.spyOn(prismaService.usuario, 'findFirst').mockResolvedValue({
+        id: '1',
+        email: 'existing@example.com',
+        cpfCnpj: '12345678901',
+        nome: 'Existing User',
+        senha: '$2a$10$hashedpassword',
+        papel: 'proprietario',
+        status: 'ativo',
+        criadoEm: new Date(),
+        atualizadoEm: new Date(),
+        telefone: null,
+      } as any);
 
       return request(app.getHttpServer())
         .post('/auth/register')
@@ -127,7 +137,7 @@ describe('AuthController (e2e)', () => {
           cpfCnpj: '12345678901',
           password: 'password123',
         })
-        .expect(201); // Registro bem-sucedido (mock não valida duplicação)
+        .expect(409);
     });
   });
 

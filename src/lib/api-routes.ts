@@ -319,6 +319,9 @@ export const API_ROUTES = {
     IMPERSONATE_USER: '/admin/usuarios/:id/impersonate',
     // POST /admin/usuarios/:id/impersonate
 
+    RELEASE_ACCESS: '/admin/usuarios/:id/liberar-acesso',
+    // POST /admin/usuarios/:id/liberar-acesso
+
     REGULATIONS: '/admin/regulamentacoes',
     // GET|POST /admin/regulamentacoes
 
@@ -327,6 +330,9 @@ export const API_ROUTES = {
 
     PAYMENTS: '/admin/financeiro/pagamentos',
     // GET|POST /admin/financeiro/pagamentos
+
+    PAYMENTS_ID: '/admin/financeiro/pagamentos/:id',
+    // PATCH /admin/financeiro/pagamentos/:id
 
     PIX_CONFIG: '/admin/financeiro/pix-config',
     // GET|POST /admin/financeiro/pix-config

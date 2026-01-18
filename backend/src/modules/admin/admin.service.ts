@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApproveUserDto } from './dto/approve-user.dto';
 import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
-import { CreatePaymentDto } from './dto/payment.dto';
+import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 import { UpdatePixConfigDto } from './dto/pix-config.dto';
 
 @Injectable()
@@ -13,6 +13,30 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService
   ) {}
+
+  private getPlanRank(planId: string) {
+    const order = ['porteira', 'piquete', 'retiro', 'estancia', 'barao'];
+    const idx = order.indexOf((planId ?? '').toLowerCase());
+    return idx === -1 ? 0 : idx;
+  }
+
+  private getRequiredPlanByTotalCattle(totalCattle: number) {
+    if (totalCattle <= 500) return 'porteira';
+    if (totalCattle <= 1500) return 'piquete';
+    if (totalCattle <= 3000) return 'retiro';
+    if (totalCattle <= 6000) return 'estancia';
+    return 'barao';
+  }
+
+  getPlansCatalog() {
+    return [
+      { id: 'porteira', name: 'Porteira', price: 29.9, maxCattle: 500 },
+      { id: 'piquete', name: 'Piquete', price: 69.9, maxCattle: 1500 },
+      { id: 'retiro', name: 'Retiro', price: 129.9, maxCattle: 3000 },
+      { id: 'estancia', name: 'Estância', price: 249.9, maxCattle: 6000 },
+      { id: 'barao', name: 'Barão', price: 399.9, maxCattle: -1 },
+    ];
+  }
 
   private monthKey(d: Date) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -226,12 +250,54 @@ export class AdminService {
     const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
+    const trialDays = typeof dto.trialDays === 'number' && Number.isFinite(dto.trialDays) ? dto.trialDays : 0;
+    const trialPlan = (dto.trialPlan ?? '').toLowerCase();
+
+    const catalog = this.getPlansCatalog();
+    const trialPlanItem = catalog.find((p) => p.id === trialPlan);
+    const shouldCreateTrial = trialDays > 0 && Boolean(trialPlanItem);
+
     const updated = await this.prisma.usuario.update({
       where: { id: userId },
       data: {
         status: (dto.status as any) || ('ativo' as any),
+        statusFinanceiro: 'ok' as any,
       },
     });
+
+    if (shouldCreateTrial) {
+      const now = new Date();
+      const end = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+
+      const latest = await this.prisma.assinatura.findFirst({
+        where: { usuarioId: userId },
+        orderBy: { inicioEm: 'desc' },
+      });
+
+      if (latest) {
+        await this.prisma.assinatura.update({
+          where: { id: latest.id },
+          data: {
+            plano: trialPlan as any,
+            status: 'ativa' as any,
+            valorMensal: 0,
+            inicioEm: now,
+            fimEm: end,
+          },
+        });
+      } else {
+        await this.prisma.assinatura.create({
+          data: {
+            usuarioId: userId,
+            plano: trialPlan as any,
+            status: 'ativa' as any,
+            valorMensal: 0,
+            inicioEm: now,
+            fimEm: end,
+          },
+        });
+      }
+    }
 
     // Log audit
     await this.createAuditLog(
@@ -240,6 +306,29 @@ export class AdminService {
       'USER_APPROVED',
       `Usuário ${user.email} aprovado com status ${updated.status}`,
       '127.0.0.1' // TODO: Get actual IP
+    );
+
+    return updated;
+  }
+
+  async liberarAcessoPosPagamento(userId: string) {
+    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const updated = await this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        statusFinanceiro: 'ok' as any,
+        status: 'ativo' as any,
+      },
+    });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Sistema',
+      'PAYMENT_RELEASE',
+      `Acesso liberado após pagamento para ${user.email}`,
+      '127.0.0.1'
     );
 
     return updated;
@@ -406,9 +495,30 @@ export class AdminService {
   listTenants() {
     return this.prisma.usuario.findMany({
       where: { papel: { in: ['proprietario', 'operador'] as any } },
-      include: { propriedades: { include: { propriedade: true } } },
-      orderBy: { criadoEm: 'desc' }
-    });
+      include: {
+        propriedades: { include: { propriedade: true } },
+        assinaturas: {
+          orderBy: { inicioEm: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { criadoEm: 'desc' },
+    }).then((users) =>
+      users.map((u: any) => {
+        const properties = (u.propriedades ?? []).map((up: any) => up.propriedade).filter(Boolean);
+        const propertyCount = properties.length;
+        const cattleCount = properties.reduce((acc: number, p: any) => acc + (Number(p?.quantidadeGado) || 0), 0);
+        const currentPlan = u.assinaturas?.[0]?.plano ?? null;
+
+        return {
+          ...u,
+          properties,
+          propertyCount,
+          cattleCount,
+          currentPlan,
+        };
+      })
+    );
   }
 
   // --- Regulations ---
@@ -444,14 +554,32 @@ export class AdminService {
 
   // --- Financial ---
 
+  private mapPaymentToDto(row: any) {
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      tenantName: row.tenantName,
+      plan: row.plano,
+      amount: row.valor,
+      paymentMethod: row.metodoPagamento,
+      paymentFrequency: row.frequenciaPagamento,
+      status: row.status,
+      dueDate: row.vencimentoEm?.toISOString ? row.vencimentoEm.toISOString() : row.vencimentoEm,
+      paidAt: row.pagoEm?.toISOString ? row.pagoEm.toISOString() : row.pagoEm,
+      createdAt: row.criadoEm?.toISOString ? row.criadoEm.toISOString() : row.criadoEm,
+    };
+  }
+
   async listPayments() {
-    return (this.prisma as any).pagamentoFinanceiro.findMany({
+    const rows = await (this.prisma as any).pagamentoFinanceiro.findMany({
       orderBy: { criadoEm: 'desc' }
     });
+
+    return rows.map((r: any) => this.mapPaymentToDto(r));
   }
 
   async createPayment(dto: CreatePaymentDto) {
-    return this.prisma.pagamentoFinanceiro.create({
+    const created = await this.prisma.pagamentoFinanceiro.create({
       data: {
         tenantId: dto.tenantId,
         tenantName: dto.tenantName,
@@ -464,6 +592,28 @@ export class AdminService {
         pagoEm: dto.paidAt ? new Date(dto.paidAt) : null,
       }
     });
+
+    return this.mapPaymentToDto(created);
+  }
+
+  async updatePayment(paymentId: string, dto: UpdatePaymentDto) {
+    const existing = await (this.prisma as any).pagamentoFinanceiro.findUnique({ where: { id: paymentId } });
+    if (!existing) throw new NotFoundException('Pagamento não encontrado');
+
+    const updated = await (this.prisma as any).pagamentoFinanceiro.update({
+      where: { id: paymentId },
+      data: {
+        ...(dto.plan !== undefined ? { plano: dto.plan } : {}),
+        ...(dto.amount !== undefined ? { valor: dto.amount } : {}),
+        ...(dto.paymentMethod !== undefined ? { metodoPagamento: dto.paymentMethod } : {}),
+        ...(dto.paymentFrequency !== undefined ? { frequenciaPagamento: dto.paymentFrequency } : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(dto.dueDate !== undefined ? { vencimentoEm: new Date(dto.dueDate) } : {}),
+        ...(dto.paidAt !== undefined ? { pagoEm: dto.paidAt ? new Date(dto.paidAt) : null } : {}),
+      },
+    });
+
+    return this.mapPaymentToDto(updated);
   }
 
   // --- Pix Config ---
@@ -728,6 +878,119 @@ export class AdminService {
     const current = await this.prisma.solicitacaoPendente.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('Solicitação não encontrada');
 
+    const requestType = String(current.tipo ?? '').toLowerCase();
+
+    if (requestType === 'signup') {
+      const cpfCnpj = String(current.cpfCnpj ?? '').replace(/\D/g, '');
+      const user = await this.prisma.usuario.findFirst({
+        where: {
+          OR: [{ cpfCnpj }, { email: String(current.email ?? '').trim().toLowerCase() }],
+        },
+      });
+
+      if (user) {
+        const anyDto = dto as any;
+        const trialDays =
+          typeof anyDto?.trialDays === 'number' && Number.isFinite(anyDto.trialDays) ? anyDto.trialDays : 0;
+        const trialPlan = typeof anyDto?.trialPlan === 'string' ? String(anyDto.trialPlan).toLowerCase() : '';
+
+        await this.prisma.usuario.update({
+          where: { id: user.id },
+          data: {
+            status: 'ativo' as any,
+            statusFinanceiro: 'ok' as any,
+          },
+        });
+
+        const catalog = this.getPlansCatalog();
+        const trialPlanItem = catalog.find((p) => p.id === trialPlan);
+        const shouldCreateTrial = trialDays > 0 && Boolean(trialPlanItem);
+
+        if (shouldCreateTrial) {
+          const now = new Date();
+          const end = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+
+          const latest = await this.prisma.assinatura.findFirst({
+            where: { usuarioId: user.id },
+            orderBy: { inicioEm: 'desc' },
+          });
+
+          if (latest) {
+            await this.prisma.assinatura.update({
+              where: { id: latest.id },
+              data: {
+                plano: trialPlan as any,
+                status: 'ativa' as any,
+                valorMensal: 0,
+                inicioEm: now,
+                fimEm: end,
+              },
+            });
+          } else {
+            await this.prisma.assinatura.create({
+              data: {
+                usuarioId: user.id,
+                plano: trialPlan as any,
+                status: 'ativa' as any,
+                valorMensal: 0,
+                inicioEm: now,
+                fimEm: end,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // Downgrade é manual: ao aprovar uma solicitação de downgrade, atualizamos a assinatura.
+    if (requestType === 'plan_downgrade') {
+      const requested = String(current.plano ?? '').toLowerCase();
+      const catalog = this.getPlansCatalog();
+      const requestedPlan = catalog.find((p) => p.id === requested);
+
+      if (requestedPlan) {
+        const user = await this.prisma.usuario.findFirst({
+          where: { cpfCnpj: current.cpfCnpj },
+        });
+
+        if (user) {
+          const latest = await this.prisma.assinatura.findFirst({
+            where: { usuarioId: user.id },
+            orderBy: { inicioEm: 'desc' },
+          });
+
+          if (latest) {
+            const propAgg = await this.prisma.propriedade.aggregate({
+              _sum: { quantidadeGado: true },
+              where: {
+                usuarios: {
+                  some: {
+                    usuarioId: user.id,
+                  },
+                },
+              },
+            });
+            const totalCattle = propAgg._sum?.quantidadeGado ?? 0;
+            const requiredPlan = this.getRequiredPlanByTotalCattle(totalCattle);
+
+            const requestedRank = this.getPlanRank(requested);
+            const requiredRank = this.getPlanRank(requiredPlan);
+
+            // Se o rebanho atual exige um plano maior, não pode efetivar downgrade.
+            if (requestedRank >= requiredRank) {
+              await this.prisma.assinatura.update({
+                where: { id: latest.id },
+                data: {
+                  plano: requested as any,
+                  valorMensal: requestedPlan.price,
+                },
+              });
+            }
+          }
+        }
+      }
+    }
+
     const updated = await this.prisma.solicitacaoPendente.update({
       where: { id },
       data: { status: 'approved' },
@@ -747,6 +1010,24 @@ export class AdminService {
   async rejectRequest(id: string, dto: { reason: string }) {
     const current = await this.prisma.solicitacaoPendente.findUnique({ where: { id } });
     if (!current) throw new NotFoundException('Solicitação não encontrada');
+
+    const requestType = String(current.tipo ?? '').toLowerCase();
+    if (requestType === 'signup') {
+      const cpfCnpj = String(current.cpfCnpj ?? '').replace(/\D/g, '');
+      const user = await this.prisma.usuario.findFirst({
+        where: {
+          OR: [{ cpfCnpj }, { email: String(current.email ?? '').trim().toLowerCase() }],
+        },
+      });
+      if (user) {
+        await this.prisma.usuario.update({
+          where: { id: user.id },
+          data: {
+            status: 'rejeitado' as any,
+          },
+        });
+      }
+    }
 
     const updated = await this.prisma.solicitacaoPendente.update({
       where: { id },

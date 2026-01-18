@@ -32,7 +32,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { plans } from '@/mocks/mock-auth';
+import { plans } from '@/lib/plans';
 import { addNewsletterSubscriber, getNewsletterCount, isEmailSubscribed } from '@/lib/indexeddb';
 import heroBackground from '@/assets/hero-background.jpg';
 import usePageMeta from '@/hooks/usePageMeta';

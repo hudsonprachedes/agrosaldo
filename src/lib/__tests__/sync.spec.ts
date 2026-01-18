@@ -20,7 +20,7 @@ describe('Sincronização Offline-First', () => {
       propertyId: 'prop-123',
       type: 'birth',
       quantity: 5,
-      ageGroupId: '0-4',
+      ageGroupId: '0-4m',
       date: new Date().toISOString(),
       description: 'Nascimento registrado',
       createdAt: new Date().toISOString(),
@@ -37,7 +37,7 @@ describe('Sincronização Offline-First', () => {
 
   it('salva foto offline e adiciona à fila', async () => {
     const photoData = new Blob(['teste'], { type: 'image/jpeg' });
-    const photo = await savePhotoOffline('mov-321', photoData, photoData.size + 200);
+    const photo = await savePhotoOffline('mov-321', 'prop-123', photoData, photoData.size + 200);
 
     expect(photo.id).toBeTruthy();
 
@@ -51,7 +51,7 @@ describe('Sincronização Offline-First', () => {
       propertyId: 'prop-123',
       type: 'birth',
       quantity: 1,
-      ageGroupId: '0-4',
+      ageGroupId: '0-4m',
       date: new Date().toISOString(),
       description: 'Primeiro movimento',
       createdAt: new Date().toISOString(),
@@ -64,7 +64,7 @@ describe('Sincronização Offline-First', () => {
       propertyId: 'prop-123',
       type: 'sale',
       quantity: 2,
-      ageGroupId: '12-24',
+      ageGroupId: '13-24m',
       date: new Date().toISOString(),
       description: 'Segundo movimento',
       createdAt: new Date().toISOString(),
@@ -84,7 +84,7 @@ describe('Sincronização Offline-First', () => {
       propertyId: 'prop-123',
       type: 'birth',
       quantity: 3,
-      ageGroupId: '0-4',
+      ageGroupId: '0-4m',
       date: new Date().toISOString(),
       description: 'Teste falha de rede',
       createdAt: new Date().toISOString(),

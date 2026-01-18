@@ -51,12 +51,17 @@ export default function Financeiro() {
   const [summary, setSummary] = useState<FinanceSummaryDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  if (!selectedProperty) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!selectedProperty) {
+      navigate('/login');
+    }
+  }, [navigate, selectedProperty]);
 
   useEffect(() => {
+    if (!selectedProperty?.id) {
+      return;
+    }
+
     const load = async () => {
       try {
         setIsLoading(true);
@@ -73,7 +78,7 @@ export default function Financeiro() {
     };
 
     void load();
-  }, [period, selectedProperty.id]);
+  }, [period, selectedProperty?.id]);
 
   const financialData = useMemo(
     () =>

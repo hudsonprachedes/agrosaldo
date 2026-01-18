@@ -92,12 +92,17 @@ export default function Lancamentos() {
   const [summary, setSummary] = useState<LaunchSummaryDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  if (!selectedProperty) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!selectedProperty) {
+      navigate('/login');
+    }
+  }, [navigate, selectedProperty]);
 
   useEffect(() => {
+    if (!selectedProperty?.id) {
+      return;
+    }
+
     const load = async () => {
       try {
         setIsLoading(true);
@@ -112,7 +117,7 @@ export default function Lancamentos() {
     };
 
     void load();
-  }, [selectedProperty.id]);
+  }, [selectedProperty?.id]);
 
   const lastUpdatedLabel = useMemo(() => {
     if (!summary?.lastUpdatedAt) return '—';

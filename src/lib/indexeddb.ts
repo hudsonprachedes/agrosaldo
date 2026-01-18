@@ -346,6 +346,12 @@ export async function getPendingMovements(
   return results;
 }
 
+export async function getMovementsByProperty(propertyId: string): Promise<StoredMovement[]> {
+  const db = await getDB();
+  const index = db.transaction('movements').store.index('propertyId');
+  return index.getAll(propertyId);
+}
+
 /**
  * Atualizar status de sincronização de um movimento
  */

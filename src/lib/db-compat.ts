@@ -6,6 +6,20 @@
 import { getDB, getSyncQueueItems, updateSyncQueueItem } from './indexeddb';
 import { apiClient } from './api-client';
 
+type HasId = { id: string };
+
+type LocalMovementRecord = {
+  id: string;
+  serverId?: string;
+  syncStatus?: string;
+};
+
+type LocalPhotoRecord = {
+  movementId: string;
+  data: Blob;
+  mimeType?: string;
+};
+
 /**
  * Sincroniza movimentos pendentes com o servidor
  * Implementa retry com backoff exponencial
@@ -61,11 +75,15 @@ export async function syncMovements(): Promise<{
         });
 
         const db = await getDB();
-        const localMovement = await db.get('movements', item.resourceId);
-        if (localMovement && resp && typeof resp === 'object' && 'id' in (resp as any)) {
-          (localMovement as any).serverId = (resp as any).id;
-          (localMovement as any).syncStatus = 'synced';
-          await db.put('movements', localMovement);
+        const localMovement = (await db.get('movements', item.resourceId)) as LocalMovementRecord | undefined;
+        const respWithId = resp as unknown as Partial<HasId>;
+        if (localMovement && respWithId?.id) {
+          const next: LocalMovementRecord = {
+            ...localMovement,
+            serverId: respWithId.id,
+            syncStatus: 'synced',
+          };
+          await db.put('movements', next);
         }
 
         await updateSyncQueueItem(item.id, 'synced');
@@ -110,19 +128,19 @@ export async function syncPhotos(): Promise<{
         await updateSyncQueueItem(item.id, 'syncing');
 
         const db = await getDB();
-        const photo = await db.get('photos', item.resourceId);
+        const photo = (await db.get('photos', item.resourceId)) as LocalPhotoRecord | undefined;
         if (!photo) {
           throw new Error('Foto não encontrada no IndexedDB');
         }
 
-        const localMovement = await db.get('movements', (photo as any).movementId);
-        const serverId = localMovement ? (localMovement as any).serverId : null;
+        const localMovement = (await db.get('movements', photo.movementId)) as LocalMovementRecord | undefined;
+        const serverId = localMovement?.serverId ?? null;
         if (!serverId) {
           await updateSyncQueueItem(item.id, 'pending');
           continue;
         }
 
-        const file = new File([photo.data as Blob], 'foto.jpg', { type: (photo as any).mimeType || 'image/jpeg' });
+        const file = new File([photo.data], 'foto.jpg', { type: photo.mimeType || 'image/jpeg' });
         await apiClient.uploadFile(`/lancamentos/${serverId}/foto`, file);
 
         await updateSyncQueueItem(item.id, 'synced');

@@ -89,30 +89,37 @@ export default function AdminFinanceiro() {
   };
 
   const handleMarkAsPending = (paymentId: string) => {
-    const updated = payments.map(p =>
-      p.id === paymentId ? { ...p, status: 'pending' as const, paidAt: undefined } : p
-    );
-    setPayments(updated);
-    toast.success('Pagamento revertido para pendente');
+    const current = payments.find((p) => p.id === paymentId);
+    if (!current) return;
+
+    void (async () => {
+      try {
+        const updatedPayment = await adminService.updatePayment(paymentId, {
+          ...current,
+          status: 'pending',
+          paidAt: null,
+        });
+        setPayments(payments.map((p) => (p.id === paymentId ? updatedPayment : p)));
+        toast.success('Pagamento revertido para pendente');
+      } catch (error) {
+        console.error('Erro ao reverter pagamento:', error);
+        toast.error('Erro ao reverter pagamento');
+      }
+    })();
   };
 
   const handlePaymentConfirmation = async () => {
     if (!selectedPayment) return;
 
     try {
-      await adminService.createPayment({
+      const paidAt = new Date().toISOString();
+      const updatedPayment = await adminService.updatePayment(selectedPayment.id, {
         ...selectedPayment,
         status: 'paid',
-        paidAt: new Date().toISOString(),
+        paidAt,
       });
 
-      const updated = payments.map(p =>
-        p.id === selectedPayment.id
-          ? { ...p, status: 'paid' as const, paidAt: new Date().toISOString() }
-          : p
-      );
-
-      setPayments(updated);
+      setPayments(payments.map((p) => (p.id === selectedPayment.id ? updatedPayment : p)));
       setShowPaymentDialog(false);
       toast.success(`Recebimento de ${selectedPayment.tenantName} registrado com sucesso`);
     } catch (error) {
@@ -307,7 +314,7 @@ export default function AdminFinanceiro() {
                             <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                           </TableCell>
                           <TableCell>
-                            R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            R$ {Number(payment.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell>{getFrequencyLabel(payment.paymentFrequency)}</TableCell>
                           <TableCell>
@@ -393,7 +400,7 @@ export default function AdminFinanceiro() {
                               <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                             </TableCell>
                             <TableCell className="text-red-600 font-semibold">
-                              R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              R$ {Number(payment.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell>
                               {new Date(payment.dueDate).toLocaleDateString('pt-BR')}
@@ -453,7 +460,7 @@ export default function AdminFinanceiro() {
                           <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                         </TableCell>
                         <TableCell>
-                          R$ {payment.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          R$ {Number(payment.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -517,7 +524,7 @@ export default function AdminFinanceiro() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Valor:</span>
                   <span className="text-lg font-bold text-green-600">
-                    R$ {selectedPayment?.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {Number(selectedPayment?.amount ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

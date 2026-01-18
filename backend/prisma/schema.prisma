@@ -90,6 +90,7 @@ model Usuario {
   versaoApp         String?         @map("appVersion")
   statusFinanceiro  StatusFinanceiro? @map("financialStatus")
   receitaMensal     Float?          @map("monthlyRevenue")
+  onboardingConcluidoEm DateTime?   @map("onboardingCompletedAt")
   criadoEm          DateTime        @default(now()) @map("createdAt")
   atualizadoEm      DateTime        @updatedAt @map("updatedAt")
   propriedades      UsuarioPropriedade[]
@@ -120,6 +121,13 @@ model Propriedade {
   nome            String             @unique @map("name")
   cidade          String             @map("city")
   estado          String             @map("state")
+  cep             String?            @map("cep")
+  logradouro      String?            @map("street")
+  numero          String?            @map("number")
+  complemento     String?            @map("complement")
+  bairro          String?            @map("district")
+  viaAcesso       String?            @map("accessRoute")
+  comunidade      String?            @map("community")
   areaTotal       Float              @map("totalArea")
   areaCultivada   Float              @map("cultivatedArea")
   areaNatural     Float              @map("naturalArea")
@@ -351,4 +359,19 @@ model LogAuditoria {
   dataHora  DateTime @default(now()) @map("timestamp")
 
   @@map("AuditLog")
+}
+
+model NotificacaoUsuario {
+  id            String   @id @default(uuid()) @map("id")
+  usuarioId     String   @map("userId")
+  notificacaoId String   @map("notificationId")
+  status        String   @default("unread") @map("status")
+  lidoEm        DateTime? @map("readAt")
+  criadoEm      DateTime @default(now()) @map("createdAt")
+  atualizadoEm  DateTime @updatedAt @map("updatedAt")
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@unique([usuarioId, notificacaoId])
+  @@index([usuarioId])
+  @@map("UserNotification")
 }

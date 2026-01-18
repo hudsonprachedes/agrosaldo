@@ -37,11 +37,11 @@ export default function Rebanho() {
   const [otherMirror, setOtherMirror] = useState<OtherSpeciesMirrorDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  if (!selectedProperty) {
-    return <Navigate to="/selecionar-propriedade" replace />;
-  }
-
   useEffect(() => {
+    if (!selectedProperty?.id) {
+      return;
+    }
+
     const load = async () => {
       try {
         setIsLoading(true);
@@ -61,7 +61,7 @@ export default function Rebanho() {
     };
 
     void load();
-  }, [selectedProperty.id]);
+  }, [selectedProperty?.id]);
 
   const ageGroups = useMemo(
     () => [
@@ -363,6 +363,10 @@ export default function Rebanho() {
         .map(balance => balance.exits)
     }
   ];
+
+  if (!selectedProperty) {
+    return <Navigate to="/selecionar-propriedade" replace />;
+  }
 
   if (isLoading) {
     return (

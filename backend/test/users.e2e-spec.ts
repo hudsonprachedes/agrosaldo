@@ -50,6 +50,16 @@ describe('Users (e2e)', () => {
     prismaService = app.get(PrismaService);
 
     (prismaService as any).usuario = {
+      findFirst: jest.fn().mockImplementation(async (args: any) => {
+        const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
+        if (cpfCnpj === mockUser.cpfCnpj) {
+          return mockUser;
+        }
+        if (cpfCnpj === mockAdmin.cpfCnpj) {
+          return mockAdmin;
+        }
+        return null;
+      }),
       findUnique: jest.fn().mockImplementation(async (args: any) => {
         if (args.where?.cpfCnpj === mockUser.cpfCnpj) {
           return mockUser;

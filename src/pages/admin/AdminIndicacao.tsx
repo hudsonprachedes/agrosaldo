@@ -23,6 +23,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -155,6 +156,9 @@ export default function AdminIndicacao() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Criar Novo Cupom</DialogTitle>
+              <DialogDescription>
+                Crie um cupom de desconto ou de indicação para compartilhar com seus clientes.
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">

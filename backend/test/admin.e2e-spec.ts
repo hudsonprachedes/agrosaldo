@@ -81,6 +81,13 @@ describe('Admin (e2e)', () => {
 
     // Mock Prisma methods
     (prismaService as any).usuario = {
+      findFirst: jest.fn().mockImplementation(async (args: any) => {
+        const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
+        if (cpfCnpj === mockAdmin.cpfCnpj) {
+          return mockAdmin;
+        }
+        return null;
+      }),
       findUnique: jest.fn().mockResolvedValue(mockAdmin),
       findMany: jest.fn().mockResolvedValue([mockAdmin]),
     };
@@ -91,16 +98,30 @@ describe('Admin (e2e)', () => {
 
     (prismaService as any).logAuditoria = {
       findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn().mockResolvedValue({ id: 'log-1' }),
     };
 
-    const loginResponse = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        cpfCnpj: '98765432100',
-        password: 'password123',
-      });
+    (prismaService as any).solicitacaoPendente = {
+      findMany: jest.fn().mockResolvedValue(mockRequests),
+      findUnique: jest.fn().mockImplementation(async (args: any) => {
+        const id = args?.where?.id;
+        return mockRequests.find((r) => r.id === id) ?? null;
+      }),
+      update: jest.fn().mockImplementation(async (args: any) => {
+        const id = args?.where?.id;
+        const current = mockRequests.find((r) => r.id === id);
+        if (!current) {
+          throw new Error('Solicitação não encontrada');
+        }
+        return { ...current, ...(args?.data ?? {}) };
+      }),
+    };
 
-    adminToken = loginResponse.body.token;
+    adminToken = await jwtService.signAsync({
+      sub: mockAdmin.id,
+      role: 'super_admin',
+      cpfCnpj: mockAdmin.cpfCnpj,
+    });
   });
 
   afterAll(async () => {

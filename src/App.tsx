@@ -1,4 +1,4 @@
-import { useEffect, useState, ReactNode } from "react";
+import { ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { isOnboardingCompleted } from "@/lib/indexeddb";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -65,28 +64,7 @@ function ProtectedRoute({
   requireOnboarding?: boolean;
 }) {
   const { user, selectedProperty, isLoading } = useAuth();
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
-
-  // Carregar status do onboarding
-  useEffect(() => {
-    if (!selectedProperty || !requireOnboarding) {
-      return;
-    }
-    const checkOnboarding = async () => {
-      try {
-        const completed = await isOnboardingCompleted(selectedProperty.id);
-        setOnboardingCompleted(completed);
-      } catch (error) {
-        console.error('Erro ao verificar onboarding:', error);
-        setOnboardingCompleted(false);
-      }
-    };
-    checkOnboarding();
-  }, [selectedProperty, requireOnboarding]);
-  
-  const effectiveOnboardingCompleted = !requireOnboarding || !selectedProperty ? true : onboardingCompleted;
-
-  if (isLoading || (requireOnboarding && effectiveOnboardingCompleted === null)) {
+  if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   
@@ -98,13 +76,17 @@ function ProtectedRoute({
   if (requireAdmin && user.role !== 'super_admin') {
     return <Navigate to="/dashboard" replace />;
   }
+
+  if (user.role !== 'super_admin' && (user as any).financialStatus && (user as any).financialStatus !== 'ok') {
+    return <Navigate to="/bloqueado" replace />;
+  }
   
   if (requireProperty && !selectedProperty) {
     return <Navigate to="/selecionar-propriedade" replace />;
   }
 
   // Verificar onboarding
-  if (requireOnboarding && requireProperty && !effectiveOnboardingCompleted) {
+  if (requireOnboarding && requireProperty && !user.onboardingCompletedAt) {
     return <Navigate to="/onboarding" replace />;
   }
   

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { MaskedInput } from '@/components/ui/masked-input';
 import { validateCpfCnpj } from '@/lib/document-validation';
 import heroBackground from '@/assets/hero-background.jpg';
+import { notifyFirstFormError } from '@/lib/form-errors';
 
 // ============================================================================
 // SCHEMAS ZOD
@@ -68,6 +69,14 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const onInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(loginForm.formState.errors as any, {
+      setFocus: loginForm.setFocus,
+      title: 'Ops! Falta ajustar um detalhe:',
+    });
+    toast.error(toastMessage);
   };
 
   const handleForgotPassword = () => {
@@ -200,7 +209,7 @@ export default function Login() {
                 </div>
 
                 <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit, onInvalid)} className="space-y-4">
                     <FormField
                       control={loginForm.control}
                       name="cpfCnpj"

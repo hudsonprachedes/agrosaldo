@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, UserPlus, CheckCircle, ArrowLeft, Sparkles, ShieldCheck, Globe2 } from 'lucide-react';
+import { UserPlus, CheckCircle, ArrowLeft, Sparkles, ShieldCheck, Globe2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { fetchViaCep } from '@/lib/cep';
 import { validateCPF, validateCNPJ, validateCpfCnpj } from '@/lib/document-validation';
 import heroBackground from '@/assets/hero-background.jpg';
+import { apiClient } from '@/lib/api-client';
+import { toast } from 'sonner';
+import { notifyFirstFormError } from '@/lib/form-errors';
 
 // Validação de CPF
 const isValidCPF = (cpf: string) => {
@@ -38,12 +40,6 @@ const cadastroSchema = z.object({
   email: z.string().email('Email inválido'),
   numeroCabecas: z.number().min(1, 'Informe o número de cabeças'),
   cupomIndicacao: z.string().optional(),
-  cep: z.string()
-    .min(8, 'CEP inválido')
-    .regex(/^\d{5}-\d{3}$/, 'Formato: 00000-000'),
-  endereco: z.string().optional(),
-  bairro: z.string().optional(),
-  municipio: z.string().min(2, 'Município é obrigatório'),
   uf: z.string().length(2, 'UF deve ter 2 caracteres'),
   senha: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
   confirmarSenha: z.string()
@@ -64,7 +60,9 @@ export default function Cadastro() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [fetchingCEP, setFetchingCEP] = useState(false);
+  const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -72,59 +70,46 @@ export default function Cadastro() {
     formState: { errors },
     setValue,
     watch,
+    setFocus,
   } = useForm<CadastroFormData>({
     resolver: zodResolver(cadastroSchema),
   });
 
-  const cepValue = watch('cep');
   const ufValue = watch('uf');
-
-  // Busca automática de CEP
-  React.useEffect(() => {
-    const fetchAddress = async () => {
-      if (cepValue && cepValue.replace(/\D/g, '').length === 8) {
-        setFetchingCEP(true);
-        try {
-          const data = await fetchViaCep(cepValue);
-          if (data.found) {
-            setValue('endereco', data.address);
-            setValue('bairro', data.neighborhood);
-            setValue('municipio', data.city);
-            setValue('uf', data.uf);
-          }
-        } catch (error) {
-          console.error('Erro ao buscar CEP:', error);
-        } finally {
-          setFetchingCEP(false);
-        }
-      }
-    };
-    fetchAddress();
-  }, [cepValue, setValue]);
 
   const onSubmit = async (data: CadastroFormData) => {
     setIsLoading(true);
-    
-    // Simula envio para backend
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Salva no localStorage (mock)
-    const cadastrosPendentes = JSON.parse(localStorage.getItem('agrosaldo_pending_signups') || '[]');
-    cadastrosPendentes.push({
-      id: `signup-${Date.now()}`,
-      ...data,
-      status: 'pending',
-      requestDate: new Date().toISOString(),
-      confirmarSenha: undefined, // Remove confirmação
+    setFormErrorMessage(null);
+
+    try {
+      await apiClient.post('/auth/register', {
+        name: data.nome,
+        cpfCnpj: data.cpfCnpj,
+        email: data.email,
+        phone: data.celular,
+        password: data.senha,
+        uf: data.uf,
+        cattleCount: data.numeroCabecas,
+        referralCoupon: data.cupomIndicacao,
+      });
+
+      setIsLoading(false);
+      setSuccess(true);
+    } catch (error) {
+      console.error('Erro ao enviar cadastro:', error);
+      setFormErrorMessage('Não foi possível enviar seu cadastro agora. Tente novamente em instantes.');
+      toast.error('Não foi possível enviar seu cadastro. Tente novamente.');
+      setIsLoading(false);
+    }
+  };
+
+  const onInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(errors as any, {
+      setFocus,
+      title: 'Ops! Tem um detalhe para ajustar:',
     });
-    localStorage.setItem('agrosaldo_pending_signups', JSON.stringify(cadastrosPendentes));
-    
-    setIsLoading(false);
-    setSuccess(true);
-    
-    setTimeout(() => {
-      navigate('/login');
-    }, 3000);
+    setFormErrorMessage(toastMessage);
+    toast.error(toastMessage);
   };
 
   // Máscaras de formatação
@@ -144,45 +129,61 @@ export default function Cadastro() {
     return clean.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
-  const formatCEP = (value: string) => {
-    const clean = value.replace(/\D/g, '');
-    return clean.replace(/(\d{5})(\d{3})/, '$1-$2');
-  };
-
   if (success) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[#04130b] text-white flex items-center justify-center p-6">
+      <div className="relative min-h-screen overflow-hidden bg-[#020d06] text-white">
         <div className="absolute inset-0">
           <img
             src={heroBackground}
-            alt="Paisagem produtiva"
-            className="h-full w-full object-cover opacity-40"
+            alt="Produtor no campo"
+            className="h-full w-full object-cover opacity-30"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#02170b] via-[#0a3a21] to-[#0c522b] opacity-95" />
-          <div className="absolute -bottom-32 -left-10 w-[26rem] h-[26rem] bg-emerald-400/20 blur-[150px]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#03150b] via-[#0f3f24] to-[#125835] opacity-95" />
+          <div className="absolute top-0 right-0 h-[28rem] w-[28rem] bg-emerald-400/20 blur-[160px]" />
+          <div className="absolute bottom-0 left-0 h-[30rem] w-[30rem] bg-lime-400/10 blur-[200px]" />
         </div>
-        <Card className="relative z-10 w-full max-w-lg border-white/20 bg-white/5 text-white backdrop-blur-2xl">
-          <CardContent className="pt-12 pb-8 text-center space-y-4">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-400/20 border border-emerald-200/30">
-              <CheckCircle className="h-12 w-12 text-emerald-200" />
-            </div>
-            <div>
-              <h2 className="text-3xl font-display">Cadastro enviado!</h2>
-              <p className="text-white/70">
-                Nossa curadoria está analisando seus dados. Você receberá um email com as próximas etapas em até 24h úteis.
-              </p>
-            </div>
-            <p className="text-sm text-white/50">
-              Redirecionando automaticamente para o login. Se preferir, clique abaixo.
-            </p>
-            <Button
-              className="bg-white/90 text-emerald-900 hover:bg-white"
-              onClick={() => navigate('/login')}
-            >
-              Ir para o login agora
-            </Button>
-          </CardContent>
-        </Card>
+
+        <div className="relative z-10 px-4 py-10 lg:px-10">
+          <div className="mx-auto w-full max-w-xl">
+            <Card className="rounded-[28px] border border-white/25 bg-white/95 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+              <CardHeader className="text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
+                  <CheckCircle className="h-8 w-8 text-emerald-600" />
+                </div>
+                <CardTitle className="mt-4 text-2xl font-display text-foreground">Cadastro enviado</CardTitle>
+                <CardDescription>
+                  Seu cadastro foi recebido e está em análise.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  Aguardando aprovação do Super Admin para liberar seu acesso.
+                </div>
+                <div className="rounded-xl border border-muted bg-white px-4 py-3 text-sm text-muted-foreground">
+                  Assim que for aprovado, você poderá entrar com seu CPF/CNPJ e senha.
+                </div>
+                <div className="flex flex-col gap-3 pt-2">
+                  <Button
+                    className="h-12 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-base font-semibold hover:shadow-lg"
+                    onClick={() => navigate('/login')}
+                  >
+                    Ir para o login
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12"
+                    onClick={() => {
+                      setSuccess(false);
+                    }}
+                  >
+                    Enviar outro cadastro
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -319,7 +320,15 @@ export default function Cadastro() {
                   </div>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                <form
+                  onSubmit={handleSubmit(onSubmit, onInvalid)}
+                  className="space-y-5"
+                >
+                  {formErrorMessage && (
+                    <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                      {formErrorMessage}
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="nome">Nome completo</Label>
                     <Input
@@ -400,40 +409,9 @@ export default function Cadastro() {
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="nickname">Nome da propriedade (apelido)</Label>
-                      <Input
-                        id="nickname"
-                        {...register('cupomIndicacao')}
-                        placeholder="Faz. Primavera"
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="cep">CEP</Label>
-                      <div className="relative">
-                        <Input
-                          id="cep"
-                          {...register('cep')}
-                          placeholder="00000-000"
-                          onChange={(e) => {
-                            const formatted = formatCEP(e.target.value);
-                            setValue('cep', formatted);
-                          }}
-                          className={cn('h-11 pr-10', errors.cep && 'border-red-500')}
-                        />
-                        {fetchingCEP && (
-                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-emerald-500" />
-                        )}
-                      </div>
-                      {errors.cep && <p className="text-sm text-red-500">{errors.cep.message}</p>}
-                    </div>
-                    <div className="space-y-1.5">
                       <Label>UF</Label>
                       <Select
-                        value={ufValue ?? undefined}
+                        value={ufValue ?? ''}
                         onValueChange={(value) => setValue('uf', value)}
                       >
                         <SelectTrigger className={cn('h-11', errors.uf && 'border-red-500')}>
@@ -453,61 +431,47 @@ export default function Cadastro() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="endereco">Endereço</Label>
-                      <Input
-                        id="endereco"
-                        {...register('endereco')}
-                        placeholder="Rua, número, complemento"
-                        className={cn('h-11', errors.endereco && 'border-red-500')}
-                      />
-                      {errors.endereco && <p className="text-sm text-red-500">{errors.endereco.message}</p>}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="bairro">Bairro</Label>
-                      <Input
-                        id="bairro"
-                        {...register('bairro')}
-                        placeholder="Centro"
-                        className={cn('h-11', errors.bairro && 'border-red-500')}
-                      />
-                      {errors.bairro && <p className="text-sm text-red-500">{errors.bairro.message}</p>}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="municipio">Município</Label>
-                      <Input
-                        id="municipio"
-                        {...register('municipio')}
-                        placeholder="Cuiabá"
-                        className={cn('h-11', errors.municipio && 'border-red-500')}
-                      />
-                      {errors.municipio && <p className="text-sm text-red-500">{errors.municipio.message}</p>}
-                    </div>
-                    <div className="space-y-1.5">
                       <Label htmlFor="senha">Senha</Label>
-                      <Input
-                        id="senha"
-                        type="password"
-                        {...register('senha')}
-                        placeholder="Mínimo 6 caracteres"
-                        className={cn('h-11', errors.senha && 'border-red-500')}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="senha"
+                          type={showPassword ? 'text' : 'password'}
+                          {...register('senha')}
+                          placeholder="Crie uma senha"
+                          className={cn('h-11 pr-10', errors.senha && 'border-red-500')}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                       {errors.senha && <p className="text-sm text-red-500">{errors.senha.message}</p>}
                     </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirmarSenha">Confirmar senha</Label>
-                    <Input
-                      id="confirmarSenha"
-                      type="password"
-                      {...register('confirmarSenha')}
-                      placeholder="Repita a senha"
-                      className={cn('h-11', errors.confirmarSenha && 'border-red-500')}
-                    />
-                    {errors.confirmarSenha && <p className="text-sm text-red-500">{errors.confirmarSenha.message}</p>}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirmarSenha">Confirmar senha</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmarSenha"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          {...register('confirmarSenha')}
+                          placeholder="Repita a senha"
+                          className={cn('h-11 pr-10', errors.confirmarSenha && 'border-red-500')}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted"
+                          onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {errors.confirmarSenha && (
+                        <p className="text-sm text-red-500">{errors.confirmarSenha.message}</p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-col gap-3 pt-4">

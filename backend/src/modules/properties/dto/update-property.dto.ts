@@ -15,6 +15,34 @@ export class UpdatePropertyDto {
   state?: string;
 
   @IsOptional()
+  @IsString()
+  cep?: string;
+
+  @IsOptional()
+  @IsString()
+  street?: string;
+
+  @IsOptional()
+  @IsString()
+  number?: string;
+
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @IsOptional()
+  @IsString()
+  accessRoute?: string;
+
+  @IsOptional()
+  @IsString()
+  community?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   totalArea?: number;

@@ -1,5 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { PapelUsuario, Prisma, StatusUsuario } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -53,9 +54,15 @@ export class AuthService {
     const cpfCnpj = dto.cpfCnpj.replace(/\D/g, '');
     const cpfCnpjFormatted = this.formatCpfCnpj(cpfCnpj);
 
-    const candidates = [dto.cpfCnpj, cpfCnpj, cpfCnpjFormatted].filter(Boolean);
+    const candidates = [dto.cpfCnpj, cpfCnpj, cpfCnpjFormatted].filter(
+      (value): value is string => typeof value === 'string' && value.length > 0
+    );
 
-    const user = await (this.prisma as any).usuario.findFirst({
+    type UserWithProperties = Prisma.UsuarioGetPayload<{
+      include: { propriedades: { include: { propriedade: true } } };
+    }>;
+
+    const user: UserWithProperties | null = await this.prisma.usuario.findFirst({
       where: {
         OR: candidates.map((value) => ({ cpfCnpj: value })),
       },
@@ -69,6 +76,8 @@ export class AuthService {
     const payload = { sub: user.id, role: user.papel, cpfCnpj: user.cpfCnpj };
     const token = await this.jwtService.signAsync(payload);
 
+    const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as Date | null | undefined;
+
     return {
       user: {
         id: user.id,
@@ -78,6 +87,10 @@ export class AuthService {
         phone: user.telefone,
         role: user.papel,
         status: user.status,
+        financialStatus: user.statusFinanceiro ?? null,
+        onboardingCompletedAt: onboardingConcluidoEm
+          ? onboardingConcluidoEm.toISOString()
+          : null,
         properties: user.propriedades
           ? user.propriedades.map((item: any) => this.mapPropertyToDto(item.propriedade, user.id))
           : [],
@@ -89,37 +102,95 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const cpfCnpj = dto.cpfCnpj.replace(/\D/g, '');
-    const user = await (this.prisma as any).usuario.create({
-      data: {
-        nome: dto.name,
-        email: dto.email,
-        cpfCnpj,
-        telefone: dto.phone,
-        senha: passwordHash,
-        status: 'pendente_aprovacao',
-        papel: 'operador',
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.prisma.usuario.findFirst({
+      where: {
+        OR: [{ cpfCnpj }, { email }],
       },
+      select: { id: true },
     });
 
-    return {
-      id: user.id,
-      name: user.nome,
-      email: user.email,
-      cpfCnpj: user.cpfCnpj,
-      phone: user.telefone,
-      role: user.papel,
-      status: user.status,
+    if (existing) {
+      throw new ConflictException('Já existe um cadastro com este CPF/CNPJ ou email');
+    }
+
+    const uf = (dto as any).uf as string | undefined;
+    const referralCoupon = (dto as any).referralCoupon as string | undefined;
+    const cattleCount = (dto as any).cattleCount as number | undefined;
+
+    let user: {
+      id: string;
+      nome: string;
+      email: string;
+      cpfCnpj: string;
+      telefone: string | null;
+      papel: any;
+      status: any;
+      statusFinanceiro: any;
     };
-  }
 
-  async me(userId: string) {
-    const user = await (this.prisma as any).usuario.findUnique({
-      where: { id: userId },
-      include: { propriedades: { include: { propriedade: true } } },
-    });
+    try {
+      user = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.usuario.create({
+          data: {
+            nome: dto.name,
+            email,
+            cpfCnpj,
+            telefone: dto.phone,
+            senha: passwordHash,
+            status: 'pendente_aprovacao' as any,
+            papel: 'proprietario' as any,
+          },
+        });
 
-    if (!user) {
-      throw new UnauthorizedException('Usuário não encontrado');
+        const cattleCountValue =
+          typeof cattleCount === 'number' && Number.isFinite(cattleCount) ? Math.max(0, Math.trunc(cattleCount)) : 0;
+
+        const suggestedPlan =
+          cattleCountValue <= 500
+            ? 'porteira'
+            : cattleCountValue <= 1500
+              ? 'piquete'
+              : cattleCountValue <= 3000
+                ? 'retiro'
+                : cattleCountValue <= 6000
+                  ? 'estancia'
+                  : 'barao';
+
+        await tx.solicitacaoPendente.create({
+          data: {
+            nome: dto.name,
+            cpfCnpj,
+            email,
+            telefone: dto.phone ?? '',
+            plano: suggestedPlan,
+            tipo: 'signup',
+            status: 'pending',
+            enviadoEm: new Date(),
+            origem: 'public_register',
+            nomePropriedade: null,
+            observacoes: JSON.stringify({
+              uf: uf ?? null,
+              referralCoupon: referralCoupon ?? null,
+              cattleCount: cattleCountValue,
+            }),
+          },
+        });
+
+        return createdUser;
+      });
+    } catch (error: any) {
+      console.error('Erro ao registrar usuário:', error);
+      if (error?.code === 'P2002') {
+        throw new ConflictException('Já existe um cadastro com este CPF/CNPJ, email ou nome de propriedade');
+      }
+      const message =
+        process.env.NODE_ENV !== 'production'
+          ? (typeof error?.message === 'string' && error.message.length > 0
+              ? `Não foi possível concluir o cadastro: ${error.message}`
+              : 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.')
+          : 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.';
+      throw new BadRequestException(message);
     }
 
     return {
@@ -130,7 +201,50 @@ export class AuthService {
       phone: user.telefone,
       role: user.papel,
       status: user.status,
+      financialStatus: user.statusFinanceiro ?? null,
+    };
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      include: { propriedades: { include: { propriedade: true } } },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as Date | null | undefined;
+
+    return {
+      id: user.id,
+      name: user.nome,
+      email: user.email,
+      cpfCnpj: user.cpfCnpj,
+      phone: user.telefone,
+      role: user.papel,
+      status: user.status,
+      financialStatus: user.statusFinanceiro ?? null,
+      onboardingCompletedAt: onboardingConcluidoEm
+        ? onboardingConcluidoEm.toISOString()
+        : null,
       properties: user.propriedades.map((item: any) => this.mapPropertyToDto(item.propriedade, user.id)),
+    };
+  }
+
+  async completeOnboarding(userId: string) {
+    const updated = await this.prisma.usuario.update({
+      where: { id: userId },
+      data: { onboardingConcluidoEm: new Date() } as any,
+    });
+
+    const onboardingConcluidoEm = (updated as any).onboardingConcluidoEm as Date | null | undefined;
+
+    return {
+      onboardingCompletedAt: onboardingConcluidoEm
+        ? onboardingConcluidoEm.toISOString()
+        : null,
     };
   }
 }

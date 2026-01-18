@@ -24,12 +24,137 @@ export interface User {
   status: string;
   createdAt: string;
   updatedAt: string;
+  currentPlan?: string | null;
+  cattleCount?: number;
+  propertyCount?: number;
+  properties?: Array<{
+    id: string;
+    nome: string;
+    cep?: string;
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    viaAcesso?: string;
+    comunidade?: string;
+    cidade: string;
+    estado: string;
+    quantidadeGado: number;
+    plano: string;
+    status: string;
+  }>;
 }
 
 export interface LoginResponse {
   access_token: string;
   user: User;
 }
+
+type UserBackendLike = Partial<User> & {
+  nome?: string;
+  telefone?: string | null;
+  papel?: string;
+  criadoEm?: string;
+  atualizadoEm?: string;
+  currentPlan?: string | null;
+  cattleCount?: number;
+  propertyCount?: number;
+  properties?: Array<any>;
+};
+
+type PendingRequestUi = {
+  id: string;
+  name: string;
+  cpfCnpj: string;
+  email: string;
+  phone: string;
+  plan: string;
+  type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  propertyName?: string;
+  source?: string;
+  notes?: string;
+};
+
+type PendingRequestBackendLike = {
+  id: string;
+  nome?: string;
+  name?: string;
+  cpfCnpj: string;
+  email: string;
+  telefone?: string;
+  phone?: string;
+  plano?: string;
+  plan?: string;
+  tipo?: string;
+  type?: string;
+  status: 'pending' | 'approved' | 'rejected' | string;
+  enviadoEm?: string;
+  submittedAt?: string;
+  origem?: string;
+  source?: string;
+  nomePropriedade?: string;
+  propertyName?: string;
+  observacoes?: string;
+  notes?: string;
+};
+
+const mapUserFromBackend = (raw: UserBackendLike): User => {
+  return {
+    id: raw.id ?? '',
+    name: raw.name ?? raw.nome ?? '',
+    email: raw.email ?? '',
+    cpfCnpj: raw.cpfCnpj ?? '',
+    phone: (raw.phone ?? raw.telefone ?? null) as string | null,
+    role: raw.role ?? raw.papel ?? '',
+    status: raw.status ?? '',
+    createdAt: raw.createdAt ?? raw.criadoEm ?? new Date().toISOString(),
+    updatedAt: raw.updatedAt ?? raw.atualizadoEm ?? new Date().toISOString(),
+    currentPlan: raw.currentPlan ?? null,
+    cattleCount: typeof raw.cattleCount === 'number' ? raw.cattleCount : undefined,
+    propertyCount: typeof raw.propertyCount === 'number' ? raw.propertyCount : undefined,
+    properties: Array.isArray(raw.properties)
+      ? raw.properties.map((p: any) => ({
+          id: String(p?.id ?? ''),
+          nome: String(p?.nome ?? ''),
+          cep: typeof p?.cep === 'string' ? p.cep : undefined,
+          logradouro: typeof p?.logradouro === 'string' ? p.logradouro : undefined,
+          numero: typeof p?.numero === 'string' ? p.numero : undefined,
+          complemento: typeof p?.complemento === 'string' ? p.complemento : undefined,
+          bairro: typeof p?.bairro === 'string' ? p.bairro : undefined,
+          viaAcesso: typeof p?.viaAcesso === 'string' ? p.viaAcesso : undefined,
+          comunidade: typeof p?.comunidade === 'string' ? p.comunidade : undefined,
+          cidade: String(p?.cidade ?? ''),
+          estado: String(p?.estado ?? ''),
+          quantidadeGado: Number(p?.quantidadeGado ?? 0),
+          plano: String(p?.plano ?? ''),
+          status: String(p?.status ?? ''),
+        }))
+      : undefined,
+  };
+};
+
+const mapPendingRequestFromBackend = (raw: PendingRequestBackendLike): PendingRequestUi => {
+  const status = String(raw.status);
+  const normalizedStatus =
+    status === 'approved' || status === 'rejected' || status === 'pending' ? (status as any) : 'pending';
+
+  return {
+    id: raw.id,
+    name: raw.name ?? raw.nome ?? '',
+    cpfCnpj: raw.cpfCnpj,
+    email: raw.email,
+    phone: raw.phone ?? raw.telefone ?? '',
+    plan: raw.plan ?? raw.plano ?? '',
+    type: raw.type ?? raw.tipo ?? '',
+    status: normalizedStatus,
+    submittedAt: raw.submittedAt ?? raw.enviadoEm ?? new Date().toISOString(),
+    propertyName: raw.propertyName ?? raw.nomePropriedade,
+    source: raw.source ?? raw.origem,
+    notes: raw.notes ?? raw.observacoes,
+  };
+};
 
 export interface Property {
   id: string;
@@ -375,7 +500,7 @@ export interface FinancialPayment {
   paymentFrequency: string;
   status: string;
   dueDate: string;
-  paidAt?: string;
+  paidAt?: string | null;
   createdAt: string;
 }
 
@@ -400,6 +525,14 @@ export interface AuditLog {
   dataHora?: string; // Backend usa dataHora
 }
 
+type AuditLogBackendLike = AuditLog & {
+  dataHora?: string;
+  usuarioId?: string;
+  usuarioNome?: string;
+  acao?: string;
+  detalhes?: string;
+};
+
 export const adminService = {
   async getDashboardStats(): Promise<AdminDashboardStats> {
     return apiClient.get<AdminDashboardStats>(API_ROUTES.ADMIN.DASHBOARD_STATS);
@@ -421,23 +554,32 @@ export const adminService = {
   },
 
   async getPendingUsers(): Promise<User[]> {
-    return apiClient.get<User[]>(API_ROUTES.ADMIN.PENDING_USERS);
+    const users = await apiClient.get<UserBackendLike[]>(API_ROUTES.ADMIN.PENDING_USERS);
+    return users.map(mapUserFromBackend);
   },
 
   async getTenants(): Promise<User[]> {
-    return apiClient.get<User[]>(API_ROUTES.ADMIN.TENANTS);
+    const users = await apiClient.get<UserBackendLike[]>(API_ROUTES.ADMIN.TENANTS);
+    return users.map(mapUserFromBackend);
   },
 
-  async approveUser(userId: string, status: string): Promise<User> {
-    return apiClient.patch<User>(API_ROUTES.ADMIN.APPROVE_USER.replace(':id', userId), { status });
+  async approveUser(userId: string, status: string, trial?: { trialDays?: number; trialPlan?: string }): Promise<User> {
+    const user = await apiClient.patch<UserBackendLike>(API_ROUTES.ADMIN.APPROVE_USER.replace(':id', userId), {
+      status,
+      ...(trial?.trialDays !== undefined ? { trialDays: trial.trialDays } : {}),
+      ...(trial?.trialPlan !== undefined ? { trialPlan: trial.trialPlan } : {}),
+    });
+    return mapUserFromBackend(user);
   },
 
   async rejectUser(userId: string, reason?: string): Promise<User> {
-    return apiClient.patch<User>(API_ROUTES.ADMIN.REJECT_USER.replace(':id', userId), { reason });
+    const user = await apiClient.patch<UserBackendLike>(API_ROUTES.ADMIN.REJECT_USER.replace(':id', userId), { reason });
+    return mapUserFromBackend(user);
   },
 
   async updateUserStatus(userId: string, status: string, reason?: string): Promise<User> {
-    return apiClient.patch<User>(API_ROUTES.ADMIN.UPDATE_USER_STATUS.replace(':id', userId), { status, reason });
+    const user = await apiClient.patch<UserBackendLike>(API_ROUTES.ADMIN.UPDATE_USER_STATUS.replace(':id', userId), { status, reason });
+    return mapUserFromBackend(user);
   },
 
   async resetUserPassword(userId: string): Promise<{ tempPassword: string }> {
@@ -445,15 +587,21 @@ export const adminService = {
   },
 
   async updateUser(userId: string, data: Partial<{ cpfCnpj: string; phone: string | null; email: string }>): Promise<User> {
-    return apiClient.patch<User>(API_ROUTES.ADMIN.UPDATE_USER.replace(':id', userId), {
+    const user = await apiClient.patch<UserBackendLike>(API_ROUTES.ADMIN.UPDATE_USER.replace(':id', userId), {
       ...(data.cpfCnpj !== undefined ? { cpfCnpj: data.cpfCnpj } : {}),
       ...(data.phone !== undefined ? { telefone: data.phone } : {}),
       ...(data.email !== undefined ? { email: data.email } : {}),
-    } as any);
+    });
+    return mapUserFromBackend(user);
   },
 
   async updateUserPlan(userId: string, plan: string): Promise<unknown> {
     return apiClient.patch(API_ROUTES.ADMIN.UPDATE_USER_PLAN.replace(':id', userId), { plan });
+  },
+
+  async releaseAccess(userId: string): Promise<User> {
+    const user = await apiClient.post<UserBackendLike>(API_ROUTES.ADMIN.RELEASE_ACCESS.replace(':id', userId), {});
+    return mapUserFromBackend(user);
   },
 
   async impersonateUser(userId: string): Promise<{ token: string }> {
@@ -484,6 +632,10 @@ export const adminService = {
     return apiClient.post<FinancialPayment>(API_ROUTES.ADMIN.PAYMENTS, data);
   },
 
+  async updatePayment(id: string, data: Partial<FinancialPayment>): Promise<FinancialPayment> {
+    return apiClient.patch<FinancialPayment>(API_ROUTES.ADMIN.PAYMENTS_ID.replace(':id', id), data);
+  },
+
   async getPixConfig(): Promise<PixConfig> {
     return apiClient.get<PixConfig>(API_ROUTES.ADMIN.PIX_CONFIG);
   },
@@ -496,26 +648,37 @@ export const adminService = {
     const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
     const logs = await apiClient.get<AuditLog[]>(`${API_ROUTES.ADMIN.AUDIT_LOGS}${params}`);
     // Mapear dataHora para timestamp se necessário, ou ajustar a interface
-    return logs.map(log => ({
-      ...log,
-      timestamp: (log as any).dataHora ?? log.timestamp,
-      userId: (log as any).usuarioId ?? log.userId,
-      userName: (log as any).usuarioNome ?? log.userName,
-      action: (log as any).acao ?? log.action,
-      details: (log as any).detalhes ?? log.details,
-    }));
+    return logs.map((log) => {
+      const maybe = log as unknown as AuditLogBackendLike;
+      return {
+        ...log,
+        timestamp: maybe.dataHora ?? log.timestamp,
+        userId: maybe.usuarioId ?? log.userId,
+        userName: maybe.usuarioNome ?? log.userName,
+        action: maybe.acao ?? log.action,
+        details: maybe.detalhes ?? log.details,
+      };
+    });
   },
 
-  async getRequests(): Promise<any[]> {
-    return apiClient.get<any[]>(API_ROUTES.ADMIN.GET_SOLICITATIONS);
+  async getRequests(): Promise<unknown[]> {
+    const rows = await apiClient.get<PendingRequestBackendLike[]>(API_ROUTES.ADMIN.GET_SOLICITATIONS);
+    return rows.map(mapPendingRequestFromBackend);
   },
 
-  async approveRequest(id: string, reason?: string): Promise<any> {
-    return apiClient.patch<any>(API_ROUTES.ADMIN.APPROVE_SOLICITATION.replace(':id', id), { reason });
+  async approveRequest(
+    id: string,
+    data?: { reason?: string; trialDays?: number; trialPlan?: string }
+  ): Promise<unknown> {
+    return apiClient.patch<unknown>(API_ROUTES.ADMIN.APPROVE_SOLICITATION.replace(':id', id), {
+      ...(data?.reason !== undefined ? { reason: data.reason } : {}),
+      ...(data?.trialDays !== undefined ? { trialDays: data.trialDays } : {}),
+      ...(data?.trialPlan !== undefined ? { trialPlan: data.trialPlan } : {}),
+    });
   },
 
-  async rejectRequest(id: string, reason: string): Promise<any> {
-    return apiClient.patch<any>(API_ROUTES.ADMIN.REJECT_SOLICITATION.replace(':id', id), { reason });
+  async rejectRequest(id: string, reason: string): Promise<unknown> {
+    return apiClient.patch<unknown>(API_ROUTES.ADMIN.REJECT_SOLICITATION.replace(':id', id), { reason });
   },
 
   async listAdminPlans(): Promise<AdminPlan[]> {

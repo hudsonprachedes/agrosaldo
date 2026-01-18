@@ -38,6 +38,7 @@ import {
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { notifyFirstFormError } from '@/lib/form-errors';
 
 type Plan = {
   id: string;
@@ -72,6 +73,7 @@ export default function AdminPlanos() {
     reset,
     setValue,
     watch,
+    setFocus,
     formState: { errors },
   } = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
@@ -83,6 +85,14 @@ export default function AdminPlanos() {
       active: true,
     },
   });
+
+  const onInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(errors as any, {
+      setFocus,
+      title: 'Ops! Tem um detalhe para ajustar:',
+    });
+    toast.error(toastMessage);
+  };
 
   useEffect(() => {
     const loadPlans = async () => {
@@ -334,14 +344,14 @@ export default function AdminPlanos() {
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome do Plano *</Label>
                 <Input
                   id="name"
-                  placeholder="Ex: Premium"
                   {...register('name')}
+                  className={errors.name ? 'border-red-500' : ''}
                 />
                 {errors.name && (
                   <p className="text-sm text-destructive">{errors.name.message}</p>

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { MaskedInput } from '@/components/ui/masked-input';
 import usePageMeta from '@/hooks/usePageMeta';
 import { organizationSchema } from '@/lib/seo';
+import { notifyFirstFormError } from '@/lib/form-errors';
 import {
   Form,
   FormControl,
@@ -77,6 +78,14 @@ export default function Contact() {
     });
 
     form.reset();
+  };
+
+  const onInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(form.formState.errors as any, {
+      setFocus: form.setFocus,
+      title: 'Ops! Tem um detalhe para ajustar:',
+    });
+    toast.error(toastMessage);
   };
 
   const openWhatsApp = () => {
@@ -201,7 +210,7 @@ export default function Contact() {
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}

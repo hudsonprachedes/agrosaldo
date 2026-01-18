@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { plans, determineUserPlan } from '@/mocks/mock-auth';
+import { plans, determineUserPlan } from '@/lib/plans';
 import { PropertyDTO } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,6 +17,8 @@ import { MaskedInput } from '@/components/ui/masked-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { fetchViaCepWithCache } from '@/lib/cep';
+import { notifyFirstFormError } from '@/lib/form-errors';
+import { apiClient } from '@/lib/api-client';
 
 // ============================================================================
 // SCHEMA ZOD
@@ -48,7 +50,7 @@ const propertySchema = z.object({
 type PropertyFormData = z.infer<typeof propertySchema>;
 
 export default function PropertySelection() {
-  const { user, selectProperty, logout } = useAuth();
+  const { user, selectProperty, logout, refreshMe } = useAuth();
   const navigate = useNavigate();
   const [openDialog, setOpenDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +84,14 @@ export default function PropertySelection() {
     navigate('/dashboard');
   };
 
+  const onInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(form.formState.errors as any, {
+      setFocus: form.setFocus,
+      title: 'Ops! Tem um detalhe para ajustar:',
+    });
+    toast.error(toastMessage);
+  };
+
   // Get unified user plan information
   const totalCattle = properties.reduce((total, property) => total + (property.cattleCount ?? 0), 0);
   const userPlan = determineUserPlan(totalCattle);
@@ -111,46 +121,29 @@ export default function PropertySelection() {
   const onSubmit = async (data: PropertyFormData) => {
     setIsSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Criar nova propriedade
-      const nowIso = new Date().toISOString();
-      const newProperty: PropertyDTO = {
-        id: `property_${Date.now()}`,
-        userId: user.id,
+      const payload = {
         name: data.name,
+        city: data.city,
+        state: data.uf,
         cep: data.cep,
         accessRoute: data.accessRoute,
         community: data.community,
-        city: data.city,
-        state: data.uf,
-        totalArea: data.areaTotalHa,
-        cultivatedArea: data.pastureCultivatedHa,
-        naturalArea: data.pastureNaturalHa,
-        pastureNaturalHa: data.pastureNaturalHa,
-        pastureCultivatedHa: data.pastureCultivatedHa,
-        areaTotalHa: data.areaTotalHa,
+        totalArea: Number(data.areaTotalHa ?? 0),
+        cultivatedArea: Number(data.pastureCultivatedHa ?? 0),
+        naturalArea: Number(data.pastureNaturalHa ?? 0),
         cattleCount: 0,
-        status: 'active',
-        plan: 'porteira', // Padrão inicial
-        speciesEnabled: {
-          bovino: data.bovinoEnabled,
-          bubalino: data.bubalinoEnabled,
-        },
-        createdAt: nowIso,
-        updatedAt: nowIso,
+        plan: 'porteira',
       };
 
-      // Adicionar à propriedade do usuário (em mock)
-      user.properties = [...properties, newProperty];
-      localStorage.setItem('agrosaldo_user_id', user.id);
+      const created = await apiClient.post<PropertyDTO>('/propriedades/minhas', payload);
+      await refreshMe();
 
       toast.success('Propriedade cadastrada com sucesso!');
       setOpenDialog(false);
       form.reset();
       
       // Navegar para onboarding da nova propriedade
-      selectProperty(newProperty.id);
+      selectProperty(created);
       navigate('/onboarding');
     } catch (error) {
       toast.error('Erro ao cadastrar propriedade');
@@ -311,7 +304,7 @@ export default function PropertySelection() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
               {/* Nome */}
               <FormField
                 control={form.control}

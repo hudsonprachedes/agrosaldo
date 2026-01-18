@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { apiClient } from '@/lib/api-client';
 import type { PaginatedResponse } from '@/types';
-import type { MovementRecord } from '@/mocks/mock-bovinos';
+import type { MovementDTO } from '@/types';
 import {
   Baby,
   Skull,
@@ -119,7 +119,7 @@ export default function Extrato() {
   const [currentPage, setCurrentPage] = useState(1);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [movements, setMovements] = useState<MovementRecord[]>([]);
+  const [movements, setMovements] = useState<MovementDTO[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 20;
@@ -130,7 +130,7 @@ export default function Extrato() {
       try {
         setIsLoading(true);
 
-        const response = await apiClient.get<PaginatedResponse<MovementRecord>>('/lancamentos/extrato', {
+        const response = await apiClient.get<PaginatedResponse<MovementDTO>>('/lancamentos/extrato', {
           params: {
             type: filterType,
             dateFrom: dateFrom ? dateFrom.toISOString().slice(0, 10) : undefined,
@@ -215,7 +215,7 @@ export default function Extrato() {
     setDateTo(new Date());
   };
 
-  const handleDelete = (movement: MovementRecord) => {
+  const handleDelete = (movement: MovementDTO) => {
     toast.success(`Lançamento ${movement.id} excluído`);
   };
 

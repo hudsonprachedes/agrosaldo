@@ -54,8 +54,15 @@ class ApiClient {
     }
 
     // Adicionar ID da propriedade selecionada se disponível
-    const propertyId = localStorage.getItem('agrosaldo_property_id');
-    if (propertyId && !config.url?.includes('/propriedades')) {
+    const url = config.url ?? '';
+    const propertyIdFromUrl = (() => {
+      const match = url.match(/\/rebanho\/([^/?#]+)/i);
+      return match?.[1] ?? null;
+    })();
+    const propertyIdFromStorage = localStorage.getItem('agrosaldo_property_id');
+    const propertyId = propertyIdFromUrl ?? propertyIdFromStorage;
+
+    if (propertyId && !url.includes('/propriedades')) {
       config.headers['X-Property-ID'] = propertyId;
     }
 

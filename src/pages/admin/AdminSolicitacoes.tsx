@@ -60,11 +60,14 @@ export default function AdminSolicitacoes() {
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const downgradeRequests = requests.filter((r) => r.type === 'plan_downgrade');
+
   useEffect(() => {
     const loadRequests = async () => {
       try {
         const data = await adminService.getRequests();
-        setRequests(data as unknown as PendingRequest[]);
+        const next = (data as unknown as PendingRequest[]).filter((r) => r.type === 'plan_downgrade');
+        setRequests(next);
       } catch (error) {
         console.error('Erro ao carregar solicitações:', error);
         toast.error('Erro ao carregar solicitações');
@@ -132,24 +135,20 @@ export default function AdminSolicitacoes() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'new_account': return User;
-      case 'plan_upgrade': return CreditCard;
-      case 'property_add': return Building;
+      case 'plan_downgrade': return CreditCard;
       default: return Clock;
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'new_account': return 'Nova Conta';
-      case 'plan_upgrade': return 'Upgrade de Plano';
-      case 'property_add': return 'Nova Propriedade';
+      case 'plan_downgrade': return 'Downgrade de Plano';
       default: return type;
     }
   };
 
   const getPendingCount = () => {
-    return requests.filter(r => r.status === 'pending').length;
+    return downgradeRequests.filter(r => r.status === 'pending').length;
   };
 
   if (isLoading) {
@@ -175,7 +174,7 @@ export default function AdminSolicitacoes() {
 
       {/* Requests List */}
       <div className="space-y-4">
-        {requests.length === 0 ? (
+        {downgradeRequests.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <CheckCircle className="w-12 h-12 mx-auto text-success mb-4" />
@@ -183,12 +182,12 @@ export default function AdminSolicitacoes() {
                 Nenhuma solicitação pendente
               </p>
               <p className="text-muted-foreground">
-                Todas as solicitações foram processadas
+                Nenhum downgrade foi solicitado
               </p>
             </CardContent>
           </Card>
         ) : (
-          requests.map((request, index) => {
+          downgradeRequests.map((request, index) => {
             const Icon = getTypeIcon(request.type);
             
             return (

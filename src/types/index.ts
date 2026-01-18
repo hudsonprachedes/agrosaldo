@@ -44,12 +44,14 @@ export interface UserDTO {
   email: string;
   cpfCnpj: string;
   phone?: string;
+  onboardingCompletedAt?: string | null;
   nickname?: string;
   cep?: string;
   address?: string;
   city?: string;
   uf?: string;
   role: 'super_admin' | 'owner' | 'manager' | 'operator';
+  financialStatus?: string | null;
   avatar?: string;
   properties?: PropertyDTO[];
   createdAt: string;
@@ -100,6 +102,10 @@ export interface PropertyDTO {
   userId: string;
   name: string;
   cep?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  district?: string;
   accessRoute?: string;
   community?: string;
   city: string;

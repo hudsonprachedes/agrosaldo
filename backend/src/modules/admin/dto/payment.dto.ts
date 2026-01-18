@@ -29,3 +29,33 @@ export class CreatePaymentDto {
   @IsDateString()
   paidAt?: string;
 }
+
+export class UpdatePaymentDto {
+  @IsOptional()
+  @IsString()
+  plan?: string;
+
+  @IsOptional()
+  @IsNumber()
+  amount?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentFrequency?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  paidAt?: string | null;
+}

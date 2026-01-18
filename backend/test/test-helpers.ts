@@ -37,8 +37,41 @@ export const createMockPrismaService = () => {
   };
 
   return {
+    $transaction: jest.fn().mockImplementation(async (fn: any) => {
+      return fn({
+        usuario: {
+          create: jest.fn().mockResolvedValue(mockUser),
+        },
+        propriedade: {
+          create: jest.fn().mockResolvedValue({
+            id: 'prop-1',
+            nome: 'Test Property',
+            cidade: 'São Paulo',
+            estado: 'SP',
+            areaTotal: 1000,
+            areaCultivada: 800,
+            areaNatural: 200,
+            quantidadeGado: 500,
+            status: 'ativa',
+            plano: 'porteira',
+            criadoEm: new Date(),
+            atualizadoEm: new Date(),
+          }),
+        },
+        usuarioPropriedade: {
+          create: jest.fn().mockResolvedValue({ usuarioId: mockUser.id, propriedadeId: 'prop-1' }),
+        },
+      });
+    }),
     usuario: {
       findMany: jest.fn().mockResolvedValue([mockUser]),
+      findFirst: jest.fn().mockImplementation(async (args: any) => {
+        const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
+        if (cpfCnpj === '12345678901') {
+          return mockUser;
+        }
+        return null;
+      }),
       findUnique: jest.fn().mockImplementation(async (args: any) => {
         if (args.where.cpfCnpj === '12345678901') {
           return mockUser;

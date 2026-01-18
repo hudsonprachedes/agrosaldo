@@ -57,14 +57,18 @@ import { PropertyDTO } from '@/types';
 
 type PropertyForm = {
   name: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
   viaAcesso?: string;
   comunidade?: string;
   cep?: string;
-  municipio: string;
-  uf: string;
+  municipio?: string;
+  uf?: string;
+  areaTotal?: number;
   areaPastagemNatural?: number;
   areaPastagemCultivada?: number;
-  areaTotal: number;
 };
 
 type PlanId = 'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao';
@@ -225,10 +229,15 @@ export default function MinhaFazenda() {
       });
       setSubscription(updated);
       toast.success('Plano atualizado com sucesso');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const maybe = error as Record<string, unknown>;
+      const response = maybe.response as Record<string, unknown> | undefined;
+      const data = response?.data as Record<string, unknown> | undefined;
+      const msg = data?.message;
       const message =
-        error?.response?.data?.message ||
-        'Não foi possível atualizar o plano. Tente novamente.';
+        typeof msg === 'string'
+          ? msg
+          : 'Não foi possível atualizar o plano. Tente novamente.';
       toast.error(message);
     }
   };
@@ -255,6 +264,10 @@ export default function MinhaFazenda() {
     setPropertyForm({
       name: property.name,
       cep: property.cep,
+      logradouro: property.street,
+      numero: property.number,
+      complemento: property.complement,
+      bairro: property.district,
       viaAcesso: property.accessRoute,
       comunidade: property.community,
       municipio: property.city,
@@ -290,11 +303,17 @@ export default function MinhaFazenda() {
       return;
     }
 
-
     const payload = {
       name: propertyForm.name,
       city: propertyForm.municipio,
       state: propertyForm.uf,
+      cep: propertyForm.cep,
+      street: propertyForm.logradouro,
+      number: propertyForm.numero,
+      complement: propertyForm.complemento,
+      district: propertyForm.bairro,
+      accessRoute: propertyForm.viaAcesso,
+      community: propertyForm.comunidade,
       totalArea: Number(propertyForm.areaTotal ?? 0),
       cultivatedArea: 0,
       naturalArea: 0,
@@ -331,6 +350,8 @@ export default function MinhaFazenda() {
         if (target === 'property') {
           setPropertyForm({
             ...propertyForm,
+            logradouro: data.address,
+            bairro: data.neighborhood,
             municipio: data.city,
             uf: data.uf,
           });
@@ -524,43 +545,83 @@ export default function MinhaFazenda() {
                   {editingProperty ? 'Editar Propriedade' : 'Nova Propriedade'}
                 </DialogTitle>
                 <DialogDescription>
-                  Preencha os dados da propriedade
+                  Preencha os dados da sua fazenda para começar
                 </DialogDescription>
               </DialogHeader>
-              
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Nome da Propriedade *</Label>
-                  <Input
-                    id="name"
-                    value={propertyForm.name || ''}
-                    onChange={(e) => setPropertyForm({ ...propertyForm, name: e.target.value })}
-                    placeholder="Ex: Fazenda Santa Maria"
-                  />
-                </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="viaAcesso">Via de Acesso</Label>
-                  <Input
-                    id="viaAcesso"
-                    value={propertyForm.viaAcesso || ''}
-                    onChange={(e) => setPropertyForm({ ...propertyForm, viaAcesso: e.target.value })}
-                    placeholder="Ex: BR-163, KM 245"
-                  />
-                </div>
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="name">Nome da Propriedade *</Label>
+                    <Input
+                      id="name"
+                      value={propertyForm.name || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, name: e.target.value })}
+                      placeholder="Ex: Fazenda Santa Maria"
+                    />
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="comunidade">Comunidade/Assentamento</Label>
-                  <Input
-                    id="comunidade"
-                    value={propertyForm.comunidade || ''}
-                    onChange={(e) => setPropertyForm({ ...propertyForm, comunidade: e.target.value })}
-                    placeholder="Ex: Assentamento Nova Esperança"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
                   <div className="grid gap-2">
+                    <Label htmlFor="viaAcesso">Via de Acesso</Label>
+                    <Input
+                      id="viaAcesso"
+                      value={propertyForm.viaAcesso || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, viaAcesso: e.target.value })}
+                      placeholder="Ex: BR-163, KM 245"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="comunidade">Comunidade/Assentamento</Label>
+                    <Input
+                      id="comunidade"
+                      value={propertyForm.comunidade || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, comunidade: e.target.value })}
+                      placeholder="Ex: Assentamento Nova Esperança"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="logradouro">Logradouro</Label>
+                    <Input
+                      id="logradouro"
+                      value={propertyForm.logradouro || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, logradouro: e.target.value })}
+                      placeholder="Ex: Rua das Palmeiras"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="numero">Número</Label>
+                    <Input
+                      id="numero"
+                      value={propertyForm.numero || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, numero: e.target.value })}
+                      placeholder="Ex: 123"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="complemento">Complemento</Label>
+                    <Input
+                      id="complemento"
+                      value={propertyForm.complemento || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, complemento: e.target.value })}
+                      placeholder="Ex: Sede / Galpão"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="bairro">Bairro</Label>
+                    <Input
+                      id="bairro"
+                      value={propertyForm.bairro || ''}
+                      onChange={(e) => setPropertyForm({ ...propertyForm, bairro: e.target.value })}
+                      placeholder="Ex: Centro"
+                    />
+                  </div>
+
+                  <div className="grid gap-2 sm:col-span-2">
                     <Label htmlFor="cep">CEP</Label>
                     <div className="flex gap-2">
                       <Input

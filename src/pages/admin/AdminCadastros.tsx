@@ -30,29 +30,28 @@ interface PendingSignup {
   requestDate: string;
   status: 'pending' | 'approved' | 'rejected';
   cupomIndicacao?: string;
+  solicitacaoId?: string;
 }
 
-type ApiPendingUser = {
+type SignupRequestUi = {
   id: string;
-  nome: string;
+  name: string;
   cpfCnpj: string;
   email: string;
-  telefone?: string | null;
-  criadoEm?: string;
-  status?: string;
-  propriedades?: Array<{
-    propriedade?: {
-      cidade?: string;
-      estado?: string;
-      quantidadeGado?: number;
-    };
-  }>;
+  phone: string;
+  plan: string;
+  type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  propertyName?: string;
+  notes?: string;
 };
 
 export default function AdminCadastros() {
   const [signups, setSignups] = useState<PendingSignup[]>([]);
   const [selectedSignup, setSelectedSignup] = useState<PendingSignup | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [trialDays, setTrialDays] = useState(30);
   const [trialPlan, setTrialPlan] = useState<'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao'>('porteira');
@@ -60,23 +59,41 @@ export default function AdminCadastros() {
   useEffect(() => {
     const loadSignups = async () => {
       try {
-        const data = await adminService.getPendingUsers();
-        const mapped: PendingSignup[] = (data as unknown as ApiPendingUser[]).map((u) => {
-          const property = u.propriedades?.[0]?.propriedade;
+        const rows = (await adminService.getRequests()) as unknown as SignupRequestUi[];
+        const signupsOnly = rows.filter((r) => String(r.type ?? '').toLowerCase() === 'signup');
+
+        const mapped: PendingSignup[] = signupsOnly.map((r) => {
+          let city = '';
+          let state = '';
+          let cattleCount = 0;
+
+          if (r.notes) {
+            try {
+              const parsed = JSON.parse(r.notes) as any;
+              city = typeof parsed?.city === 'string' ? parsed.city : '';
+              state = typeof parsed?.state === 'string' ? parsed.state : '';
+              cattleCount = typeof parsed?.cattleCount === 'number' ? parsed.cattleCount : 0;
+            } catch {
+              // ignore
+            }
+          }
+
           return {
-            id: u.id,
-            nome: u.nome,
-            cpfCnpj: u.cpfCnpj,
-            email: u.email,
-            celular: u.telefone ?? '',
-            numeroCabecas: property?.quantidadeGado ?? 0,
-            municipio: property?.cidade ?? '',
-            uf: property?.estado ?? '',
-            requestDate: u.criadoEm ?? new Date().toISOString(),
-            status: u.status === 'ativo' ? 'approved' : u.status === 'rejeitado' ? 'rejected' : 'pending',
+            id: r.cpfCnpj,
+            solicitacaoId: r.id,
+            nome: r.name,
+            cpfCnpj: r.cpfCnpj,
+            email: r.email,
+            celular: r.phone ?? '',
+            numeroCabecas: cattleCount,
+            municipio: city,
+            uf: state,
+            requestDate: r.submittedAt ?? new Date().toISOString(),
+            status: r.status,
             cupomIndicacao: undefined,
           };
         });
+
         setSignups(mapped);
       } catch (error) {
         console.error('Erro ao carregar cadastros:', error);
@@ -93,7 +110,14 @@ export default function AdminCadastros() {
     if (!selectedSignup) return;
 
     try {
-      await adminService.approveUser(selectedSignup.id, 'ativo');
+      if (!selectedSignup.solicitacaoId) {
+        toast.error('Solicitação inválida');
+        return;
+      }
+      await adminService.approveRequest(selectedSignup.solicitacaoId, {
+        trialDays,
+        trialPlan,
+      });
       const updated = signups.map(s =>
         s.id === selectedSignup.id
           ? { ...s, status: 'approved' as const }
@@ -111,7 +135,11 @@ export default function AdminCadastros() {
 
   const handleReject = async (signup: PendingSignup) => {
     try {
-      await adminService.rejectUser(signup.id);
+      if (!signup.solicitacaoId) {
+        toast.error('Solicitação inválida');
+        return;
+      }
+      await adminService.rejectRequest(signup.solicitacaoId, 'Rejeitado pelo Super Admin');
       const updated = signups.map(s =>
         s.id === signup.id
           ? { ...s, status: 'rejected' as const }
@@ -207,7 +235,9 @@ export default function AdminCadastros() {
                     <TableHead>Nome</TableHead>
                     <TableHead>CPF/CNPJ</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Celular</TableHead>
                     <TableHead>Cabeças</TableHead>
+                    <TableHead>Município</TableHead>
                     <TableHead>UF</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Status</TableHead>
@@ -220,7 +250,9 @@ export default function AdminCadastros() {
                       <TableCell className="font-medium">{signup.nome}</TableCell>
                       <TableCell>{signup.cpfCnpj}</TableCell>
                       <TableCell>{signup.email}</TableCell>
+                      <TableCell>{signup.celular}</TableCell>
                       <TableCell>{signup.numeroCabecas}</TableCell>
+                      <TableCell>{signup.municipio}</TableCell>
                       <TableCell>{signup.uf}</TableCell>
                       <TableCell>
                         {new Date(signup.requestDate).toLocaleDateString('pt-BR')}
@@ -249,7 +281,7 @@ export default function AdminCadastros() {
                             variant="outline"
                             onClick={() => {
                               setSelectedSignup(signup);
-                              // Mostrar detalhes (você pode criar outro dialog)
+                              setShowDetailsDialog(true);
                             }}
                           >
                             <Eye className="w-4 h-4" />
@@ -358,6 +390,92 @@ export default function AdminCadastros() {
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Aprovar Cadastro
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Detalhes */}
+        <Dialog
+          open={showDetailsDialog}
+          onOpenChange={(open) => {
+            setShowDetailsDialog(open);
+            if (!open) {
+              setSelectedSignup(null);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Detalhes do cadastro</DialogTitle>
+              <DialogDescription>
+                Visualize todos os dados informados pelo produtor.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedSignup ? (
+              <div className="space-y-3 py-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nome</p>
+                    <p className="font-medium">{selectedSignup.nome}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">CPF/CNPJ</p>
+                    <p className="font-medium">{selectedSignup.cpfCnpj}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Email</p>
+                    <p className="font-medium">{selectedSignup.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Celular</p>
+                    <p className="font-medium">{selectedSignup.celular || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Município</p>
+                    <p className="font-medium">{selectedSignup.municipio || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">UF</p>
+                    <p className="font-medium">{selectedSignup.uf || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cabeças declaradas</p>
+                    <p className="font-medium">{selectedSignup.numeroCabecas}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Data da solicitação</p>
+                    <p className="font-medium">{new Date(selectedSignup.requestDate).toLocaleString('pt-BR')}</p>
+                  </div>
+                </div>
+
+                {selectedSignup.cupomIndicacao && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cupom de indicação</p>
+                    <p className="font-medium">{selectedSignup.cupomIndicacao}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-6 text-sm text-muted-foreground">Nenhum cadastro selecionado.</div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                Fechar
+              </Button>
+              {selectedSignup?.status === 'pending' && (
+                <Button
+                  onClick={() => {
+                    if (!selectedSignup) return;
+                    setShowDetailsDialog(false);
+                    openApprovalDialog(selectedSignup);
+                  }}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Aprovar
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

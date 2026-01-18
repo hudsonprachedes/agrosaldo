@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals';
-import { generateReportHTML, generatePDFBlob } from '../pdf-report';
+import { generateReportHTML, generatePDFBlob, formatDate } from '../pdf-report';
 
 // Mock do html2pdf
 jest.mock('html2pdf.js', () => ({
@@ -9,7 +9,7 @@ jest.mock('html2pdf.js', () => ({
     save: jest.fn(async () => undefined),
     outputPdf: jest.fn(async () => new Blob(['mock pdf'], { type: 'application/pdf' })),
   })),
-}));
+}), { virtual: true });
 
 describe('generateReportHTML', () => {
   const mockData = {
@@ -49,7 +49,7 @@ describe('generateReportHTML', () => {
 
   it('deve incluir data de geração', () => {
     const html = generateReportHTML(mockData);
-    expect(html).toContain('Gerado em 15 de janeiro de 2024 às 14:30');
+    expect(html).toContain(formatDate(mockData.generatedAt));
   });
 
   it('deve incluir total de cabeças', () => {

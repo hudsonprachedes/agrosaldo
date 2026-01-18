@@ -62,6 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Erro ao recalcular faixas etárias no backend:', error);
       }
     };
+    void runAgeGroupRecalculation();
+  }, [selectedProperty?.id]);
 
   const startImpersonation = async (token: string): Promise<UserDTO | null> => {
     const current = localStorage.getItem('auth_token');
@@ -89,8 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSelectedProperty(null);
     return refreshMe();
   };
-    void runAgeGroupRecalculation();
-  }, [selectedProperty?.id]);
 
   useEffect(() => {
     const loadPreferences = async () => {
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const data = await apiClient.get<PreferencesDTO>('/preferencias');
         setPreferences(data);
-        document.documentElement.classList.toggle('dark', Boolean((data as any).modoEscuro));
+        document.documentElement.classList.toggle('dark', Boolean(data.modoEscuro));
       } catch (error) {
         console.error('Erro ao carregar preferências:', error);
         setPreferences(null);
@@ -225,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const updated = await apiClient.put<PreferencesDTO>('/preferencias', payload);
       setPreferences(updated);
-      document.documentElement.classList.toggle('dark', Boolean((updated as any).modoEscuro));
+      document.documentElement.classList.toggle('dark', Boolean(updated.modoEscuro));
       return updated;
     } catch (error) {
       console.error('Erro ao atualizar preferências:', error);

@@ -11,8 +11,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { completeOnboarding, saveInitialStockEntry } from '@/lib/indexeddb';
+import { apiClient } from '@/lib/api-client';
 import { AGE_GROUP_BRACKETS } from '@/lib/age-groups';
 import { cn } from '@/lib/utils';
+import { notifyFirstFormError } from '@/lib/form-errors';
 
 type SpeciesType = 'bovino' | 'bubalino';
 
@@ -159,7 +161,7 @@ function SpeciesTable({ species, control, errors, speciesLabel }: SpeciesTablePr
 // ============================================================================
 
 const Onboarding: React.FC = () => {
-  const { selectedProperty, user } = useAuth();
+  const { selectedProperty, user, refreshMe } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedSpecies, setSelectedSpecies] = useState<{ bovino: boolean; bubalino: boolean }>({
@@ -209,6 +211,14 @@ const Onboarding: React.FC = () => {
     },
   });
 
+  const onStockInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(stockForm.formState.errors as any, {
+      setFocus: stockForm.setFocus,
+      title: 'Ops! Tem um detalhe para ajustar:',
+    });
+    toast.error(toastMessage);
+  };
+
   // ========== STEP 1: BEM-VINDO ==========
   const handleStep1Next = () => {
     if (!user?.name || !selectedProperty?.name) {
@@ -216,6 +226,14 @@ const Onboarding: React.FC = () => {
       return;
     }
     setStep(2);
+  };
+
+  const onSpeciesInvalid = () => {
+    const { toastMessage } = notifyFirstFormError(speciesForm.formState.errors as any, {
+      setFocus: speciesForm.setFocus,
+      title: 'Ops! Tem um detalhe para ajustar:',
+    });
+    toast.error(toastMessage);
   };
 
   // ========== STEP 2: ESCOLHER ESPÉCIES ==========
@@ -257,6 +275,9 @@ const Onboarding: React.FC = () => {
 
       // Marcar onboarding como completo
       await completeOnboarding(selectedProperty.id, selectedSpecies);
+
+      await apiClient.post('/auth/onboarding/complete');
+      await refreshMe();
 
       toast.success('Onboarding concluído com sucesso! 🎉');
 
@@ -331,7 +352,7 @@ const Onboarding: React.FC = () => {
             <CardContent className="space-y-6 pt-6">
               <Form {...speciesForm}>
                 <form
-                  onSubmit={speciesForm.handleSubmit(handleStep2Next)}
+                  onSubmit={speciesForm.handleSubmit(handleStep2Next, onSpeciesInvalid)}
                   className="space-y-6"
                 >
                   <div className="space-y-4">
@@ -414,7 +435,7 @@ const Onboarding: React.FC = () => {
             <CardContent className="pt-6">
               <Form {...stockForm}>
                 <form
-                  onSubmit={stockForm.handleSubmit(handleStep3Submit)}
+                  onSubmit={stockForm.handleSubmit(handleStep3Submit, onStockInvalid)}
                   className="flex flex-col max-h-[75vh] lg:max-h-none"
                 >
                   <div className="space-y-6 overflow-y-auto overflow-x-hidden pr-1 lg:overflow-visible lg:pr-0">

@@ -38,7 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { ageGroups } from '@/mocks/mock-bovinos';
+import { AGE_GROUP_BRACKETS } from '@/lib/age-groups';
 import { cn } from '@/lib/utils';
 import MobileLayout from '@/components/layout/MobileLayout';
 import { 
@@ -46,10 +46,11 @@ import {
   savePhoto,
   saveSpeciesBalance,
   saveSpeciesAdjustment,
+  getInitialStock,
+  getMovementsByProperty,
 } from '@/lib/indexeddb';
 import { compressImage } from '@/lib/image-compression';
 
-import { getAvailableMatrizes } from '@/mocks/mock-bovinos';
 import CameraCapture from '@/components/CameraCapture';
 interface LaunchFormProps {
   type: 'nascimento' | 'mortalidade' | 'venda' | 'compra' | 'vacina' | 'outras';
@@ -77,6 +78,30 @@ const otherSpecies = [
   { id: 'aves', label: 'Aves', icon: '🐔', count: 150 },
 ];
 
+type AgeGroupId = (typeof AGE_GROUP_BRACKETS)[number]['id'];
+
+const ageGroups: Array<{ id: AgeGroupId; label: string }> = AGE_GROUP_BRACKETS.map((bracket) => ({
+  id: bracket.id,
+  label: bracket.label,
+}));
+
+const normalizeAgeGroupId = (raw: unknown): AgeGroupId | null => {
+  if (typeof raw !== 'string' || !raw) return null;
+  if (raw.endsWith('m')) return raw as AgeGroupId;
+
+  const directMap: Record<string, AgeGroupId> = {
+    '0-4': '0-4m',
+    '5-12': '5-12m',
+    '12-24': '13-24m',
+    '13-24': '13-24m',
+    '24-36': '25-36m',
+    '25-36': '25-36m',
+    '36+': '36+m',
+  };
+
+  return directMap[raw] ?? null;
+};
+
 interface SaleItem {
   id: string;
   ageGroup: string;
@@ -95,8 +120,9 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // Calcula matrizes disponíveis (fêmeas acima de 24 meses)
-  const availableMatrizes = selectedProperty ? getAvailableMatrizes(selectedProperty.id) : 0;
+  const [availableMatrizes, setAvailableMatrizes] = useState(0);
+  const [availableByAgeTotal, setAvailableByAgeTotal] = useState<Record<string, number>>({});
+  const [availableByAgeSex, setAvailableByAgeSex] = useState<Record<string, { male: number; female: number }>>({});
 
   // Common fields
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -111,7 +137,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   // Death fields
   const [deathType, setDeathType] = useState<'natural' | 'consumo'>('natural');
   const [deathCause, setDeathCause] = useState('');
-  const [ageGroup, setAgeGroup] = useState('0-4');
+  const [ageGroup, setAgeGroup] = useState('0-4m');
   const [hasPhoto, setHasPhoto] = useState(false);
     const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
     const [showCamera, setShowCamera] = useState(false);
@@ -120,7 +146,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const [destination, setDestination] = useState<'frigorifico' | 'produtor'>('frigorifico');
   const [buyer, setBuyer] = useState('');
   const [saleItems, setSaleItems] = useState<SaleItem[]>([
-    { id: '1', ageGroup: '24-36', quantity: 10, unitValue: 3500 }
+    { id: '1', ageGroup: '25-36m', quantity: 10, unitValue: 3500 }
   ]);
   const [gtaNumber, setGtaNumber] = useState('');
 
@@ -129,7 +155,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const [purchaseSex, setPurchaseSex] = useState<'male' | 'female'>('male');
   const [purchaseTotalValue, setPurchaseTotalValue] = useState<number>(0);
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([
-    { id: '1', ageGroupId: '12-24', quantity: 1 },
+    { id: '1', ageGroupId: '13-24m', quantity: 1 },
   ]);
 
   // Vaccine fields
@@ -147,6 +173,107 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       navigate('/login');
     }
   }, [selectedProperty, navigate]);
+
+  useEffect(() => {
+    const loadMatrizes = async () => {
+      if (!selectedProperty?.id) {
+        setAvailableMatrizes(0);
+        setAvailableByAgeTotal({});
+        setAvailableByAgeSex({});
+        return;
+      }
+
+      try {
+        const [initialStock, movements] = await Promise.all([
+          getInitialStock(selectedProperty.id),
+          getMovementsByProperty(selectedProperty.id),
+        ]);
+
+        const ageGroupIds: AgeGroupId[] = ageGroups.map((g) => g.id);
+        const ageGroupIdSet = new Set<AgeGroupId>(ageGroupIds);
+        const totalByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
+        const maleByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
+        const femaleByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
+
+        for (const entry of initialStock) {
+          if (entry.species !== 'bovino') continue;
+          const ageId = normalizeAgeGroupId(entry.ageGroupId);
+          if (!ageId) continue;
+          if (!ageGroupIdSet.has(ageId)) continue;
+
+          const qty = Number(entry.quantity) || 0;
+          if (qty <= 0) continue;
+
+          totalByAge[ageId] += qty;
+          if (entry.sex === 'male') {
+            maleByAge[ageId] += qty;
+          } else if (entry.sex === 'female') {
+            femaleByAge[ageId] += qty;
+          }
+        }
+
+        for (const m of movements) {
+          const ageId = normalizeAgeGroupId(m.ageGroupId);
+          if (!ageId) continue;
+          if (!ageGroupIdSet.has(ageId)) continue;
+          const qty = Number(m.quantity) || 0;
+          if (qty <= 0) continue;
+
+          const applyDelta = (delta: number) => {
+            totalByAge[ageId] = Math.max(0, totalByAge[ageId] + delta);
+
+            if (m.sex === 'male') {
+              maleByAge[ageId] = Math.max(0, maleByAge[ageId] + delta);
+            } else if (m.sex === 'female') {
+              femaleByAge[ageId] = Math.max(0, femaleByAge[ageId] + delta);
+            }
+          };
+
+          if (m.type === 'birth' || m.type === 'purchase') {
+            applyDelta(qty);
+          } else if (m.type === 'sale' || m.type === 'death') {
+            applyDelta(-qty);
+          } else if (m.type === 'adjustment') {
+            applyDelta(qty);
+          }
+        }
+
+        const total = (femaleByAge['25-36m'] ?? 0) + (femaleByAge['36+m'] ?? 0);
+        setAvailableMatrizes(total);
+
+        setAvailableByAgeTotal(totalByAge);
+        setAvailableByAgeSex(
+          Object.fromEntries(
+            ageGroupIds.map((id) => [
+              id,
+              {
+                male: Math.min(maleByAge[id] ?? 0, totalByAge[id] ?? 0),
+                female: Math.min(femaleByAge[id] ?? 0, totalByAge[id] ?? 0),
+              },
+            ])
+          )
+        );
+      } catch (error) {
+        console.error('Erro ao calcular matrizes disponíveis:', error);
+        setAvailableMatrizes(0);
+        setAvailableByAgeTotal({});
+        setAvailableByAgeSex({});
+      }
+    };
+
+    void loadMatrizes();
+  }, [selectedProperty?.id]);
+
+  const getAvailableForAgeGroup = (ageGroupId: string) => {
+    const total = availableByAgeTotal[ageGroupId] ?? 0;
+    if (sexOther === 'male') {
+      return availableByAgeSex[ageGroupId]?.male ?? Math.max(0, total);
+    }
+    if (sexOther === 'female') {
+      return availableByAgeSex[ageGroupId]?.female ?? Math.max(0, total);
+    }
+    return Math.max(0, total);
+  };
 
   if (!selectedProperty) {
     return null;
@@ -166,9 +293,45 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           return;
         }
     } else if (type === 'mortalidade') {
+      const availableForAge = getAvailableForAgeGroup(ageGroup);
+      if (quantity > availableForAge) {
+        toast.error('Quantidade maior que o estoque disponível', {
+          description: `Disponível na faixa ${ageGroup}: ${availableForAge}. Ajuste a quantidade para continuar.`,
+          icon: '⚠️',
+        });
+        return;
+      }
+
       if (deathType === 'natural' && !hasPhoto) {
         toast.error('Foto obrigatória para morte natural', {
           description: 'Tire uma foto para registrar a ocorrência',
+        });
+        return;
+      }
+    } else if (type === 'venda') {
+      const qtyByAge = saleItems.reduce<Record<string, number>>((acc, item) => {
+        const age = item.ageGroup;
+        const qty = Number(item.quantity) || 0;
+        acc[age] = (acc[age] ?? 0) + qty;
+        return acc;
+      }, {});
+
+      for (const [age, qty] of Object.entries(qtyByAge)) {
+        const availableForAge = getAvailableForAgeGroup(age);
+        if (qty > availableForAge) {
+          toast.error('Quantidade maior que o estoque disponível', {
+            description: `Na faixa ${age}, você tentou vender ${qty}, mas só tem ${availableForAge} disponível.`,
+            icon: '⚠️',
+          });
+          return;
+        }
+      }
+    } else if (type === 'vacina') {
+      const invalid = selectedAgeGroups.find((age) => getAvailableForAgeGroup(age) <= 0);
+      if (invalid) {
+        toast.error('Faixa etária sem estoque disponível', {
+          description: 'Remova lotes sem animais no estoque para continuar.',
+          icon: '⚠️',
         });
         return;
       }
@@ -284,7 +447,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         date,
         quantity,
         sex: type === 'nascimento' ? sex : sexOther ?? undefined,
-        ageGroupId: type === 'nascimento' ? '0-4' : ageGroup,
+        ageGroupId: type === 'nascimento' ? '0-4m' : ageGroup,
         description,
         destination: type === 'venda' ? destination : undefined,
         value: type === 'venda'
@@ -408,7 +571,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const addSaleItem = () => {
     setSaleItems([
       ...saleItems,
-      { id: Date.now().toString(), ageGroup: '12-24', quantity: 1, unitValue: 3000 }
+      { id: Date.now().toString(), ageGroup: '13-24m', quantity: 1, unitValue: 3000 }
     ]);
   };
 
@@ -419,7 +582,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const addPurchaseItem = () => {
     setPurchaseItems([
       ...purchaseItems,
-      { id: Date.now().toString(), ageGroupId: '12-24', quantity: 1 },
+      { id: Date.now().toString(), ageGroupId: '13-24m', quantity: 1 },
     ]);
   };
 
@@ -872,6 +1035,13 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                   <Hash className="w-5 h-5 text-primary" />
                   Quantidade
                 </Label>
+
+                <div className="mb-4 p-3 bg-muted/30 rounded-lg border">
+                  <p className="text-sm font-medium">
+                    Disponível na faixa: <span className="font-bold">{getAvailableForAgeGroup(ageGroup)}</span>
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-center gap-4">
                   <Button
                     type="button"
@@ -890,7 +1060,16 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                     variant="outline"
                     size="icon"
                     className="h-14 w-14 rounded-xl"
-                    onClick={() => setQuantity(quantity + 1)}
+                    onClick={() => {
+                      const availableForAge = getAvailableForAgeGroup(ageGroup);
+                      if (quantity < availableForAge) {
+                        setQuantity(quantity + 1);
+                      } else {
+                        toast.warning('Limite do estoque atingido', {
+                          description: `Disponível na faixa: ${availableForAge}`,
+                        });
+                      }
+                    }}
                   >
                     <Plus className="w-6 h-6" />
                   </Button>
@@ -1132,6 +1311,11 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                           ))}
                         </SelectContent>
                       </Select>
+
+                      <div className="-mt-1 text-xs text-muted-foreground">
+                        Disponível nesta faixa: {getAvailableForAgeGroup(item.ageGroup)}
+                      </div>
+
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs">Quantidade</Label>
@@ -1139,7 +1323,11 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => updateSaleItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                            onChange={(e) => {
+                              const raw = parseInt(e.target.value) || 1;
+                              const availableForAge = getAvailableForAgeGroup(item.ageGroup);
+                              updateSaleItem(item.id, 'quantity', Math.min(raw, Math.max(1, availableForAge)));
+                            }}
                             className="h-12"
                           />
                         </div>
@@ -1270,6 +1458,10 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                 </p>
                 <div className="space-y-2">
                   {ageGroups.map((group) => (
+                    (() => {
+                      const availableForAge = getAvailableForAgeGroup(group.id);
+                      const disabled = availableForAge <= 0;
+                      return (
                     <div
                       key={group.id}
                       className={cn(
@@ -1282,15 +1474,28 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                       <label className="flex items-center gap-3 cursor-pointer flex-1">
                         <Checkbox 
                           checked={selectedAgeGroups.includes(group.id)}
-                          onCheckedChange={() => toggleAgeGroupSelection(group.id)}
+                          disabled={disabled}
+                          onCheckedChange={() => {
+                            if (disabled) {
+                              toast.warning('Sem estoque disponível nesta faixa', {
+                                description: `${group.label}: ${availableForAge} disponível`,
+                              });
+                              return;
+                            }
+                            toggleAgeGroupSelection(group.id);
+                          }}
                           className="data-[state=checked]:bg-chart-3 data-[state=checked]:border-chart-3"
                         />
-                        <span className="font-medium">{group.label}</span>
+                        <span className={cn('font-medium', disabled && 'text-muted-foreground')}>
+                          {group.label} (disp: {availableForAge})
+                        </span>
                       </label>
                       {selectedAgeGroups.includes(group.id) && (
                         <Check className="w-5 h-5 text-chart-3" />
                       )}
                     </div>
+                      );
+                    })()
                   ))}
                 </div>
               </CardContent>
