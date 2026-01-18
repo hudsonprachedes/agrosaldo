@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,14 +9,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import {
-  getPropertyNotifications,
-  markNotificationAsRead,
-  getUnreadNotifications,
-  deleteNotification,
-  deleteNotifications,
-} from '@/lib/indexeddb';
 import { formatTimeAgo } from '@/lib/notifications-utils';
+import { notificationsService } from '@/services/api.service';
 
 export interface NotificationItem {
   id: string;
@@ -40,66 +34,13 @@ interface NotificationsPanelProps {
 
 /**
  * Componente de Notificações (Bell Icon com dropdown)
- * Exibe notificações do sistema e anúncios do SuperAdmin
+ * Exibe notificações do sistema
  */
 export function NotificationsPanel({ propertyId, userId, className }: NotificationsPanelProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
-  const getMockNotifications = useCallback((): NotificationItem[] => {
-    const now = Date.now();
-    const base = {
-      propertyId,
-      userId,
-    };
-
-    return [
-      {
-        ...base,
-        id: 'mock-notif-1',
-        type: 'announcement',
-        status: 'unread',
-        title: 'Atualização do sistema',
-        message: 'Nova versão disponível com melhorias de desempenho.',
-        actionUrl: '/dashboard',
-        icon: '📢',
-        createdAt: new Date(now - 2 * 60 * 1000).toISOString(),
-      },
-      {
-        ...base,
-        id: 'mock-notif-2',
-        type: 'reminder',
-        status: 'unread',
-        title: 'Lembrete',
-        message: 'Revise os lançamentos pendentes antes de sincronizar.',
-        icon: '📅',
-        createdAt: new Date(now - 45 * 60 * 1000).toISOString(),
-      },
-      {
-        ...base,
-        id: 'mock-notif-3',
-        type: 'system',
-        status: 'unread',
-        title: 'Atenção',
-        message: 'Conexão instável detectada. Alguns recursos podem ficar offline.',
-        icon: '⚠️',
-        createdAt: new Date(now - 3 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        ...base,
-        id: 'mock-notif-4',
-        type: 'announcement',
-        status: 'read',
-        title: 'Bem-vindo!',
-        message: 'Seu ambiente está pronto. Explore os relatórios e o extrato.',
-        icon: '🎉',
-        createdAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        readAt: new Date(now - 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
-      },
-    ];
-  }, [propertyId, userId]);
 
   // Carregar notificações
   useEffect(() => {
@@ -108,24 +49,12 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
         setIsLoading(true);
         let notifs: NotificationItem[] = [];
 
-        if (propertyId) {
-          notifs = await getPropertyNotifications(propertyId);
-        } else if (userId) {
-          const all = await getUnreadNotifications();
-          notifs = all.filter(n => n.userId === userId);
-        } else {
-          notifs = [];
+        if (propertyId || userId) {
+          notifs = await notificationsService.list(propertyId);
         }
 
         // Ordenar por data (mais recentes primeiro)
         notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-        const shouldUseMock = import.meta.env.DEV && notifs.length === 0 && (propertyId || userId);
-        if (shouldUseMock) {
-          notifs = getMockNotifications().sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        }
 
         setNotifications(notifs);
         setUnreadCount(notifs.filter(n => n.status === 'unread').length);
@@ -139,12 +68,12 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
     if (isOpen) {
       loadNotifications();
     }
-  }, [getMockNotifications, isOpen, propertyId, userId]);
+  }, [isOpen, propertyId, userId]);
 
   // Marcar como lida
   const handleMarkAsRead = async (id: string) => {
     try {
-      await markNotificationAsRead(id);
+      await notificationsService.markAsRead(id);
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, status: 'read' } : n))
       );
@@ -156,7 +85,7 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
 
   const handleDelete = async (notification: NotificationItem) => {
     try {
-      await deleteNotification(notification.id);
+      await notificationsService.archive(notification.id);
     } catch (error) {
       console.error('Erro ao excluir notificação:', error);
     } finally {
@@ -169,7 +98,7 @@ export function NotificationsPanel({ propertyId, userId, className }: Notificati
 
   const handleDeleteAll = async () => {
     try {
-      await deleteNotifications({ propertyId, userId });
+      await notificationsService.archiveAll(propertyId);
     } catch (error) {
       console.error('Erro ao excluir todas as notificações:', error);
     } finally {

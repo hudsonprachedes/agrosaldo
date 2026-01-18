@@ -133,8 +133,7 @@ porteira - R$ 49,90 - até 500 cabeças
 piquete - R$ 99,90 - até 1000 cabeças
 retiro - R$ 149,90 - até 2000 cabeças
 estância - R$ 249,90 - até 3000 cabeças
-Barão - R$ 499,90 - gado ilimitado
-
+Barão - R$ 499,90 - gado ilimitado com adicional de R$ 0,10 por cabeça de gado 
 
 
 7.5. Financeiro

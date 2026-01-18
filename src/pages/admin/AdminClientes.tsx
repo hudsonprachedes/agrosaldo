@@ -65,6 +65,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { validateCpfCnpj } from '@/lib/document-validation';
+import PageSkeleton from '@/components/PageSkeleton';
 
 interface ActionLog {
   timestamp: Date;
@@ -115,7 +116,7 @@ export default function AdminClientes() {
   }, []);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <PageSkeleton cards={0} lines={16} />;
   }
   
   const filteredTenants = tenantsData.filter((tenant) => {

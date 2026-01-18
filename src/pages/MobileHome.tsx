@@ -16,6 +16,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import MobileLayout from '@/components/layout/MobileLayout';
+import PageSkeleton from '@/components/PageSkeleton';
 
 export default function MobileHome() {
   const { user, selectedProperty } = useAuth();
@@ -84,7 +85,7 @@ export default function MobileHome() {
   if (isLoading) {
     return (
       <MobileLayout>
-        <div className="p-6 text-center text-muted-foreground">Carregando...</div>
+        <PageSkeleton header={false} cards={0} lines={12} className="p-6" />
       </MobileLayout>
     );
   }

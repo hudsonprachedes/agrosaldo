@@ -73,7 +73,9 @@ describe('Admin (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     prismaService = app.get<PrismaService>(PrismaService);
@@ -130,9 +132,7 @@ describe('Admin (e2e)', () => {
 
   describe('GET /admin/tenants', () => {
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/admin/tenants')
-        .expect(401);
+      await request(app.getHttpServer()).get('/admin/tenants').expect(401);
     });
 
     it('should return list of tenants with authentication', async () => {
@@ -147,7 +147,9 @@ describe('Admin (e2e)', () => {
 
   describe('GET /admin/solicitacoes', () => {
     it('should return pending requests', async () => {
-      (prismaService as any).$queryRaw = jest.fn().mockResolvedValue(mockRequests);
+      (prismaService as any).$queryRaw = jest
+        .fn()
+        .mockResolvedValue(mockRequests);
 
       const response = await request(app.getHttpServer())
         .get('/admin/solicitacoes')
@@ -158,9 +160,9 @@ describe('Admin (e2e)', () => {
     });
 
     it('should filter by status', async () => {
-      jest.spyOn(prismaService, '$queryRaw' as any).mockResolvedValue(
-        mockRequests.filter(r => r.status === 'pending')
-      );
+      jest
+        .spyOn(prismaService, '$queryRaw' as any)
+        .mockResolvedValue(mockRequests.filter((r) => r.status === 'pending'));
 
       const response = await request(app.getHttpServer())
         .get('/admin/solicitacoes?status=pending')
@@ -211,9 +213,7 @@ describe('Admin (e2e)', () => {
 
   describe('GET /admin/auditoria', () => {
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/admin/auditoria')
-        .expect(401);
+      await request(app.getHttpServer()).get('/admin/auditoria').expect(401);
     });
 
     it('should return audit logs with authentication', async () => {
@@ -228,9 +228,7 @@ describe('Admin (e2e)', () => {
 
   describe('GET /admin/financeiro', () => {
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/admin/financeiro')
-        .expect(401);
+      await request(app.getHttpServer()).get('/admin/financeiro').expect(401);
     });
 
     it('should return financial report with authentication', async () => {

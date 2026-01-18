@@ -22,7 +22,10 @@ export class SubscriptionsController {
     @CurrentUser() user: { id: string },
     @Body() body: { planId?: string },
   ) {
-    return this.subscriptionsService.subscribeOrUpgrade(user.id, body?.planId ?? '');
+    return this.subscriptionsService.subscribeOrUpgrade(
+      user.id,
+      body?.planId ?? '',
+    );
   }
 
   @Get('planos')

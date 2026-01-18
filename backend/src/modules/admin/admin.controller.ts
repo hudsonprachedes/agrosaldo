@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -103,7 +114,10 @@ export class AdminController {
   @Roles('super_admin')
   @Post('usuarios/:id/impersonate')
   impersonateUser(@Param('id') id: string, @Req() req: any) {
-    return this.adminService.impersonateUser({ id: req.user?.id, cpfCnpj: req.user?.cpfCnpj }, id);
+    return this.adminService.impersonateUser(
+      { id: req.user?.id, cpfCnpj: req.user?.cpfCnpj },
+      id,
+    );
   }
 
   // --- Regulations ---
@@ -122,8 +136,16 @@ export class AdminController {
 
   @Roles('super_admin')
   @Patch('regulamentacoes/:id')
-  updateRegulation(@Param('id') id: string, @Body() dto: UpdateRegulationDto, @Req() req: any) {
-    return this.adminService.updateRegulation(id, dto, req.user?.name || 'Admin');
+  updateRegulation(
+    @Param('id') id: string,
+    @Body() dto: UpdateRegulationDto,
+    @Req() req: any,
+  ) {
+    return this.adminService.updateRegulation(
+      id,
+      dto,
+      req.user?.name || 'Admin',
+    );
   }
 
   @Roles('super_admin')

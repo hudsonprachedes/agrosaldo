@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApexOptions } from 'apexcharts';
+import PageSkeleton from '@/components/PageSkeleton';
 
 interface FinanceSummaryDTO {
   period: 'month' | 'quarter' | 'year';
@@ -94,6 +95,20 @@ export default function Financeiro() {
       },
     [summary]
   );
+
+  const revenueDistributionSeries = useMemo(() => {
+    const total = summary?.kpis.totalRevenue ?? 0;
+    if (!total) {
+      return [0, 0, 0, 0];
+    }
+
+    const base = [0.55, 0.25, 0.12, 0.08];
+    return base.map((p) => Math.round(total * p));
+  }, [summary?.kpis.totalRevenue]);
+
+  if (isLoading) {
+    return <PageSkeleton cards={4} lines={14} />;
+  }
 
   const categories = summary?.charts.categories ?? ['Ago', 'Set', 'Out', 'Nov', 'Dez', 'Jan'];
 
@@ -272,16 +287,6 @@ export default function Financeiro() {
   }];
 
   const revenueDistributionLabels = ['Venda (Boi Gordo)', 'Venda (Bezerros)', 'Descarte', 'Outros'];
-
-  const revenueDistributionSeries = useMemo(() => {
-    const total = summary?.kpis.totalRevenue ?? 0;
-    if (!total) {
-      return [0, 0, 0, 0];
-    }
-
-    const base = [0.55, 0.25, 0.12, 0.08];
-    return base.map((p) => Math.round(total * p));
-  }, [summary?.kpis.totalRevenue]);
 
   const revenueDistributionOptions: ApexOptions = {
     chart: {

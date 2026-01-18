@@ -57,7 +57,7 @@ export async function seedAdmin(prisma: PrismaClient) {
       tenantId: 'seed-tenant-1',
       tenantName: 'Fazenda Santa Rita',
       plano: 'porteira',
-      valor: 69.9,
+      valor: 49.9,
       metodoPagamento: 'pix',
       frequenciaPagamento: 'monthly',
       status: i === 0 ? 'pending' : 'paid',
@@ -69,7 +69,7 @@ export async function seedAdmin(prisma: PrismaClient) {
       tenantId: 'seed-tenant-2',
       tenantName: 'Fazenda Ouro Verde',
       plano: 'barao',
-      valor: 399.0,
+      valor: 499.9,
       metodoPagamento: 'pix',
       frequenciaPagamento: 'monthly',
       status: i === 1 ? 'overdue' : 'paid',
@@ -139,11 +139,19 @@ export async function seedAdmin(prisma: PrismaClient) {
   await (prisma as any).planoSaas.deleteMany({});
   await (prisma as any).planoSaas.createMany({
     data: [
-      { nome: 'Porteira', preco: 29.9, maxCabecas: 500, recursos: [], ativo: true },
-      { nome: 'Piquete', preco: 69.9, maxCabecas: 1500, recursos: [], ativo: true },
-      { nome: 'Retiro', preco: 129.9, maxCabecas: 3000, recursos: [], ativo: true },
-      { nome: 'Estância', preco: 249.9, maxCabecas: 6000, recursos: [], ativo: true },
-      { nome: 'Barão', preco: 399.9, maxCabecas: null, recursos: [], ativo: true },
+      { nome: 'Porteira', preco: 49.9, maxCabecas: 500, recursos: [], ativo: true },
+      { nome: 'Piquete', preco: 99.9, maxCabecas: 1000, recursos: [], ativo: true },
+      { nome: 'Retiro', preco: 149.9, maxCabecas: 2000, recursos: [], ativo: true },
+      { nome: 'Estância', preco: 249.9, maxCabecas: 3000, recursos: [], ativo: true },
+      {
+        nome: 'Barão',
+        preco: 499.9,
+        maxCabecas: null,
+        cobrancaAdicionalAtiva: true,
+        valorCobrancaAdicional: 0.1,
+        recursos: [],
+        ativo: true,
+      },
     ],
   });
 

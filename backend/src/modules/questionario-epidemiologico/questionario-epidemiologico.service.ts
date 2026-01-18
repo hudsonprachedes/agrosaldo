@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateQuestionarioEpidemiologicoDto } from './dto/create-questionario-epidemiologico.dto';
 
@@ -31,7 +36,9 @@ export class QuestionarioEpidemiologicoService {
     const submittedAt = new Date();
     const nextDueAt = this.addMonths(submittedAt, 6);
 
-    const created = await (this.prisma as any).questionarioEpidemiologico.create({
+    const created = await (
+      this.prisma as any
+    ).questionarioEpidemiologico.create({
       data: {
         propriedadeId: propertyId,
         versao: 1,
@@ -49,10 +56,12 @@ export class QuestionarioEpidemiologicoService {
       throw new BadRequestException('x-property-id é obrigatório');
     }
 
-    const rows = await (this.prisma as any).questionarioEpidemiologico.findMany({
-      where: { propriedadeId: propertyId },
-      orderBy: { enviadoEm: 'desc' },
-    });
+    const rows = await (this.prisma as any).questionarioEpidemiologico.findMany(
+      {
+        where: { propriedadeId: propertyId },
+        orderBy: { enviadoEm: 'desc' },
+      },
+    );
 
     return rows.map((r: any) => this.mapToDto(r));
   }
@@ -62,10 +71,12 @@ export class QuestionarioEpidemiologicoService {
       throw new BadRequestException('x-property-id é obrigatório');
     }
 
-    const row = await (this.prisma as any).questionarioEpidemiologico.findFirst({
-      where: { propriedadeId: propertyId },
-      orderBy: { enviadoEm: 'desc' },
-    });
+    const row = await (this.prisma as any).questionarioEpidemiologico.findFirst(
+      {
+        where: { propriedadeId: propertyId },
+        orderBy: { enviadoEm: 'desc' },
+      },
+    );
 
     return row ? this.mapToDto(row) : null;
   }
@@ -75,7 +86,9 @@ export class QuestionarioEpidemiologicoService {
       throw new BadRequestException('x-property-id é obrigatório');
     }
 
-    const row = await (this.prisma as any).questionarioEpidemiologico.findUnique({
+    const row = await (
+      this.prisma as any
+    ).questionarioEpidemiologico.findUnique({
       where: { id },
     });
 

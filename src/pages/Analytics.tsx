@@ -15,6 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApexOptions } from 'apexcharts';
+import PageSkeleton from '@/components/PageSkeleton';
 
 interface AnalyticsSummaryDTO {
   propertyId: string;
@@ -426,6 +427,10 @@ export default function Analytics() {
   };
 
   const birthHeatmapSeries = summary?.charts.birthHeatmap.series ?? [];
+
+  if (isLoading) {
+    return <PageSkeleton cards={4} lines={14} />;
+  }
 
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">

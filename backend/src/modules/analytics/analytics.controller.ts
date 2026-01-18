@@ -1,4 +1,12 @@
-import { Controller, Get, Headers, Param, Query, UseGuards, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Query,
+  UseGuards,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -11,7 +19,10 @@ import { AnalyticsService } from './analytics.service';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  private assertPropertyHeader(propertyIdParam: string, propertyIdHeader?: string) {
+  private assertPropertyHeader(
+    propertyIdParam: string,
+    propertyIdHeader?: string,
+  ) {
     if (!propertyIdHeader) {
       throw new ForbiddenException('Property header required');
     }
@@ -48,7 +59,9 @@ export class AnalyticsController {
     @Query('endDate') endDate?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
-    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), 0, 1);
+    const start = startDate
+      ? new Date(startDate)
+      : new Date(new Date().getFullYear(), 0, 1);
     const end = endDate ? new Date(endDate) : new Date();
     return this.analyticsService.getPeriod(propertyId, start, end);
   }
@@ -69,6 +82,9 @@ export class AnalyticsController {
     @Query('months') months?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
-    return this.analyticsService.getRevenue(propertyId, months ? Number(months) : undefined);
+    return this.analyticsService.getRevenue(
+      propertyId,
+      months ? Number(months) : undefined,
+    );
   }
 }

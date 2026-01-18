@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PapelUsuario, Prisma, StatusUsuario } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,7 +15,7 @@ import bcrypt from 'bcryptjs';
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
   private formatCpfCnpj(digits: string): string | null {
@@ -18,7 +23,10 @@ export class AuthService {
       return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     }
     if (digits.length === 14) {
-      return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+      return digits.replace(
+        /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
+        '$1.$2.$3/$4-$5',
+      );
     }
     return null;
   }
@@ -45,8 +53,12 @@ export class AuthService {
       status: property.status,
       plan: property.plano,
       speciesEnabled: property.especiesHabilitadas ?? undefined,
-      createdAt: property.criadoEm?.toISOString ? property.criadoEm.toISOString() : property.criadoEm,
-      updatedAt: property.atualizadoEm?.toISOString ? property.atualizadoEm.toISOString() : property.atualizadoEm,
+      createdAt: property.criadoEm?.toISOString
+        ? property.criadoEm.toISOString()
+        : property.criadoEm,
+      updatedAt: property.atualizadoEm?.toISOString
+        ? property.atualizadoEm.toISOString()
+        : property.atualizadoEm,
     };
   }
 
@@ -55,19 +67,21 @@ export class AuthService {
     const cpfCnpjFormatted = this.formatCpfCnpj(cpfCnpj);
 
     const candidates = [dto.cpfCnpj, cpfCnpj, cpfCnpjFormatted].filter(
-      (value): value is string => typeof value === 'string' && value.length > 0
+      (value): value is string => typeof value === 'string' && value.length > 0,
     );
 
     type UserWithProperties = Prisma.UsuarioGetPayload<{
       include: { propriedades: { include: { propriedade: true } } };
     }>;
 
-    const user: UserWithProperties | null = await this.prisma.usuario.findFirst({
-      where: {
-        OR: candidates.map((value) => ({ cpfCnpj: value })),
+    const user: UserWithProperties | null = await this.prisma.usuario.findFirst(
+      {
+        where: {
+          OR: candidates.map((value) => ({ cpfCnpj: value })),
+        },
+        include: { propriedades: { include: { propriedade: true } } },
       },
-      include: { propriedades: { include: { propriedade: true } } },
-    });
+    );
 
     if (!user || !(await bcrypt.compare(dto.password, user.senha))) {
       throw new UnauthorizedException('Credenciais inválidas');
@@ -76,7 +90,10 @@ export class AuthService {
     const payload = { sub: user.id, role: user.papel, cpfCnpj: user.cpfCnpj };
     const token = await this.jwtService.signAsync(payload);
 
-    const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as Date | null | undefined;
+    const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as
+      | Date
+      | null
+      | undefined;
 
     return {
       user: {
@@ -92,7 +109,9 @@ export class AuthService {
           ? onboardingConcluidoEm.toISOString()
           : null,
         properties: user.propriedades
-          ? user.propriedades.map((item: any) => this.mapPropertyToDto(item.propriedade, user.id))
+          ? user.propriedades.map((item: any) =>
+              this.mapPropertyToDto(item.propriedade, user.id),
+            )
           : [],
       },
       token,
@@ -111,7 +130,9 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new ConflictException('Já existe um cadastro com este CPF/CNPJ ou email');
+      throw new ConflictException(
+        'Já existe um cadastro com este CPF/CNPJ ou email',
+      );
     }
 
     const uf = (dto as any).uf as string | undefined;
@@ -144,7 +165,9 @@ export class AuthService {
         });
 
         const cattleCountValue =
-          typeof cattleCount === 'number' && Number.isFinite(cattleCount) ? Math.max(0, Math.trunc(cattleCount)) : 0;
+          typeof cattleCount === 'number' && Number.isFinite(cattleCount)
+            ? Math.max(0, Math.trunc(cattleCount))
+            : 0;
 
         const suggestedPlan =
           cattleCountValue <= 500
@@ -182,13 +205,15 @@ export class AuthService {
     } catch (error: any) {
       console.error('Erro ao registrar usuário:', error);
       if (error?.code === 'P2002') {
-        throw new ConflictException('Já existe um cadastro com este CPF/CNPJ, email ou nome de propriedade');
+        throw new ConflictException(
+          'Já existe um cadastro com este CPF/CNPJ, email ou nome de propriedade',
+        );
       }
       const message =
         process.env.NODE_ENV !== 'production'
-          ? (typeof error?.message === 'string' && error.message.length > 0
-              ? `Não foi possível concluir o cadastro: ${error.message}`
-              : 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.')
+          ? typeof error?.message === 'string' && error.message.length > 0
+            ? `Não foi possível concluir o cadastro: ${error.message}`
+            : 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.'
           : 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.';
       throw new BadRequestException(message);
     }
@@ -215,7 +240,10 @@ export class AuthService {
       throw new UnauthorizedException('Usuário não encontrado');
     }
 
-    const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as Date | null | undefined;
+    const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as
+      | Date
+      | null
+      | undefined;
 
     return {
       id: user.id,
@@ -229,7 +257,9 @@ export class AuthService {
       onboardingCompletedAt: onboardingConcluidoEm
         ? onboardingConcluidoEm.toISOString()
         : null,
-      properties: user.propriedades.map((item: any) => this.mapPropertyToDto(item.propriedade, user.id)),
+      properties: user.propriedades.map((item: any) =>
+        this.mapPropertyToDto(item.propriedade, user.id),
+      ),
     };
   }
 
@@ -239,7 +269,10 @@ export class AuthService {
       data: { onboardingConcluidoEm: new Date() } as any,
     });
 
-    const onboardingConcluidoEm = (updated as any).onboardingConcluidoEm as Date | null | undefined;
+    const onboardingConcluidoEm = (updated as any).onboardingConcluidoEm as
+      | Date
+      | null
+      | undefined;
 
     return {
       onboardingCompletedAt: onboardingConcluidoEm

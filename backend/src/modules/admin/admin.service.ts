@@ -11,7 +11,7 @@ import { UpdatePixConfigDto } from './dto/pix-config.dto';
 export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
   ) {}
 
   private getPlanRank(planId: string) {
@@ -22,19 +22,19 @@ export class AdminService {
 
   private getRequiredPlanByTotalCattle(totalCattle: number) {
     if (totalCattle <= 500) return 'porteira';
-    if (totalCattle <= 1500) return 'piquete';
-    if (totalCattle <= 3000) return 'retiro';
-    if (totalCattle <= 6000) return 'estancia';
+    if (totalCattle <= 1000) return 'piquete';
+    if (totalCattle <= 2000) return 'retiro';
+    if (totalCattle <= 3000) return 'estancia';
     return 'barao';
   }
 
   getPlansCatalog() {
     return [
-      { id: 'porteira', name: 'Porteira', price: 29.9, maxCattle: 500 },
-      { id: 'piquete', name: 'Piquete', price: 69.9, maxCattle: 1500 },
-      { id: 'retiro', name: 'Retiro', price: 129.9, maxCattle: 3000 },
-      { id: 'estancia', name: 'Estância', price: 249.9, maxCattle: 6000 },
-      { id: 'barao', name: 'Barão', price: 399.9, maxCattle: -1 },
+      { id: 'porteira', name: 'Porteira', price: 49.9, maxCattle: 500 },
+      { id: 'piquete', name: 'Piquete', price: 99.9, maxCattle: 1000 },
+      { id: 'retiro', name: 'Retiro', price: 149.9, maxCattle: 2000 },
+      { id: 'estancia', name: 'Estância', price: 249.9, maxCattle: 3000 },
+      { id: 'barao', name: 'Barão', price: 499.9, maxCattle: -1 },
     ];
   }
 
@@ -103,10 +103,16 @@ export class AdminService {
   }
 
   async getMrrSeries(months = 12) {
-    const safeMonths = Number.isFinite(months) ? Math.max(1, Math.min(24, months)) : 12;
+    const safeMonths = Number.isFinite(months)
+      ? Math.max(1, Math.min(24, months))
+      : 12;
     const now = new Date();
 
-    const periodStart = new Date(now.getFullYear(), now.getMonth() - (safeMonths - 1), 1);
+    const periodStart = new Date(
+      now.getFullYear(),
+      now.getMonth() - (safeMonths - 1),
+      1,
+    );
     const rows = await this.prisma.pagamentoFinanceiro.findMany({
       where: {
         status: 'paid',
@@ -128,7 +134,10 @@ export class AdminService {
     for (let i = safeMonths - 1; i >= 0; i -= 1) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      series.push({ month: key, value: Number((monthlyTotals.get(key) ?? 0).toFixed(2)) });
+      series.push({
+        month: key,
+        value: Number((monthlyTotals.get(key) ?? 0).toFixed(2)),
+      });
     }
 
     return series;
@@ -138,7 +147,14 @@ export class AdminService {
     const now = new Date();
     const normalized = (period ?? '30d').toLowerCase();
 
-    const months = normalized === '7d' ? 1 : normalized === '90d' ? 3 : normalized === '1y' ? 12 : 6;
+    const months =
+      normalized === '7d'
+        ? 1
+        : normalized === '90d'
+          ? 3
+          : normalized === '1y'
+            ? 12
+            : 6;
     const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
     const categories = this.buildMonthlyCategories(start, now);
 
@@ -173,7 +189,9 @@ export class AdminService {
       revenueByMonth.set(key, (revenueByMonth.get(key) ?? 0) + row.valor);
     }
 
-    const revenueSeries = categories.map((c) => Number((revenueByMonth.get(c) ?? 0).toFixed(2)));
+    const revenueSeries = categories.map((c) =>
+      Number((revenueByMonth.get(c) ?? 0).toFixed(2)),
+    );
 
     const newSignupsByMonth = new Map<string, number>();
     const approvedByMonth = new Map<string, number>();
@@ -183,12 +201,16 @@ export class AdminService {
     for (const u of tenantUsers) {
       const key = this.monthKey(u.criadoEm);
       newSignupsByMonth.set(key, (newSignupsByMonth.get(key) ?? 0) + 1);
-      if ((u.status as any) === 'ativo') approvedByMonth.set(key, (approvedByMonth.get(key) ?? 0) + 1);
-      else if ((u.status as any) === 'rejeitado') rejectedByMonth.set(key, (rejectedByMonth.get(key) ?? 0) + 1);
+      if ((u.status as any) === 'ativo')
+        approvedByMonth.set(key, (approvedByMonth.get(key) ?? 0) + 1);
+      else if ((u.status as any) === 'rejeitado')
+        rejectedByMonth.set(key, (rejectedByMonth.get(key) ?? 0) + 1);
       else pendingByMonth.set(key, (pendingByMonth.get(key) ?? 0) + 1);
     }
 
-    const newSignupsSeries = categories.map((c) => newSignupsByMonth.get(c) ?? 0);
+    const newSignupsSeries = categories.map(
+      (c) => newSignupsByMonth.get(c) ?? 0,
+    );
     const approvedSeries = categories.map((c) => approvedByMonth.get(c) ?? 0);
     const pendingSeries = categories.map((c) => pendingByMonth.get(c) ?? 0);
     const rejectedSeries = categories.map((c) => rejectedByMonth.get(c) ?? 0);
@@ -242,15 +264,20 @@ export class AdminService {
     return this.prisma.usuario.findMany({
       where: { status: 'pendente_aprovacao' as any },
       include: { propriedades: { include: { propriedade: true } } },
-      orderBy: { criadoEm: 'desc' }
+      orderBy: { criadoEm: 'desc' },
     });
   }
 
   async approveUser(userId: string, dto: ApproveUserDto) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
-    const trialDays = typeof dto.trialDays === 'number' && Number.isFinite(dto.trialDays) ? dto.trialDays : 0;
+    const trialDays =
+      typeof dto.trialDays === 'number' && Number.isFinite(dto.trialDays)
+        ? dto.trialDays
+        : 0;
     const trialPlan = (dto.trialPlan ?? '').toLowerCase();
 
     const catalog = this.getPlansCatalog();
@@ -305,14 +332,16 @@ export class AdminService {
       'Sistema',
       'USER_APPROVED',
       `Usuário ${user.email} aprovado com status ${updated.status}`,
-      '127.0.0.1' // TODO: Get actual IP
+      '127.0.0.1', // TODO: Get actual IP
     );
 
     return updated;
   }
 
   async liberarAcessoPosPagamento(userId: string) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const updated = await this.prisma.usuario.update({
@@ -328,13 +357,16 @@ export class AdminService {
       'Sistema',
       'PAYMENT_RELEASE',
       `Acesso liberado após pagamento para ${user.email}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;
   }
 
-  async impersonateUser(adminUser: { id: string; cpfCnpj?: string }, userId: string) {
+  async impersonateUser(
+    adminUser: { id: string; cpfCnpj?: string },
+    userId: string,
+  ) {
     const target = await (this.prisma as any).usuario.findUnique({
       where: { id: userId },
     });
@@ -357,14 +389,19 @@ export class AdminService {
       'SuperAdmin',
       'ADMIN_IMPERSONATE',
       `Impersonate iniciado para ${target.email}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return { token };
   }
 
-  async updateUserStatus(userId: string, dto: { status: string; reason?: string }) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+  async updateUserStatus(
+    userId: string,
+    dto: { status: string; reason?: string },
+  ) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const nextStatus = (dto?.status as any) ?? user.status;
@@ -381,14 +418,16 @@ export class AdminService {
       'Sistema',
       'USER_STATUS_UPDATED',
       `Status do usuário ${user.email} alterado para ${updated.status}${dto?.reason ? `: ${dto.reason}` : ''}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;
   }
 
   async resetUserPassword(userId: string) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const tempPassword = Math.random().toString(36).slice(-8);
@@ -404,14 +443,19 @@ export class AdminService {
       'Sistema',
       'USER_PASSWORD_RESET',
       `Senha resetada para ${user.email}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return { tempPassword };
   }
 
-  async updateUser(userId: string, dto: { cpfCnpj?: string; telefone?: string | null; email?: string }) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+  async updateUser(
+    userId: string,
+    dto: { cpfCnpj?: string; telefone?: string | null; email?: string },
+  ) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const updated = await this.prisma.usuario.update({
@@ -428,14 +472,16 @@ export class AdminService {
       'Sistema',
       'USER_UPDATED',
       `Dados do usuário ${user.email} atualizados`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;
   }
 
   async updateUserPlan(userId: string, dto: { plan: string }) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const requested = String(dto?.plan ?? '').toLowerCase();
@@ -464,14 +510,16 @@ export class AdminService {
       'Sistema',
       'USER_PLAN_UPDATED',
       `Plano do usuário ${user.email} alterado para ${requested}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;
   }
 
   async rejectUser(userId: string, dto?: { reason?: string }) {
-    const user = await this.prisma.usuario.findUnique({ where: { id: userId } });
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+    });
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
     const updated = await this.prisma.usuario.update({
@@ -486,46 +534,53 @@ export class AdminService {
       'Sistema',
       'USER_REJECTED',
       `Usuário ${user.email} rejeitado${dto?.reason ? `: ${dto.reason}` : ''}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;
   }
 
   listTenants() {
-    return this.prisma.usuario.findMany({
-      where: { papel: { in: ['proprietario', 'operador'] as any } },
-      include: {
-        propriedades: { include: { propriedade: true } },
-        assinaturas: {
-          orderBy: { inicioEm: 'desc' },
-          take: 1,
+    return this.prisma.usuario
+      .findMany({
+        where: { papel: { in: ['proprietario', 'operador'] as any } },
+        include: {
+          propriedades: { include: { propriedade: true } },
+          assinaturas: {
+            orderBy: { inicioEm: 'desc' },
+            take: 1,
+          },
         },
-      },
-      orderBy: { criadoEm: 'desc' },
-    }).then((users) =>
-      users.map((u: any) => {
-        const properties = (u.propriedades ?? []).map((up: any) => up.propriedade).filter(Boolean);
-        const propertyCount = properties.length;
-        const cattleCount = properties.reduce((acc: number, p: any) => acc + (Number(p?.quantidadeGado) || 0), 0);
-        const currentPlan = u.assinaturas?.[0]?.plano ?? null;
-
-        return {
-          ...u,
-          properties,
-          propertyCount,
-          cattleCount,
-          currentPlan,
-        };
+        orderBy: { criadoEm: 'desc' },
       })
-    );
+      .then((users) =>
+        users.map((u: any) => {
+          const properties = (u.propriedades ?? [])
+            .map((up: any) => up.propriedade)
+            .filter(Boolean);
+          const propertyCount = properties.length;
+          const cattleCount = properties.reduce(
+            (acc: number, p: any) => acc + (Number(p?.quantidadeGado) || 0),
+            0,
+          );
+          const currentPlan = u.assinaturas?.[0]?.plano ?? null;
+
+          return {
+            ...u,
+            properties,
+            propertyCount,
+            cattleCount,
+            currentPlan,
+          };
+        }),
+      );
   }
 
   // --- Regulations ---
 
   async listRegulations() {
     return this.prisma.regulamentacaoEstadual.findMany({
-      orderBy: { nomeEstado: 'asc' }
+      orderBy: { nomeEstado: 'asc' },
     });
   }
 
@@ -533,23 +588,29 @@ export class AdminService {
     return (this.prisma as any).regulamentacaoEstadual.create({
       data: {
         ...dto,
-        atualizadoPor: adminName
-      }
+        atualizadoPor: adminName,
+      },
     });
   }
 
-  async updateRegulation(id: string, dto: UpdateRegulationDto, adminName: string) {
+  async updateRegulation(
+    id: string,
+    dto: UpdateRegulationDto,
+    adminName: string,
+  ) {
     return (this.prisma as any).regulamentacaoEstadual.update({
       where: { id },
       data: {
         ...dto,
-        atualizadoPor: adminName
-      }
+        atualizadoPor: adminName,
+      },
     });
   }
 
   async deleteRegulation(id: string) {
-    return (this.prisma as any).regulamentacaoEstadual.delete({ where: { id } });
+    return (this.prisma as any).regulamentacaoEstadual.delete({
+      where: { id },
+    });
   }
 
   // --- Financial ---
@@ -564,15 +625,19 @@ export class AdminService {
       paymentMethod: row.metodoPagamento,
       paymentFrequency: row.frequenciaPagamento,
       status: row.status,
-      dueDate: row.vencimentoEm?.toISOString ? row.vencimentoEm.toISOString() : row.vencimentoEm,
+      dueDate: row.vencimentoEm?.toISOString
+        ? row.vencimentoEm.toISOString()
+        : row.vencimentoEm,
       paidAt: row.pagoEm?.toISOString ? row.pagoEm.toISOString() : row.pagoEm,
-      createdAt: row.criadoEm?.toISOString ? row.criadoEm.toISOString() : row.criadoEm,
+      createdAt: row.criadoEm?.toISOString
+        ? row.criadoEm.toISOString()
+        : row.criadoEm,
     };
   }
 
   async listPayments() {
     const rows = await (this.prisma as any).pagamentoFinanceiro.findMany({
-      orderBy: { criadoEm: 'desc' }
+      orderBy: { criadoEm: 'desc' },
     });
 
     return rows.map((r: any) => this.mapPaymentToDto(r));
@@ -590,14 +655,16 @@ export class AdminService {
         status: dto.status,
         vencimentoEm: new Date(dto.dueDate),
         pagoEm: dto.paidAt ? new Date(dto.paidAt) : null,
-      }
+      },
     });
 
     return this.mapPaymentToDto(created);
   }
 
   async updatePayment(paymentId: string, dto: UpdatePaymentDto) {
-    const existing = await (this.prisma as any).pagamentoFinanceiro.findUnique({ where: { id: paymentId } });
+    const existing = await (this.prisma as any).pagamentoFinanceiro.findUnique({
+      where: { id: paymentId },
+    });
     if (!existing) throw new NotFoundException('Pagamento não encontrado');
 
     const updated = await (this.prisma as any).pagamentoFinanceiro.update({
@@ -605,11 +672,19 @@ export class AdminService {
       data: {
         ...(dto.plan !== undefined ? { plano: dto.plan } : {}),
         ...(dto.amount !== undefined ? { valor: dto.amount } : {}),
-        ...(dto.paymentMethod !== undefined ? { metodoPagamento: dto.paymentMethod } : {}),
-        ...(dto.paymentFrequency !== undefined ? { frequenciaPagamento: dto.paymentFrequency } : {}),
+        ...(dto.paymentMethod !== undefined
+          ? { metodoPagamento: dto.paymentMethod }
+          : {}),
+        ...(dto.paymentFrequency !== undefined
+          ? { frequenciaPagamento: dto.paymentFrequency }
+          : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.dueDate !== undefined ? { vencimentoEm: new Date(dto.dueDate) } : {}),
-        ...(dto.paidAt !== undefined ? { pagoEm: dto.paidAt ? new Date(dto.paidAt) : null } : {}),
+        ...(dto.dueDate !== undefined
+          ? { vencimentoEm: new Date(dto.dueDate) }
+          : {}),
+        ...(dto.paidAt !== undefined
+          ? { pagoEm: dto.paidAt ? new Date(dto.paidAt) : null }
+          : {}),
       },
     });
 
@@ -672,6 +747,8 @@ export class AdminService {
     name: string;
     price: number;
     maxCattle?: number | null;
+    additionalChargeEnabled?: boolean;
+    additionalChargePerHead?: number;
     features?: string[];
     active?: boolean;
   }) {
@@ -680,25 +757,38 @@ export class AdminService {
         nome: dto.name,
         preco: dto.price,
         maxCabecas: dto.maxCattle ?? null,
+        cobrancaAdicionalAtiva: dto.additionalChargeEnabled ?? false,
+        valorCobrancaAdicional: dto.additionalChargePerHead ?? 0.1,
         recursos: dto.features ?? [],
         ativo: dto.active ?? true,
       },
     });
   }
 
-  async updatePlan(id: string, dto: {
-    name?: string;
-    price?: number;
-    maxCattle?: number | null;
-    features?: string[];
-    active?: boolean;
-  }) {
+  async updatePlan(
+    id: string,
+    dto: {
+      name?: string;
+      price?: number;
+      maxCattle?: number | null;
+      additionalChargeEnabled?: boolean;
+      additionalChargePerHead?: number;
+      features?: string[];
+      active?: boolean;
+    },
+  ) {
     return (this.prisma as any).planoSaas.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { nome: dto.name } : {}),
         ...(dto.price !== undefined ? { preco: dto.price } : {}),
         ...(dto.maxCattle !== undefined ? { maxCabecas: dto.maxCattle } : {}),
+        ...(dto.additionalChargeEnabled !== undefined
+          ? { cobrancaAdicionalAtiva: dto.additionalChargeEnabled }
+          : {}),
+        ...(dto.additionalChargePerHead !== undefined
+          ? { valorCobrancaAdicional: dto.additionalChargePerHead }
+          : {}),
         ...(dto.features !== undefined ? { recursos: dto.features } : {}),
         ...(dto.active !== undefined ? { ativo: dto.active } : {}),
       },
@@ -807,19 +897,32 @@ export class AdminService {
         ...(dto.type !== undefined ? { tipo: dto.type } : {}),
         ...(dto.title !== undefined ? { titulo: dto.title } : {}),
         ...(dto.message !== undefined ? { mensagem: dto.message } : {}),
-        ...(dto.sentAt !== undefined ? { enviadoEm: new Date(dto.sentAt) } : {}),
-        ...(dto.recipients !== undefined ? { destinatarios: dto.recipients } : {}),
+        ...(dto.sentAt !== undefined
+          ? { enviadoEm: new Date(dto.sentAt) }
+          : {}),
+        ...(dto.recipients !== undefined
+          ? { destinatarios: dto.recipients }
+          : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.targetAudience !== undefined ? { publicoAlvo: dto.targetAudience } : {}),
+        ...(dto.targetAudience !== undefined
+          ? { publicoAlvo: dto.targetAudience }
+          : {}),
         ...(dto.color !== undefined ? { cor: dto.color } : {}),
-        ...(dto.startDate !== undefined ? { inicioEm: dto.startDate ? new Date(dto.startDate) : null } : {}),
-        ...(dto.endDate !== undefined ? { fimEm: dto.endDate ? new Date(dto.endDate) : null } : {}),
+        ...(dto.startDate !== undefined
+          ? { inicioEm: dto.startDate ? new Date(dto.startDate) : null }
+          : {}),
+        ...(dto.endDate !== undefined
+          ? { fimEm: dto.endDate ? new Date(dto.endDate) : null }
+          : {}),
       },
     });
   }
 
   async getDashboardActivity(limit?: number) {
-    const take = limit && Number.isFinite(limit) ? Math.max(1, Math.min(50, Math.trunc(limit))) : 10;
+    const take =
+      limit && Number.isFinite(limit)
+        ? Math.max(1, Math.min(50, Math.trunc(limit)))
+        : 10;
 
     const logs = await (this.prisma as any).logAuditoria.findMany({
       orderBy: { dataHora: 'desc' },
@@ -841,19 +944,25 @@ export class AdminService {
     return (this.prisma as any).logAuditoria.findMany({
       where: userId ? { usuarioId: userId } : undefined,
       orderBy: { dataHora: 'desc' },
-      take: 100
+      take: 100,
     });
   }
 
-  async createAuditLog(userId: string, userName: string, action: string, details: string, ip: string) {
+  async createAuditLog(
+    userId: string,
+    userName: string,
+    action: string,
+    details: string,
+    ip: string,
+  ) {
     return (this.prisma as any).logAuditoria.create({
       data: {
         usuarioId: userId,
         usuarioNome: userName,
         acao: action,
         detalhes: details,
-        ip: ip
-      }
+        ip: ip,
+      },
     });
   }
 
@@ -875,7 +984,9 @@ export class AdminService {
   }
 
   async approveRequest(id: string, dto: { reason?: string }) {
-    const current = await this.prisma.solicitacaoPendente.findUnique({ where: { id } });
+    const current = await this.prisma.solicitacaoPendente.findUnique({
+      where: { id },
+    });
     if (!current) throw new NotFoundException('Solicitação não encontrada');
 
     const requestType = String(current.tipo ?? '').toLowerCase();
@@ -884,15 +995,28 @@ export class AdminService {
       const cpfCnpj = String(current.cpfCnpj ?? '').replace(/\D/g, '');
       const user = await this.prisma.usuario.findFirst({
         where: {
-          OR: [{ cpfCnpj }, { email: String(current.email ?? '').trim().toLowerCase() }],
+          OR: [
+            { cpfCnpj },
+            {
+              email: String(current.email ?? '')
+                .trim()
+                .toLowerCase(),
+            },
+          ],
         },
       });
 
       if (user) {
         const anyDto = dto as any;
         const trialDays =
-          typeof anyDto?.trialDays === 'number' && Number.isFinite(anyDto.trialDays) ? anyDto.trialDays : 0;
-        const trialPlan = typeof anyDto?.trialPlan === 'string' ? String(anyDto.trialPlan).toLowerCase() : '';
+          typeof anyDto?.trialDays === 'number' &&
+          Number.isFinite(anyDto.trialDays)
+            ? anyDto.trialDays
+            : 0;
+        const trialPlan =
+          typeof anyDto?.trialPlan === 'string'
+            ? String(anyDto.trialPlan).toLowerCase()
+            : '';
 
         await this.prisma.usuario.update({
           where: { id: user.id },
@@ -1001,14 +1125,16 @@ export class AdminService {
       'Sistema',
       'approve',
       `Solicitação ${id} aprovada${dto?.reason ? `: ${dto.reason}` : ''}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;
   }
 
   async rejectRequest(id: string, dto: { reason: string }) {
-    const current = await this.prisma.solicitacaoPendente.findUnique({ where: { id } });
+    const current = await this.prisma.solicitacaoPendente.findUnique({
+      where: { id },
+    });
     if (!current) throw new NotFoundException('Solicitação não encontrada');
 
     const requestType = String(current.tipo ?? '').toLowerCase();
@@ -1016,7 +1142,14 @@ export class AdminService {
       const cpfCnpj = String(current.cpfCnpj ?? '').replace(/\D/g, '');
       const user = await this.prisma.usuario.findFirst({
         where: {
-          OR: [{ cpfCnpj }, { email: String(current.email ?? '').trim().toLowerCase() }],
+          OR: [
+            { cpfCnpj },
+            {
+              email: String(current.email ?? '')
+                .trim()
+                .toLowerCase(),
+            },
+          ],
         },
       });
       if (user) {
@@ -1031,7 +1164,10 @@ export class AdminService {
 
     const updated = await this.prisma.solicitacaoPendente.update({
       where: { id },
-      data: { status: 'rejected', observacoes: dto?.reason ?? current.observacoes },
+      data: {
+        status: 'rejected',
+        observacoes: dto?.reason ?? current.observacoes,
+      },
     });
 
     await this.createAuditLog(
@@ -1039,7 +1175,7 @@ export class AdminService {
       'Sistema',
       'reject',
       `Solicitação ${id} rejeitada${dto?.reason ? `: ${dto.reason}` : ''}`,
-      '127.0.0.1'
+      '127.0.0.1',
     );
 
     return updated;

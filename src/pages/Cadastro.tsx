@@ -152,15 +152,15 @@ export default function Cadastro() {
                 </div>
                 <CardTitle className="mt-4 text-2xl font-display text-foreground">Cadastro enviado</CardTitle>
                 <CardDescription>
-                  Seu cadastro foi recebido e está em análise.
+                  Seu cadastro foi recebido com sucesso.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                  Aguardando aprovação do Super Admin para liberar seu acesso.
+                  Sua conta foi criada com sucesso.
                 </div>
                 <div className="rounded-xl border border-muted bg-white px-4 py-3 text-sm text-muted-foreground">
-                  Assim que for aprovado, você poderá entrar com seu CPF/CNPJ e senha.
+                  Agora você já pode entrar com seu CPF/CNPJ e senha.
                 </div>
                 <div className="flex flex-col gap-3 pt-2">
                   <Button
@@ -211,7 +211,7 @@ export default function Cadastro() {
             />
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-white/60">AgroSaldo</p>
-              <p className="text-lg font-semibold">Curadoria oficial de acesso</p>
+              <p className="text-lg font-semibold">Crie sua conta</p>
             </div>
           </div>
 
@@ -240,11 +240,11 @@ export default function Cadastro() {
             </Badge>
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-display leading-tight">
-                Abra sua conta AgroSaldo e tenha uma rotina digital que dá orgulho todos os dias.
+                Crie sua conta e organize o saldo do rebanho antes da correria da declaração.
               </h1>
               <p className="text-lg text-white/70 max-w-2xl">
-                Selecionamos cuidadosamente cada produtor para manter a comunidade protegida e colaborativa.
-                Conte com um visual aconchegante, animações suaves e suporte humano para começar da forma certa.
+                O AgroSaldo foi feito para você registrar a rotina (nascimentos, mortes, vendas e vacinas) e ter o histórico pronto
+                quando precisar informar saldo e sanidade para a Defesa Agropecuária — evitando divergências que travam a GTA.
               </p>
             </div>
 
@@ -258,17 +258,17 @@ export default function Cadastro() {
                 {
                   icon: ShieldCheck,
                   title: 'Segurança auditada',
-                  description: 'Criptografia ponta a ponta e revisão manual do time.',
+                  description: 'Seus dados ficam protegidos e sua rotina fica registrada.',
                 },
                 {
                   icon: Globe2,
                   title: 'Time especialista',
-                  description: 'Atendimento com veterinários e consultores do campo.',
+                  description: 'Ajuda humana quando você precisar começar ou ajustar o processo.',
                 },
                 {
                   icon: UserPlus,
                   title: 'Convites exclusivos',
-                  description: 'Traga equipes e consultorias parceiras com 1 clique.',
+                  description: 'Traga sua equipe para registrar com você, sem virar bagunça.',
                 },
               ].map(({ icon: Icon, title, description }) => (
                 <div
@@ -291,8 +291,8 @@ export default function Cadastro() {
               <ol className="space-y-3">
                 {[
                   'Preencha seus dados com o máximo de detalhes.',
-                  'Nossa curadoria valida CEP, CPF/CNPJ e contexto do rebanho.',
-                  'Você recebe o acesso e um especialista acompanha suas primeiras semanas.',
+                  'Acesse o sistema e cadastre/importe seu rebanho e propriedades.',
+                  'Registre a rotina e consulte o histórico na hora de declarar.',
                 ].map((item, index) => (
                   <li key={item} className="flex items-start gap-3 text-white/80">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-sm font-semibold">

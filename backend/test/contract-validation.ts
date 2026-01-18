@@ -15,7 +15,9 @@ export const LoginResponseSchema = z.object({
     email: z.string().email(),
     cpfCnpj: z.string(),
     telefone: z.string().nullable().optional(),
-    papel: z.enum(['super_admin', 'proprietario', 'gerente', 'operador']).optional(),
+    papel: z
+      .enum(['super_admin', 'proprietario', 'gerente', 'operador'])
+      .optional(),
     status: z.enum(['ativo', 'pendente_aprovacao', 'suspenso']).optional(),
     criadoEm: z.string().optional(),
     atualizadoEm: z.string().optional(),
@@ -29,7 +31,9 @@ export const UserResponseSchema = z.object({
   email: z.string().email(),
   cpfCnpj: z.string(),
   telefone: z.string().nullable().optional(),
-  papel: z.enum(['super_admin', 'proprietario', 'gerente', 'operador']).optional(),
+  papel: z
+    .enum(['super_admin', 'proprietario', 'gerente', 'operador'])
+    .optional(),
   status: z.enum(['ativo', 'pendente_aprovacao', 'suspenso']).optional(),
   criadoEm: z.string().optional(),
   atualizadoEm: z.string().optional(),
@@ -48,7 +52,9 @@ export const PropertyResponseSchema = z.object({
   areaNatural: z.number().optional(),
   quantidadeGado: z.number().optional(),
   status: z.enum(['ativa', 'pendente', 'suspensa']).optional(),
-  plano: z.enum(['porteira', 'piquete', 'retiro', 'estancia', 'barao']).optional(),
+  plano: z
+    .enum(['porteira', 'piquete', 'retiro', 'estancia', 'barao'])
+    .optional(),
   criadoEm: z.string().optional(),
   atualizadoEm: z.string().optional(),
 });

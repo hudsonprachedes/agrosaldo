@@ -45,6 +45,8 @@ type Plan = {
   name: string;
   price: number;
   maxCattle: number | typeof Infinity;
+  additionalChargeEnabled?: boolean;
+  additionalChargePerHead?: number;
   features?: string[];
   active?: boolean;
   description?: string;
@@ -54,6 +56,8 @@ const planSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
   price: z.number().min(0, 'Preço deve ser positivo'),
   maxCattle: z.number().min(1, 'Limite mínimo: 1').or(z.literal(Infinity)),
+  additionalChargeEnabled: z.boolean(),
+  additionalChargePerHead: z.number().min(0, 'Valor deve ser positivo'),
   features: z.string(),
   active: z.boolean(),
 });
@@ -81,6 +85,8 @@ export default function AdminPlanos() {
       name: '',
       price: 0,
       maxCattle: 500,
+      additionalChargeEnabled: false,
+      additionalChargePerHead: 0.1,
       features: '',
       active: true,
     },
@@ -103,9 +109,11 @@ export default function AdminPlanos() {
           const price = p.price ?? p.preco ?? 0;
           const maxCattleRaw = p.maxCattle ?? p.maxCabecas;
           const maxCattle = maxCattleRaw === null || maxCattleRaw === undefined ? Infinity : maxCattleRaw;
+          const additionalChargeEnabled = p.additionalChargeEnabled ?? p.cobrancaAdicionalAtiva ?? false;
+          const additionalChargePerHead = p.additionalChargePerHead ?? p.valorCobrancaAdicional ?? 0.1;
           const features = p.features ?? p.recursos ?? [];
           const active = p.active ?? p.ativo ?? true;
-          return { id: p.id, name, price, maxCattle, features, active };
+          return { id: p.id, name, price, maxCattle, additionalChargeEnabled, additionalChargePerHead, features, active };
         });
         setPlansData(mapped.sort((a, b) => a.price - b.price));
       } catch (error) {
@@ -124,6 +132,8 @@ export default function AdminPlanos() {
       name: '',
       price: 0,
       maxCattle: 500,
+      additionalChargeEnabled: false,
+      additionalChargePerHead: 0.1,
       features: '',
       active: true,
     });
@@ -136,6 +146,8 @@ export default function AdminPlanos() {
       name: plan.name,
       price: plan.price,
       maxCattle: plan.maxCattle === Infinity ? 999999 : plan.maxCattle,
+      additionalChargeEnabled: plan.additionalChargeEnabled ?? false,
+      additionalChargePerHead: plan.additionalChargePerHead ?? 0.1,
       features: plan.features?.join('\n') || '',
       active: plan.active !== false,
     });
@@ -150,6 +162,8 @@ export default function AdminPlanos() {
           name: data.name,
           price: data.price,
           maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
+          additionalChargeEnabled: data.additionalChargeEnabled,
+          additionalChargePerHead: data.additionalChargePerHead,
           features: data.features.split('\n').map(f => f.trim()).filter(f => f),
           active: data.active,
         });
@@ -162,6 +176,8 @@ export default function AdminPlanos() {
             (updated.maxCattle ?? updated.maxCabecas) === null || (updated.maxCattle ?? updated.maxCabecas) === undefined
               ? Infinity
               : (updated.maxCattle ?? updated.maxCabecas) as number,
+          additionalChargeEnabled: updated.additionalChargeEnabled ?? updated.cobrancaAdicionalAtiva ?? data.additionalChargeEnabled,
+          additionalChargePerHead: updated.additionalChargePerHead ?? updated.valorCobrancaAdicional ?? data.additionalChargePerHead,
           features: updated.features ?? updated.recursos ?? data.features.split('\n').map(f => f.trim()).filter(f => f),
           active: updated.active ?? updated.ativo ?? data.active,
         };
@@ -173,6 +189,8 @@ export default function AdminPlanos() {
           name: data.name,
           price: data.price,
           maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
+          additionalChargeEnabled: data.additionalChargeEnabled,
+          additionalChargePerHead: data.additionalChargePerHead,
           features: data.features.split('\n').map(f => f.trim()).filter(f => f),
           active: data.active,
         });
@@ -185,6 +203,8 @@ export default function AdminPlanos() {
             (created.maxCattle ?? created.maxCabecas) === null || (created.maxCattle ?? created.maxCabecas) === undefined
               ? Infinity
               : (created.maxCattle ?? created.maxCabecas) as number,
+          additionalChargeEnabled: created.additionalChargeEnabled ?? created.cobrancaAdicionalAtiva ?? data.additionalChargeEnabled,
+          additionalChargePerHead: created.additionalChargePerHead ?? created.valorCobrancaAdicional ?? data.additionalChargePerHead,
           features: created.features ?? created.recursos ?? data.features.split('\n').map(f => f.trim()).filter(f => f),
           active: created.active ?? created.ativo ?? data.active,
         };
@@ -278,6 +298,15 @@ export default function AdminPlanos() {
                 </div>
                 <div className="text-sm text-muted-foreground">por mês</div>
               </div>
+
+              {plan.additionalChargeEnabled && (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-sm font-medium text-foreground">Cobrança adicional</div>
+                  <div className="text-sm text-muted-foreground">
+                    R$ {(plan.additionalChargePerHead ?? 0.1).toFixed(2).replace('.', ',')} por cabeça/mês
+                  </div>
+                </div>
+              )}
 
               {plan.features && plan.features.length > 0 && (
                 <div className="space-y-2 pt-4 border-t">
@@ -397,6 +426,43 @@ export default function AdminPlanos() {
                 rows={6}
                 {...register('features')}
               />
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="additionalChargeEnabled"
+                  checked={watch('additionalChargeEnabled')}
+                  onCheckedChange={(checked) => setValue('additionalChargeEnabled', checked)}
+                />
+                <Label htmlFor="additionalChargeEnabled" className="cursor-pointer">
+                  Cobrança adicional por cabeça/mês
+                </Label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="additionalChargePerHead">Valor (R$)</Label>
+                  <Input
+                    id="additionalChargePerHead"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.10"
+                    disabled={!watch('additionalChargeEnabled')}
+                    {...register('additionalChargePerHead', { valueAsNumber: true })}
+                  />
+                  {errors.additionalChargePerHead && (
+                    <p className="text-sm text-destructive">{errors.additionalChargePerHead.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Padrão sugerido</Label>
+                  <div className="h-10 rounded-md border bg-muted/30 px-3 flex items-center text-sm text-muted-foreground">
+                    R$ 0,10 por cabeça/mês
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

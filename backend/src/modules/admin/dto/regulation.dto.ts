@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsNumber, IsArray, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsArray,
+  IsEnum,
+  IsBoolean,
+} from 'class-validator';
 
 export class CreateRegulationDto {
   @IsString()

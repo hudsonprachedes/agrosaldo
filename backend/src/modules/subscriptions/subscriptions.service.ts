@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -13,9 +17,9 @@ export class SubscriptionsService {
 
   private getRequiredPlanByTotalCattle(totalCattle: number) {
     if (totalCattle <= 500) return 'porteira';
-    if (totalCattle <= 1500) return 'piquete';
-    if (totalCattle <= 3000) return 'retiro';
-    if (totalCattle <= 6000) return 'estancia';
+    if (totalCattle <= 1000) return 'piquete';
+    if (totalCattle <= 2000) return 'retiro';
+    if (totalCattle <= 3000) return 'estancia';
     return 'barao';
   }
 
@@ -97,7 +101,9 @@ export class SubscriptionsService {
     const requestedRank = this.getPlanRank(requested);
 
     if (requestedRank < requiredRank) {
-      throw new BadRequestException('Plano escolhido não cobre o total de cabeças atual');
+      throw new BadRequestException(
+        'Plano escolhido não cobre o total de cabeças atual',
+      );
     }
 
     if (!latest) {
@@ -115,7 +121,9 @@ export class SubscriptionsService {
 
     const currentRank = this.getPlanRank(latest.plano as any);
     if (requestedRank < currentRank) {
-      throw new BadRequestException('Downgrade não é automático. Solicite pelo suporte');
+      throw new BadRequestException(
+        'Downgrade não é automático. Solicite pelo suporte',
+      );
     }
 
     if (requestedRank === currentRank) {
@@ -134,11 +142,11 @@ export class SubscriptionsService {
 
   getPlansCatalog() {
     return [
-      { id: 'porteira', name: 'Porteira', price: 29.9, maxCattle: 500 },
-      { id: 'piquete', name: 'Piquete', price: 69.9, maxCattle: 1500 },
-      { id: 'retiro', name: 'Retiro', price: 129.9, maxCattle: 3000 },
-      { id: 'estancia', name: 'Estância', price: 249.9, maxCattle: 6000 },
-      { id: 'barao', name: 'Barão', price: 399.9, maxCattle: -1 },
+      { id: 'porteira', name: 'Porteira', price: 49.9, maxCattle: 500 },
+      { id: 'piquete', name: 'Piquete', price: 99.9, maxCattle: 1000 },
+      { id: 'retiro', name: 'Retiro', price: 149.9, maxCattle: 2000 },
+      { id: 'estancia', name: 'Estância', price: 249.9, maxCattle: 3000 },
+      { id: 'barao', name: 'Barão', price: 499.9, maxCattle: -1 },
     ];
   }
 }

@@ -57,7 +57,6 @@ export default function Login() {
 
       if (success && loggedUser) {
         toast.success('Login realizado com sucesso!');
-        // Super admin vai direto para /admin sem precisar selecionar propriedade
         if (loggedUser.role === 'super_admin') {
           navigate('/admin');
         } else {
@@ -139,11 +138,11 @@ export default function Login() {
             </Badge>
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-display leading-tight">
-                Acesse o AgroSaldo com uma atmosfera que inspira bons resultados todos os dias.
+                Entre no AgroSaldo e deixe a rotina do rebanho organizada o ano todo.
               </h1>
               <p className="text-lg text-white/70 max-w-2xl">
-                Um portal com textura natural, animações sutis e informação no ponto certo para você começar
-                a rotina com orgulho de cuidar do seu rebanho digital.
+                Registre nascimentos, mortes, vendas e vacinas na rotina. Na hora de informar saldo e sanidade para a
+                Defesa Agropecuária, você consulta e declara com mais segurança — evitando divergências que podem travar a GTA.
               </p>
             </div>
 
@@ -152,12 +151,12 @@ export default function Login() {
                 {
                   icon: Beef,
                   title: 'Rebanho no comando',
-                  description: 'Visualize lotes, pesos e sanidade em segundos.',
+                  description: 'Acompanhe saldo e histórico com clareza.',
                 },
                 {
                   icon: LineChart,
                   title: 'Indicadores vivos',
-                  description: 'Alertas inteligentes sobre custos, margem e abate.',
+                  description: 'Evolução por faixa etária e alertas práticos.',
                 },
                 {
                   icon: ShieldCheck,
@@ -167,7 +166,7 @@ export default function Login() {
                 {
                   icon: Leaf,
                   title: 'Operação sustentável',
-                  description: 'Gestão ambiental e rastreabilidade integrada.',
+                  description: 'Rotina simples no campo e confiança na declaração.',
                 },
               ].map(({ icon: Icon, title, description }) => (
                 <div
@@ -190,9 +189,9 @@ export default function Login() {
                 <Sparkles className="h-5 w-5 text-amber-200" />
               </div>
               <div>
-                <p className="text-lg font-semibold">+2.500 propriedades confiam no AgroSaldo</p>
+                <p className="text-lg font-semibold">Chega de correr atrás de números na hora de declarar</p>
                 <p className="text-sm text-white/70">
-                  Todos os acessos passam por aprovação para manter a comunidade segura.
+                  Registre na rotina e tenha o histórico para consultar quando precisar.
                 </p>
               </div>
             </div>

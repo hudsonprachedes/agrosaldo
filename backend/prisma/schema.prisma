@@ -96,6 +96,7 @@ model Usuario {
   propriedades      UsuarioPropriedade[]
   preferencias      PreferenciasUsuario[]
   assinaturas       Assinatura[]
+  notificacoes      NotificacaoUsuario[]
 
   @@map("User")
 }
@@ -293,6 +294,8 @@ model PlanoSaas {
   nome      String   @unique @map("name")
   preco     Float    @map("price")
   maxCabecas Int?    @map("maxCattle")
+  cobrancaAdicionalAtiva Boolean @default(false) @map("additionalChargeEnabled")
+  valorCobrancaAdicional Float   @default(0.10) @map("additionalChargePerHead")
   recursos  String[] @default([]) @map("features")
   ativo     Boolean  @default(true) @map("active")
   criadoEm  DateTime @default(now()) @map("createdAt")
@@ -374,4 +377,20 @@ model NotificacaoUsuario {
   @@unique([usuarioId, notificacaoId])
   @@index([usuarioId])
   @@map("UserNotification")
+}
+
+model ValidacaoDocumentoPublico {
+  id            String      @id @default(uuid()) @map("id")
+  tokenHash     String      @unique @map("tokenHash")
+  propriedadeId String      @map("propertyId")
+  tipoDocumento String      @map("documentType")
+  numeroDocumento String    @map("documentNumber")
+  expiraEm      DateTime    @map("expiresAt")
+  revogadoEm    DateTime?   @map("revokedAt")
+  criadoEm      DateTime    @default(now()) @map("createdAt")
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@index([propriedadeId])
+  @@index([expiraEm])
+  @@map("PublicDocumentValidation")
 }

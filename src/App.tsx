@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,44 +6,46 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import GlobalLoading from "@/components/GlobalLoading";
 
 // Pages
-import LandingPage from "./pages/LandingPage";
-import Login from "./pages/Login";
-import PropertySelection from "./pages/PropertySelection";
-import Onboarding from "./pages/Onboarding";
-import QuestionarioEpidemiologico from "./pages/QuestionarioEpidemiologico";
-import QuestionarioEpidemiologicoHistorico from "./pages/QuestionarioEpidemiologicoHistorico";
-import QuestionarioEpidemiologicoDetalhe from "./pages/QuestionarioEpidemiologicoDetalhe";
-import Dashboard from "./pages/Dashboard";
-import MobileHome from "./pages/MobileHome";
-import Rebanho from "./pages/Rebanho";
-import Extrato from "./pages/Extrato";
-import Lancamentos from "./pages/Lancamentos";
-import LaunchForm from "./pages/LaunchForm";
-import Analytics from "./pages/Analytics";
-import Financeiro from "./pages/Financeiro";
-import MinhaFazenda from "./pages/MinhaFazenda";
-import Blog from "./pages/Blog";
-import Contact from "./pages/Contact";
-import NotFound from "./pages/NotFound";
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Login = lazy(() => import("./pages/Login"));
+const PropertySelection = lazy(() => import("./pages/PropertySelection"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const QuestionarioEpidemiologico = lazy(() => import("./pages/QuestionarioEpidemiologico"));
+const QuestionarioEpidemiologicoHistorico = lazy(() => import("./pages/QuestionarioEpidemiologicoHistorico"));
+const QuestionarioEpidemiologicoDetalhe = lazy(() => import("./pages/QuestionarioEpidemiologicoDetalhe"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const MobileHome = lazy(() => import("./pages/MobileHome"));
+const Rebanho = lazy(() => import("./pages/Rebanho"));
+const Extrato = lazy(() => import("./pages/Extrato"));
+const Lancamentos = lazy(() => import("./pages/Lancamentos"));
+const LaunchForm = lazy(() => import("./pages/LaunchForm"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Financeiro = lazy(() => import("./pages/Financeiro"));
+const MinhaFazenda = lazy(() => import("./pages/MinhaFazenda"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Contact = lazy(() => import("./pages/Contact"));
+const PublicValidarDocumento = lazy(() => import("./pages/PublicValidarDocumento"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Admin Pages
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminSolicitacoes from "./pages/admin/AdminSolicitacoes";
-import AdminClientes from "./pages/admin/AdminClientes";
-import AdminIndicacao from "./pages/admin/AdminIndicacao";
-import AdminPlanos from "./pages/admin/AdminPlanos";
-import AdminFinanceiro from "./pages/admin/AdminFinanceiro";
-import AdminComunicacao from "./pages/admin/AdminComunicacao";
-import AdminAuditoria from "./pages/admin/AdminAuditoria";
-import AdminCadastros from "./pages/admin/AdminCadastros";
-import AdminAnalises from "./pages/admin/AdminAnalises";
-import AdminRegulamentacoes from "./pages/admin/AdminRegulamentacoes";
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminSolicitacoes = lazy(() => import("./pages/admin/AdminSolicitacoes"));
+const AdminClientes = lazy(() => import("./pages/admin/AdminClientes"));
+const AdminIndicacao = lazy(() => import("./pages/admin/AdminIndicacao"));
+const AdminPlanos = lazy(() => import("./pages/admin/AdminPlanos"));
+const AdminFinanceiro = lazy(() => import("./pages/admin/AdminFinanceiro"));
+const AdminComunicacao = lazy(() => import("./pages/admin/AdminComunicacao"));
+const AdminAuditoria = lazy(() => import("./pages/admin/AdminAuditoria"));
+const AdminCadastros = lazy(() => import("./pages/admin/AdminCadastros"));
+const AdminAnalises = lazy(() => import("./pages/admin/AdminAnalises"));
+const AdminRegulamentacoes = lazy(() => import("./pages/admin/AdminRegulamentacoes"));
 
 // Other Pages
-import Cadastro from "./pages/Cadastro";
-import Bloqueado from "./pages/Bloqueado";
+const Cadastro = lazy(() => import("./pages/Cadastro"));
+const Bloqueado = lazy(() => import("./pages/Bloqueado"));
 
 // Layout
 import AppLayout from "./components/layout/AppLayout";
@@ -65,7 +67,7 @@ function ProtectedRoute({
 }) {
   const { user, selectedProperty, isLoading } = useAuth();
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <GlobalLoading title="Carregando sua sessão" />;
   }
   
   if (!user) {
@@ -115,122 +117,125 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/cadastro" element={<Cadastro />} />
-            <Route path="/bloqueado" element={<Bloqueado />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/contato" element={<Contact />} />
-            <Route path="/selecionar-propriedade" element={<PropertySelection />} />
-            
-            {/* Onboarding Route */}
-            <Route path="/onboarding" element={
-              <ProtectedRoute requireProperty={true} requireOnboarding={false}><Onboarding /></ProtectedRoute>
-            } />
-            
-            {/* Questionário Route */}
-            <Route path="/questionario-epidemiologico" element={
-              <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologico /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/questionario-epidemiologico/historico" element={
-              <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoHistorico /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/questionario-epidemiologico/historico/:id" element={
-              <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoDetalhe /></LayoutRoute></ProtectedRoute>
-            } />
-            
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute><DashboardRoute /></ProtectedRoute>
-            } />
-            <Route path="/rebanho" element={
-              <ProtectedRoute><LayoutRoute><Rebanho /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/extrato" element={
-              <ProtectedRoute><LayoutRoute><Extrato /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/lancamentos" element={
-              <ProtectedRoute><LayoutRoute><Lancamentos /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/financeiro" element={
-              <ProtectedRoute><LayoutRoute><Financeiro /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/analises" element={
-              <ProtectedRoute><LayoutRoute><Analytics /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/minha-fazenda" element={
-              <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/configuracoes" element={
-              <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>
-            } />
-            
-            {/* Launch Forms */}
-            <Route path="/lancamento" element={
-              <ProtectedRoute><Navigate to="/lancamentos" replace /></ProtectedRoute>
-            } />
-            <Route path="/lancamento/nascimento" element={
-              <ProtectedRoute><WebLayoutRoute><LaunchForm type="nascimento" /></WebLayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/lancamento/mortalidade" element={
-              <ProtectedRoute><WebLayoutRoute><LaunchForm type="mortalidade" /></WebLayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/lancamento/venda" element={
-              <ProtectedRoute><WebLayoutRoute><LaunchForm type="venda" /></WebLayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/lancamento/compra" element={
-              <ProtectedRoute><WebLayoutRoute><LaunchForm type="compra" /></WebLayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/lancamento/vacina" element={
-              <ProtectedRoute><WebLayoutRoute><LaunchForm type="vacina" /></WebLayoutRoute></ProtectedRoute>
-            } />
-            <Route path="/lancamento/outras" element={
-              <ProtectedRoute><WebLayoutRoute><LaunchForm type="outras" /></WebLayoutRoute></ProtectedRoute>
-            } />
-            
-            {/* Admin Routes - Require super_admin role */}
-            <Route path="/admin" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/dashboard" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/cadastros" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminCadastros /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/analises" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAnalises /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/regulamentacoes" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminRegulamentacoes /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/solicitacoes" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminSolicitacoes /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/clientes" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminClientes /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/indicacao" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminIndicacao /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/planos" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminPlanos /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/financeiro" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminFinanceiro /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/comunicacao" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminComunicacao /></AdminLayout></ProtectedRoute>
-            } />
-            <Route path="/admin/auditoria" element={
-              <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAuditoria /></AdminLayout></ProtectedRoute>
-            } />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<GlobalLoading />}> 
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/cadastro" element={<Cadastro />} />
+              <Route path="/bloqueado" element={<Bloqueado />} />
+              <Route path="/public/validar" element={<PublicValidarDocumento />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/contato" element={<Contact />} />
+              <Route path="/selecionar-propriedade" element={<PropertySelection />} />
+              
+              {/* Onboarding Route */}
+              <Route path="/onboarding" element={
+                <ProtectedRoute requireProperty={true} requireOnboarding={false}><Onboarding /></ProtectedRoute>
+              } />
+              
+              {/* Questionário Route */}
+              <Route path="/questionario-epidemiologico" element={
+                <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologico /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/questionario-epidemiologico/historico" element={
+                <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoHistorico /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/questionario-epidemiologico/historico/:id" element={
+                <ProtectedRoute><LayoutRoute><QuestionarioEpidemiologicoDetalhe /></LayoutRoute></ProtectedRoute>
+              } />
+              
+              {/* Protected Routes */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute><DashboardRoute /></ProtectedRoute>
+              } />
+              <Route path="/rebanho" element={
+                <ProtectedRoute><LayoutRoute><Rebanho /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/extrato" element={
+                <ProtectedRoute><LayoutRoute><Extrato /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/lancamentos" element={
+                <ProtectedRoute><LayoutRoute><Lancamentos /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/financeiro" element={
+                <ProtectedRoute><LayoutRoute><Financeiro /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/analises" element={
+                <ProtectedRoute><LayoutRoute><Analytics /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/minha-fazenda" element={
+                <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/configuracoes" element={
+                <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>
+              } />
+              
+              {/* Launch Forms */}
+              <Route path="/lancamento" element={
+                <ProtectedRoute><Navigate to="/lancamentos" replace /></ProtectedRoute>
+              } />
+              <Route path="/lancamento/nascimento" element={
+                <ProtectedRoute><WebLayoutRoute><LaunchForm type="nascimento" /></WebLayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/lancamento/mortalidade" element={
+                <ProtectedRoute><WebLayoutRoute><LaunchForm type="mortalidade" /></WebLayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/lancamento/venda" element={
+                <ProtectedRoute><WebLayoutRoute><LaunchForm type="venda" /></WebLayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/lancamento/compra" element={
+                <ProtectedRoute><WebLayoutRoute><LaunchForm type="compra" /></WebLayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/lancamento/vacina" element={
+                <ProtectedRoute><WebLayoutRoute><LaunchForm type="vacina" /></WebLayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/lancamento/outras" element={
+                <ProtectedRoute><WebLayoutRoute><LaunchForm type="outras" /></WebLayoutRoute></ProtectedRoute>
+              } />
+              
+              {/* Admin Routes - Require super_admin role */}
+              <Route path="/admin" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/cadastros" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminCadastros /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/analises" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAnalises /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/regulamentacoes" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminRegulamentacoes /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/solicitacoes" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminSolicitacoes /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/clientes" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminClientes /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/indicacao" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminIndicacao /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/planos" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminPlanos /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/financeiro" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminFinanceiro /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/comunicacao" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminComunicacao /></AdminLayout></ProtectedRoute>
+              } />
+              <Route path="/admin/auditoria" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAuditoria /></AdminLayout></ProtectedRoute>
+              } />
+              
+              {/* Catch-all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

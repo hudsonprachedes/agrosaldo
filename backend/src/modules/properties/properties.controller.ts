@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -21,12 +30,19 @@ export class PropertiesController {
   }
 
   @Post('minhas')
-  createMine(@CurrentUser() user: { id: string }, @Body() dto: CreatePropertyDto) {
+  createMine(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreatePropertyDto,
+  ) {
     return this.propertiesService.createForUser(user.id, dto);
   }
 
   @Patch('minhas/:id')
-  updateMine(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() dto: UpdatePropertyDto) {
+  updateMine(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdatePropertyDto,
+  ) {
     return this.propertiesService.updateForUser(user.id, id, dto);
   }
 

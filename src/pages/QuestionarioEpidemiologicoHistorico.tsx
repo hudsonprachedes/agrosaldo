@@ -17,6 +17,7 @@ import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { EpidemiologySurveyDTO } from '@/types';
 import { ArrowLeft, ClipboardList, Eye } from 'lucide-react';
+import PageSkeleton from '@/components/PageSkeleton';
 
 function formatPtBrDateTime(iso: string) {
   const d = new Date(iso);
@@ -93,9 +94,7 @@ export default function QuestionarioEpidemiologicoHistorico() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="rounded-lg border p-6 text-center">
-              <p className="text-sm text-muted-foreground">Carregando...</p>
-            </div>
+            <PageSkeleton header={false} cards={0} lines={8} />
           ) : surveys.length === 0 ? (
             <div className="rounded-lg border p-6 text-center">
               <p className="font-medium">Você ainda não respondeu este questionário.</p>

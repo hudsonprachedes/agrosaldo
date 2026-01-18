@@ -1,10 +1,32 @@
 import { z } from 'zod';
 
-export const UserRoleSchema = z.enum(['super_admin', 'proprietario', 'gerente', 'operador']);
-export const UserStatusSchema = z.enum(['ativo', 'pendente_aprovacao', 'suspenso']);
+export const UserRoleSchema = z.enum([
+  'super_admin',
+  'proprietario',
+  'gerente',
+  'operador',
+]);
+export const UserStatusSchema = z.enum([
+  'ativo',
+  'pendente_aprovacao',
+  'suspenso',
+]);
 export const PropertyStatusSchema = z.enum(['ativa', 'pendente', 'suspensa']);
-export const PlanTypeSchema = z.enum(['porteira', 'piquete', 'retiro', 'estancia', 'barao']);
-export const MovementTypeSchema = z.enum(['nascimento', 'morte', 'venda', 'compra', 'vacina', 'ajuste']);
+export const PlanTypeSchema = z.enum([
+  'porteira',
+  'piquete',
+  'retiro',
+  'estancia',
+  'barao',
+]);
+export const MovementTypeSchema = z.enum([
+  'nascimento',
+  'morte',
+  'venda',
+  'compra',
+  'vacina',
+  'ajuste',
+]);
 export const SexTypeSchema = z.enum(['macho', 'femea']);
 
 export const LoginRequestSchema = z.object({
@@ -106,7 +128,9 @@ export const MovementResponseSchema = z.object({
   createdAt: z.date(),
 });
 
-export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
+export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(
+  itemSchema: T,
+) =>
   z.object({
     data: z.array(itemSchema),
     total: z.number(),

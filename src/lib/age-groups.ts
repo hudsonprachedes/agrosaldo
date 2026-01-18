@@ -18,6 +18,16 @@ export const AGE_GROUP_BRACKETS = [
   { id: '36+m', minMonths: 36, maxMonths: Infinity, label: '+36 meses' },
 ] as const;
 
+export function getAgeGroupSortIndex(ageGroupId?: string): number {
+  if (!ageGroupId) return Number.MAX_SAFE_INTEGER;
+  const idx = AGE_GROUP_BRACKETS.findIndex((b) => b.id === ageGroupId);
+  return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+}
+
+export function compareAgeGroupIds(a?: string, b?: string): number {
+  return getAgeGroupSortIndex(a) - getAgeGroupSortIndex(b);
+}
+
 /**
  * Calcula a faixa etária baseado na data de nascimento
  * @param birthDate - Data de nascimento

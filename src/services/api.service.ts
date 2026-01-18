@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/api-client';
 import { API_ROUTES } from '@/lib/api-routes';
+import type { NotificationDTO } from '@/types';
 
 export interface LoginRequest {
   cpfCnpj: string;
@@ -402,6 +403,10 @@ export interface AdminPlan {
   price?: number;
   maxCabecas?: number | null;
   maxCattle?: number | null;
+  cobrancaAdicionalAtiva?: boolean;
+  additionalChargeEnabled?: boolean;
+  valorCobrancaAdicional?: number;
+  additionalChargePerHead?: number;
   recursos?: string[];
   features?: string[];
   ativo?: boolean;
@@ -685,11 +690,11 @@ export const adminService = {
     return apiClient.get<AdminPlan[]>(API_ROUTES.ADMIN.PLANS);
   },
 
-  async createAdminPlan(data: { name: string; price: number; maxCattle?: number | null; features?: string[]; active?: boolean }): Promise<AdminPlan> {
+  async createAdminPlan(data: { name: string; price: number; maxCattle?: number | null; additionalChargeEnabled?: boolean; additionalChargePerHead?: number; features?: string[]; active?: boolean }): Promise<AdminPlan> {
     return apiClient.post<AdminPlan>(API_ROUTES.ADMIN.PLANS, data);
   },
 
-  async updateAdminPlan(id: string, data: Partial<{ name: string; price: number; maxCattle?: number | null; features?: string[]; active?: boolean }>): Promise<AdminPlan> {
+  async updateAdminPlan(id: string, data: Partial<{ name: string; price: number; maxCattle?: number | null; additionalChargeEnabled?: boolean; additionalChargePerHead?: number; features?: string[]; active?: boolean }>): Promise<AdminPlan> {
     return apiClient.patch<AdminPlan>(API_ROUTES.ADMIN.PLANS_ID.replace(':id', id), data);
   },
 
@@ -723,5 +728,27 @@ export const adminService = {
 
   async updateCommunication(id: string, data: Partial<{ type: string; title: string; message: string; sentAt?: string; recipients: number; status: string; targetAudience: string; color?: string | null; startDate?: string | null; endDate?: string | null }>): Promise<AdminCommunication> {
     return apiClient.patch<AdminCommunication>(API_ROUTES.ADMIN.COMMUNICATION_ID.replace(':id', id), data);
+  },
+};
+
+export const notificationsService = {
+  async list(propertyId?: string): Promise<NotificationDTO[]> {
+    return apiClient.get<NotificationDTO[]>('/notificacoes', {
+      headers: propertyId ? { 'X-Property-ID': propertyId } : undefined,
+    });
+  },
+
+  async markAsRead(id: string): Promise<{ success: true } | { success: boolean }> {
+    return apiClient.patch('/notificacoes/:id/lida'.replace(':id', id));
+  },
+
+  async archive(id: string): Promise<{ success: true } | { success: boolean }> {
+    return apiClient.delete('/notificacoes/:id'.replace(':id', id));
+  },
+
+  async archiveAll(propertyId?: string): Promise<{ success: true; archived?: number } | { success: boolean }> {
+    return apiClient.delete('/notificacoes', {
+      headers: propertyId ? { 'X-Property-ID': propertyId } : undefined,
+    });
   },
 };

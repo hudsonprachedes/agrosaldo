@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePropertyDto } from './dto/create-property.dto';
 import { UpdatePropertyDto } from './dto/update-property.dto';
@@ -33,8 +37,12 @@ export class PropertiesService {
       status: property.status,
       plan: property.plano,
       speciesEnabled: property.especiesHabilitadas ?? undefined,
-      createdAt: property.criadoEm?.toISOString ? property.criadoEm.toISOString() : property.criadoEm,
-      updatedAt: property.atualizadoEm?.toISOString ? property.atualizadoEm.toISOString() : property.atualizadoEm,
+      createdAt: property.criadoEm?.toISOString
+        ? property.criadoEm.toISOString()
+        : property.criadoEm,
+      updatedAt: property.atualizadoEm?.toISOString
+        ? property.atualizadoEm.toISOString()
+        : property.atualizadoEm,
     };
   }
 
@@ -67,7 +75,11 @@ export class PropertiesService {
     return this.mapPropertyToDto(created as any, userId);
   }
 
-  async updateForUser(userId: string, propertyId: string, dto: UpdatePropertyDto) {
+  async updateForUser(
+    userId: string,
+    propertyId: string,
+    dto: UpdatePropertyDto,
+  ) {
     await this.assertUserHasProperty(userId, propertyId);
     const updated = await this.update(propertyId, dto);
     return this.mapPropertyToDto(updated as any, userId);
@@ -81,7 +93,9 @@ export class PropertiesService {
       select: { id: true },
     });
 
-    await this.prisma.usuarioPropriedade.deleteMany({ where: { propriedadeId: propertyId } });
+    await this.prisma.usuarioPropriedade.deleteMany({
+      where: { propriedadeId: propertyId },
+    });
 
     if (links.length > 1) {
       return { success: true };
@@ -109,7 +123,7 @@ export class PropertiesService {
         areaNatural: dto.naturalArea,
         quantidadeGado: dto.cattleCount,
         status: dto.status as any,
-        plano: plan as any,
+        plano: plan,
       } as any,
     });
   }
@@ -119,7 +133,9 @@ export class PropertiesService {
   }
 
   async findOne(id: string) {
-    const property = await this.prisma.propriedade.findUnique({ where: { id } });
+    const property = await this.prisma.propriedade.findUnique({
+      where: { id },
+    });
     if (!property) {
       throw new NotFoundException('Propriedade não encontrada');
     }
@@ -146,7 +162,7 @@ export class PropertiesService {
         areaNatural: dto.naturalArea,
         quantidadeGado: dto.cattleCount,
         status: dto.status as any,
-        plano: plan as any,
+        plano: plan,
       } as any,
     });
   }

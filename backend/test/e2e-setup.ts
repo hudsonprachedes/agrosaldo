@@ -30,8 +30,8 @@ jest.mock('../src/prisma/prisma.service', () => {
           plano: 'porteira',
           criadoEm: new Date(),
           atualizadoEm: new Date(),
-        }
-      }
+        },
+      },
     ],
   };
 
@@ -45,10 +45,15 @@ jest.mock('../src/prisma/prisma.service', () => {
             create: jest.fn().mockResolvedValue(mockUser),
           },
           propriedade: {
-            create: jest.fn().mockResolvedValue({ id: 'prop-1', nome: 'Test Property' }),
+            create: jest
+              .fn()
+              .mockResolvedValue({ id: 'prop-1', nome: 'Test Property' }),
           },
           usuarioPropriedade: {
-            create: jest.fn().mockResolvedValue({ usuarioId: 'user-1', propriedadeId: 'prop-1' }),
+            create: jest.fn().mockResolvedValue({
+              usuarioId: 'user-1',
+              propriedadeId: 'prop-1',
+            }),
           },
         });
       }),
@@ -99,7 +104,9 @@ jest.mock('../src/prisma/prisma.service', () => {
       },
       usuarioPropriedade: {
         findMany: jest.fn().mockResolvedValue([]),
-        create: jest.fn().mockResolvedValue({ usuarioId: 'user-1', propriedadeId: 'prop-1' }),
+        create: jest
+          .fn()
+          .mockResolvedValue({ usuarioId: 'user-1', propriedadeId: 'prop-1' }),
       },
       $connect: jest.fn().mockResolvedValue(undefined),
       $disconnect: jest.fn().mockResolvedValue(undefined),
@@ -118,4 +125,5 @@ jest.mock('bcryptjs', () => ({
 // Set test environment variables
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
-process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/agrosaldo_test';
+process.env.DATABASE_URL =
+  'postgresql://test:test@localhost:5432/agrosaldo_test';

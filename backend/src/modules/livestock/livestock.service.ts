@@ -7,8 +7,156 @@ import { UpdateLivestockDto } from './dto/update-livestock.dto';
 export class LivestockService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly AGE_GROUP_BRACKETS = [
+    { id: '0-4m', minMonths: 0, maxMonths: 4 },
+    { id: '5-12m', minMonths: 5, maxMonths: 12 },
+    { id: '13-24m', minMonths: 13, maxMonths: 24 },
+    { id: '25-36m', minMonths: 25, maxMonths: 36 },
+    { id: '36+m', minMonths: 36, maxMonths: Infinity },
+  ] as const;
+
+  private calculateAgeInMonths(birthDate: Date, now: Date) {
+    const months =
+      (now.getFullYear() - birthDate.getFullYear()) * 12 +
+      (now.getMonth() - birthDate.getMonth());
+    if (now.getDate() < birthDate.getDate()) {
+      return Math.max(0, months - 1);
+    }
+    return Math.max(0, months);
+  }
+
+  private calculateAgeGroupFromBirthDate(birthDate: Date, now: Date) {
+    const ageInMonths = this.calculateAgeInMonths(birthDate, now);
+    for (const bracket of this.AGE_GROUP_BRACKETS) {
+      if (ageInMonths >= bracket.minMonths && ageInMonths <= bracket.maxMonths) {
+        return bracket.id;
+      }
+    }
+    return '36+m';
+  }
+
+  private async applyStockDelta(
+    prisma: PrismaService,
+    params: {
+      propertyId: string;
+      species: string;
+      sex: 'macho' | 'femea';
+      ageGroup: string;
+      delta: number;
+    },
+  ) {
+    const { propertyId, species, sex, ageGroup, delta } = params;
+    if (!delta) return;
+
+    const existing = await prisma.rebanho.findFirst({
+      where: {
+        propriedadeId: propertyId,
+        especie: species,
+        sexo: sex as any,
+        faixaEtaria: ageGroup,
+      },
+    });
+
+    if (!existing) {
+      const headcount = Math.max(0, delta);
+      if (!headcount) return;
+      await prisma.rebanho.create({
+        data: {
+          propriedadeId: propertyId,
+          especie: species,
+          sexo: sex as any,
+          faixaEtaria: ageGroup,
+          cabecas: headcount,
+        },
+      });
+      return;
+    }
+
+    const next = Math.max(0, (existing as any).cabecas + delta);
+    await prisma.rebanho.update({
+      where: { id: (existing as any).id },
+      data: { cabecas: next },
+    });
+  }
+
+  private async ensureAgeGroupEvolution(tx: PrismaService, propertyId: string) {
+    const now = new Date();
+    const births = await tx.movimento.findMany({
+      where: {
+        propriedadeId: propertyId,
+        tipo: 'nascimento' as any,
+        especie: 'bovino',
+        sexo: { not: null },
+        faixaEtaria: { not: null },
+      },
+      select: {
+        id: true,
+        data: true,
+        quantidade: true,
+        sexo: true,
+        faixaEtaria: true,
+      } as any,
+      orderBy: { data: 'asc' },
+      take: 500,
+    });
+
+    for (const b of births as any[]) {
+      const qty = Number(b.quantidade) || 0;
+      if (!qty) continue;
+      const birthDate = new Date(b.data);
+      const fromAgeGroup = String(b.faixaEtaria ?? '');
+      const toAgeGroup = this.calculateAgeGroupFromBirthDate(birthDate, now);
+      if (!fromAgeGroup || fromAgeGroup === toAgeGroup) continue;
+
+      const sex = b.sexo as 'macho' | 'femea' | null;
+      if (!sex) continue;
+
+      await this.applyStockDelta(tx as any, {
+        propertyId,
+        species: 'bovino',
+        sex,
+        ageGroup: fromAgeGroup,
+        delta: -qty,
+      });
+
+      await this.applyStockDelta(tx as any, {
+        propertyId,
+        species: 'bovino',
+        sex,
+        ageGroup: toAgeGroup,
+        delta: qty,
+      });
+
+      await tx.movimento.update({
+        where: { id: b.id },
+        data: { faixaEtaria: toAgeGroup } as any,
+      });
+
+      await tx.movimento.create({
+        data: {
+          propriedadeId: propertyId,
+          tipo: 'ajuste' as any,
+          especie: 'bovino',
+          data: now,
+          quantidade: qty,
+          sexo: sex as any,
+          faixaEtaria: null,
+          descricao: `[SISTEMA] Evolução automática de faixa etária: ${qty} ${sex === 'macho' ? 'macho(s)' : 'fêmea(s)'} de ${fromAgeGroup} -> ${toAgeGroup} (nasc. ${birthDate.toISOString().slice(0, 10)})`,
+          destino: null,
+          valor: null,
+          numeroGta: null,
+          fotoUrl: null,
+          causa: null,
+        } as any,
+      });
+    }
+  }
+
   private getStartDateFromMonths(months?: number) {
-    const m = typeof months === 'number' && Number.isFinite(months) && months > 0 ? months : 1;
+    const m =
+      typeof months === 'number' && Number.isFinite(months) && months > 0
+        ? months
+        : 1;
     const start = new Date();
     start.setMonth(start.getMonth() - m);
     return start;
@@ -19,7 +167,10 @@ export class LivestockService {
       where: { propriedadeId: propertyId },
     });
 
-    const total = livestock.reduce((sum: number, item: any) => sum + (item.cabecas ?? 0), 0);
+    const total = livestock.reduce(
+      (sum: number, item: any) => sum + (item.cabecas ?? 0),
+      0,
+    );
 
     const byAgeGroupRaw = await this.prisma.rebanho.groupBy({
       by: ['faixaEtaria'],
@@ -27,11 +178,14 @@ export class LivestockService {
       _sum: { cabecas: true },
     });
 
-    const byAgeGroup = (byAgeGroupRaw ?? []).reduce((acc: Record<string, number>, row: any) => {
-      const key = row.faixaEtaria ?? 'unknown';
-      acc[key] = row._sum?.cabecas ?? 0;
-      return acc;
-    }, {});
+    const byAgeGroup = (byAgeGroupRaw ?? []).reduce(
+      (acc: Record<string, number>, row: any) => {
+        const key = row.faixaEtaria ?? 'unknown';
+        acc[key] = row._sum?.cabecas ?? 0;
+        return acc;
+      },
+      {},
+    );
 
     const bySex = livestock.reduce((acc: Record<string, number>, item: any) => {
       const key = item.sexo ?? 'unknown';
@@ -59,15 +213,21 @@ export class LivestockService {
   async getMirror(propertyId: string, months?: number) {
     const startDate = this.getStartDateFromMonths(months);
 
-    const [balance, movements] = await Promise.all([
-      this.prisma.rebanho.findMany({
-        where: { propriedadeId: propertyId, especie: 'bovino' },
-      }),
-      this.prisma.movimento.findMany({
-        where: { propriedadeId: propertyId, data: { gte: startDate } },
-        orderBy: { data: 'asc' },
-      }),
-    ]);
+    const [balance, movements] = await this.prisma.$transaction(async (tx) => {
+      await this.ensureAgeGroupEvolution(tx as any, propertyId);
+
+      const [b, m] = await Promise.all([
+        tx.rebanho.findMany({
+          where: { propriedadeId: propertyId, especie: 'bovino' },
+        }),
+        tx.movimento.findMany({
+          where: { propriedadeId: propertyId, data: { gte: startDate } },
+          orderBy: { data: 'asc' },
+        }),
+      ]);
+
+      return [b, m] as const;
+    });
 
     const rowsByAge: Record<
       string,
@@ -101,13 +261,19 @@ export class LivestockService {
     const exitTypes = new Set(['morte', 'venda']);
 
     for (const mv of movements as any[]) {
+      const descricao = String(mv.descricao ?? '');
+      if (mv.tipo === 'ajuste' && descricao.startsWith('[SISTEMA] Evolução automática')) {
+        continue;
+      }
+
       const ageGroupId = mv.faixaEtaria ?? 'unknown';
       const sex = mv.sexo;
       const qty = mv.quantidade ?? 0;
       if (!qty || !sex) continue;
 
       const row = ensure(ageGroupId);
-      const bucket = sex === 'macho' ? row.male : sex === 'femea' ? row.female : null;
+      const bucket =
+        sex === 'macho' ? row.male : sex === 'femea' ? row.female : null;
       if (!bucket) continue;
 
       if (entryTypes.has(mv.tipo)) bucket.entries += qty;
@@ -116,8 +282,14 @@ export class LivestockService {
 
     const balances = Object.values(rowsByAge)
       .map((r) => {
-        const malePrevious = Math.max(0, r.male.currentBalance - r.male.entries + r.male.exits);
-        const femalePrevious = Math.max(0, r.female.currentBalance - r.female.entries + r.female.exits);
+        const malePrevious = Math.max(
+          0,
+          r.male.currentBalance - r.male.entries + r.male.exits,
+        );
+        const femalePrevious = Math.max(
+          0,
+          r.female.currentBalance - r.female.entries + r.female.exits,
+        );
         return {
           ageGroupId: r.ageGroupId,
           male: {
@@ -138,7 +310,8 @@ export class LivestockService {
 
     const totals = balances.reduce(
       (acc: any, b: any) => {
-        acc.total += (b.male.currentBalance ?? 0) + (b.female.currentBalance ?? 0);
+        acc.total +=
+          (b.male.currentBalance ?? 0) + (b.female.currentBalance ?? 0);
         acc.male += b.male.currentBalance ?? 0;
         acc.female += b.female.currentBalance ?? 0;
         return acc;
@@ -226,7 +399,10 @@ export class LivestockService {
 
     const balances = Object.values(bySpecies)
       .map((r) => {
-        const previousBalance = Math.max(0, r.currentBalance - r.entries + r.exits);
+        const previousBalance = Math.max(
+          0,
+          r.currentBalance - r.entries + r.exits,
+        );
         return {
           speciesId: r.speciesId,
           speciesName: r.speciesName,

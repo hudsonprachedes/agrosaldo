@@ -13,15 +13,17 @@ describe('MovementsController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-    .overrideGuard('JwtAuthGuard')
-    .useValue({ canActivate: () => true })
-    .overrideGuard('RolesGuard')
-    .useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard('JwtAuthGuard')
+      .useValue({ canActivate: () => true })
+      .overrideGuard('RolesGuard')
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
     await app.init();
 
@@ -38,14 +40,26 @@ describe('MovementsController (e2e)', () => {
       telefone: null,
     };
 
-    jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(mockUser as any);
-    jest.spyOn(prismaService.usuario, 'findMany').mockResolvedValue([mockUser] as any);
-    jest.spyOn(prismaService.usuario, 'create').mockResolvedValue(mockUser as any);
-    jest.spyOn(prismaService.usuario, 'update').mockResolvedValue(mockUser as any);
-    jest.spyOn(prismaService.usuario, 'delete').mockResolvedValue(mockUser as any);
+    jest
+      .spyOn(prismaService.usuario, 'findUnique')
+      .mockResolvedValue(mockUser as any);
+    jest
+      .spyOn(prismaService.usuario, 'findMany')
+      .mockResolvedValue([mockUser] as any);
+    jest
+      .spyOn(prismaService.usuario, 'create')
+      .mockResolvedValue(mockUser as any);
+    jest
+      .spyOn(prismaService.usuario, 'update')
+      .mockResolvedValue(mockUser as any);
+    jest
+      .spyOn(prismaService.usuario, 'delete')
+      .mockResolvedValue(mockUser as any);
     jest.spyOn(prismaService.usuario, 'count').mockResolvedValue(1);
 
-    jest.spyOn(prismaService.movimento, 'findMany').mockResolvedValue([] as any);
+    jest
+      .spyOn(prismaService.movimento, 'findMany')
+      .mockResolvedValue([] as any);
     jest.spyOn(prismaService.movimento, 'findUnique').mockResolvedValue(null);
     jest
       .spyOn(prismaService.movimento, 'create')
@@ -120,9 +134,7 @@ describe('MovementsController (e2e)', () => {
 
   describe('/lancamentos/:id (GET)', () => {
     it('should return 401 without authentication', () => {
-      return request(app.getHttpServer())
-        .get('/lancamentos/1')
-        .expect(401);
+      return request(app.getHttpServer()).get('/lancamentos/1').expect(401);
     });
 
     it('should return a movement with authentication', () => {
@@ -135,9 +147,7 @@ describe('MovementsController (e2e)', () => {
 
   describe('/lancamentos/:id (DELETE)', () => {
     it('should return 401 without authentication', () => {
-      return request(app.getHttpServer())
-        .delete('/lancamentos/1')
-        .expect(401);
+      return request(app.getHttpServer()).delete('/lancamentos/1').expect(401);
     });
 
     it('should delete a movement with authentication', () => {

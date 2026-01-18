@@ -68,9 +68,17 @@ export class FinanceService {
       for (let i = 5; i >= 0; i--) {
         const base = this.addMonths(now, -i);
         const start = this.startOfMonth(base);
-        const end = this.endOfDay(new Date(base.getFullYear(), base.getMonth() + 1, 0));
-        const label = base.toLocaleString('pt-BR', { month: 'short' }).replace('.', '');
-        periods.push({ label: label.charAt(0).toUpperCase() + label.slice(1), start, end });
+        const end = this.endOfDay(
+          new Date(base.getFullYear(), base.getMonth() + 1, 0),
+        );
+        const label = base
+          .toLocaleString('pt-BR', { month: 'short' })
+          .replace('.', '');
+        periods.push({
+          label: label.charAt(0).toUpperCase() + label.slice(1),
+          start,
+          end,
+        });
       }
       return periods;
     }
@@ -103,7 +111,9 @@ export class FinanceService {
     if (period === 'month') {
       const currentStart = this.startOfMonth(now);
       const previousStart = this.startOfMonth(this.addMonths(now, -1));
-      const previousEnd = this.endOfDay(new Date(previousStart.getFullYear(), previousStart.getMonth() + 1, 0));
+      const previousEnd = this.endOfDay(
+        new Date(previousStart.getFullYear(), previousStart.getMonth() + 1, 0),
+      );
       return {
         currentStart,
         currentEnd: this.endOfDay(now),
@@ -127,7 +137,9 @@ export class FinanceService {
 
     const currentStart = this.startOfYear(now);
     const previousStart = this.startOfYear(this.addYears(now, -1));
-    const previousEnd = this.endOfDay(new Date(previousStart.getFullYear(), 11, 31));
+    const previousEnd = this.endOfDay(
+      new Date(previousStart.getFullYear(), 11, 31),
+    );
     return {
       currentStart,
       currentEnd: this.endOfDay(now),
@@ -140,7 +152,8 @@ export class FinanceService {
     const now = new Date();
     const periods = this.getPeriods(now, period);
 
-    const rangeStart = periods[0]?.start ?? this.startOfMonth(this.addMonths(now, -5));
+    const rangeStart =
+      periods[0]?.start ?? this.startOfMonth(this.addMonths(now, -5));
     const rangeEnd = periods[periods.length - 1]?.end ?? this.endOfDay(now);
 
     const [sales, purchases] = await Promise.all([
@@ -209,7 +222,8 @@ export class FinanceService {
       return val / qty;
     });
 
-    const { currentStart, currentEnd, previousStart, previousEnd } = this.getCurrentAndPreviousPeriod(now, period);
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      this.getCurrentAndPreviousPeriod(now, period);
 
     const [currentAgg, previousAgg, currentPurchaseAgg] = await Promise.all([
       this.prisma.movimento.aggregate({
@@ -244,10 +258,14 @@ export class FinanceService {
 
     const totalPurchase = currentPurchaseAgg._sum?.valor ?? 0;
     const cattleBought = currentPurchaseAgg._sum?.quantidade ?? 0;
-    const averagePurchasePrice = cattleBought ? totalPurchase / cattleBought : 0;
+    const averagePurchasePrice = cattleBought
+      ? totalPurchase / cattleBought
+      : 0;
 
     const prevRevenue = previousAgg._sum?.valor ?? 0;
-    const monthlyGrowth = prevRevenue ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+    const monthlyGrowth = prevRevenue
+      ? ((totalRevenue - prevRevenue) / prevRevenue) * 100
+      : 0;
 
     return {
       period,

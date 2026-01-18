@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import { EpidemiologySurveyDTO } from '@/types';
 import { ArrowLeft, ClipboardList } from 'lucide-react';
+import PageSkeleton from '@/components/PageSkeleton';
 
 function formatPtBrDateTime(iso: string) {
   const d = new Date(iso);
@@ -113,6 +114,7 @@ export default function QuestionarioEpidemiologicoDetalhe() {
             Voltar
           </Button>
         </div>
+        <PageSkeleton header={false} cards={0} lines={10} />
       </div>
     );
   }

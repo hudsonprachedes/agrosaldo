@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Headers, HttpCode, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -13,7 +26,10 @@ import { LivestockService } from './livestock.service';
 export class LivestockController {
   constructor(private readonly livestockService: LivestockService) {}
 
-  private assertPropertyHeader(propertyIdParam: string, propertyIdHeader?: string) {
+  private assertPropertyHeader(
+    propertyIdParam: string,
+    propertyIdHeader?: string,
+  ) {
     if (!propertyIdHeader) {
       throw new ForbiddenException('Property header required');
     }
@@ -30,7 +46,7 @@ export class LivestockController {
   @Get(':propertyId')
   getBalance(
     @Param('propertyId') propertyId: string,
-    @Headers('x-property-id') propertyHeaderId?: string
+    @Headers('x-property-id') propertyHeaderId?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
     return this.livestockService.getBalance(propertyId);
@@ -40,16 +56,19 @@ export class LivestockController {
   getHistory(
     @Param('propertyId') propertyId: string,
     @Headers('x-property-id') propertyHeaderId?: string,
-    @Query('months') months?: string
+    @Query('months') months?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
-    return this.livestockService.getHistory(propertyId, months ? Number(months) : undefined);
+    return this.livestockService.getHistory(
+      propertyId,
+      months ? Number(months) : undefined,
+    );
   }
 
   @Get(':propertyId/resumo')
   getSummary(
     @Param('propertyId') propertyId: string,
-    @Headers('x-property-id') propertyHeaderId?: string
+    @Headers('x-property-id') propertyHeaderId?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
     return this.livestockService.getSummary(propertyId);
@@ -59,34 +78,43 @@ export class LivestockController {
   getMirror(
     @Param('propertyId') propertyId: string,
     @Headers('x-property-id') propertyHeaderId?: string,
-    @Query('months') months?: string
+    @Query('months') months?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
-    return this.livestockService.getMirror(propertyId, months ? Number(months) : undefined);
+    return this.livestockService.getMirror(
+      propertyId,
+      months ? Number(months) : undefined,
+    );
   }
 
   @Get(':propertyId/outras-especies')
   getOtherSpeciesMirror(
     @Param('propertyId') propertyId: string,
     @Headers('x-property-id') propertyHeaderId?: string,
-    @Query('months') months?: string
+    @Query('months') months?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
-    return this.livestockService.getOtherSpeciesMirror(propertyId, months ? Number(months) : undefined);
+    return this.livestockService.getOtherSpeciesMirror(
+      propertyId,
+      months ? Number(months) : undefined,
+    );
   }
 
   @Post(':propertyId/recalcular-faixas')
   @HttpCode(200)
   recalculateAgeGroups(
     @Param('propertyId') propertyId: string,
-    @Headers('x-property-id') propertyHeaderId?: string
+    @Headers('x-property-id') propertyHeaderId?: string,
   ) {
     this.assertPropertyHeader(propertyId, propertyHeaderId);
     return this.livestockService.recalculateAgeGroups(propertyId);
   }
 
   @Post()
-  create(@Headers('x-property-id') propertyId: string, @Body() dto: CreateLivestockDto) {
+  create(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateLivestockDto,
+  ) {
     return this.livestockService.create(propertyId, dto);
   }
 

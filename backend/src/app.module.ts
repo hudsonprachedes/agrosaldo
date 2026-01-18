@@ -16,6 +16,8 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { PreferencesModule } from './modules/preferences/preferences.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { QuestionarioEpidemiologicoModule } from './modules/questionario-epidemiologico/questionario-epidemiologico.module';
+import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
+import { DocumentosPublicosModule } from './modules/documentos-publicos/documentos-publicos.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { QuestionarioEpidemiologicoModule } from './modules/questionario-epidemi
     PreferencesModule,
     SubscriptionsModule,
     QuestionarioEpidemiologicoModule,
+    NotificacoesModule,
+    DocumentosPublicosModule,
     AdminModule,
     AnalyticsModule,
     HealthModule,

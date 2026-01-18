@@ -31,8 +31,8 @@ export const createMockPrismaService = () => {
           plano: 'porteira',
           criadoEm: new Date(),
           atualizadoEm: new Date(),
-        }
-      }
+        },
+      },
     ],
   };
 
@@ -59,7 +59,10 @@ export const createMockPrismaService = () => {
           }),
         },
         usuarioPropriedade: {
-          create: jest.fn().mockResolvedValue({ usuarioId: mockUser.id, propriedadeId: 'prop-1' }),
+          create: jest.fn().mockResolvedValue({
+            usuarioId: mockUser.id,
+            propriedadeId: 'prop-1',
+          }),
         },
       });
     }),
@@ -90,20 +93,22 @@ export const createMockPrismaService = () => {
       count: jest.fn().mockResolvedValue(1),
     },
     propriedade: {
-      findMany: jest.fn().mockResolvedValue([{
-        id: 'prop-1',
-        nome: 'Test Property',
-        cidade: 'São Paulo',
-        estado: 'SP',
-        areaTotal: 1000,
-        areaCultivada: 800,
-        areaNatural: 200,
-        quantidadeGado: 500,
-        status: 'ativa',
-        plano: 'porteira',
-        criadoEm: new Date(),
-        atualizadoEm: new Date(),
-      }]),
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: 'prop-1',
+          nome: 'Test Property',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          areaTotal: 1000,
+          areaCultivada: 800,
+          areaNatural: 200,
+          quantidadeGado: 500,
+          status: 'ativa',
+          plano: 'porteira',
+          criadoEm: new Date(),
+          atualizadoEm: new Date(),
+        },
+      ]),
       findUnique: jest.fn().mockResolvedValue({
         id: 'prop-1',
         nome: 'Test Property',
@@ -173,8 +178,8 @@ export const createMockPrismaService = () => {
     movimento: {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ 
-        id: '1', 
+      create: jest.fn().mockResolvedValue({
+        id: '1',
         tipo: 'nascimento',
         data: new Date(),
         quantidade: 1,
@@ -184,8 +189,8 @@ export const createMockPrismaService = () => {
         propriedadeId: 'prop-1',
         criadoEm: new Date(),
       }),
-      update: jest.fn().mockResolvedValue({ 
-        id: '1', 
+      update: jest.fn().mockResolvedValue({
+        id: '1',
         tipo: 'nascimento',
         data: new Date(),
         quantidade: 1,
@@ -195,8 +200,8 @@ export const createMockPrismaService = () => {
         propriedadeId: 'prop-1',
         criadoEm: new Date(),
       }),
-      delete: jest.fn().mockResolvedValue({ 
-        id: '1', 
+      delete: jest.fn().mockResolvedValue({
+        id: '1',
         tipo: 'nascimento',
         data: new Date(),
         quantidade: 1,
@@ -208,14 +213,16 @@ export const createMockPrismaService = () => {
       }),
     },
     usuarioPropriedade: {
-      findMany: jest.fn().mockResolvedValue([{
-        id: 'up-1',
+      findMany: jest.fn().mockResolvedValue([
+        {
+          id: 'up-1',
+          usuarioId: 'user-1',
+          propriedadeId: 'prop-1',
+          criadoEm: new Date(),
+        },
+      ]),
+      create: jest.fn().mockResolvedValue({
         usuarioId: 'user-1',
-        propriedadeId: 'prop-1',
-        criadoEm: new Date(),
-      }]),
-      create: jest.fn().mockResolvedValue({ 
-        usuarioId: 'user-1', 
         propriedadeId: 'prop-1',
       }),
     },

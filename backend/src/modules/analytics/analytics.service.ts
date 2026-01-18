@@ -44,13 +44,19 @@ export class AnalyticsService {
       }),
     ]);
 
-    const totalCattle = balance.reduce((sum, row: any) => sum + (row.cabecas ?? 0), 0);
+    const totalCattle = balance.reduce(
+      (sum, row: any) => sum + (row.cabecas ?? 0),
+      0,
+    );
 
-    const byAgeGroup = balance.reduce((acc: Record<string, number>, row: any) => {
-      const key = row.faixaEtaria ?? 'unknown';
-      acc[key] = (acc[key] ?? 0) + (row.cabecas ?? 0);
-      return acc;
-    }, {});
+    const byAgeGroup = balance.reduce(
+      (acc: Record<string, number>, row: any) => {
+        const key = row.faixaEtaria ?? 'unknown';
+        acc[key] = (acc[key] ?? 0) + (row.cabecas ?? 0);
+        return acc;
+      },
+      {},
+    );
 
     const bySex = balance.reduce((acc: Record<string, number>, row: any) => {
       const key = row.sexo ?? 'unknown';
@@ -81,15 +87,18 @@ export class AnalyticsService {
         deltaByMonth[key] = (deltaByMonth[key] ?? 0) - (mv.quantidade ?? 0);
       }
       if (mv.tipo === 'compra') {
-        purchasesByMonth[key] = (purchasesByMonth[key] ?? 0) + (mv.quantidade ?? 0);
-        purchaseCostByMonth[key] = (purchaseCostByMonth[key] ?? 0) + (mv.valor ?? 0);
+        purchasesByMonth[key] =
+          (purchasesByMonth[key] ?? 0) + (mv.quantidade ?? 0);
+        purchaseCostByMonth[key] =
+          (purchaseCostByMonth[key] ?? 0) + (mv.valor ?? 0);
         deltaByMonth[key] = (deltaByMonth[key] ?? 0) + (mv.quantidade ?? 0);
       }
       if (mv.tipo === 'ajuste') {
         deltaByMonth[key] = (deltaByMonth[key] ?? 0) + (mv.quantidade ?? 0);
       }
       if (mv.tipo === 'vacina') {
-        vaccinesByMonth[key] = (vaccinesByMonth[key] ?? 0) + (mv.quantidade ?? 0);
+        vaccinesByMonth[key] =
+          (vaccinesByMonth[key] ?? 0) + (mv.quantidade ?? 0);
       }
     }
 
@@ -98,8 +107,13 @@ export class AnalyticsService {
       label: monthLabelPtBr(m),
     }));
 
-    const currentMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth(), 1));
-    const totalDelta = seriesMonths.reduce((sum, m) => sum + (deltaByMonth[m.key] ?? 0), 0);
+    const currentMonthKey = monthKey(
+      new Date(now.getFullYear(), now.getMonth(), 1),
+    );
+    const totalDelta = seriesMonths.reduce(
+      (sum, m) => sum + (deltaByMonth[m.key] ?? 0),
+      0,
+    );
     const startTotal = Math.max(0, totalCattle - totalDelta);
 
     const evolution: number[] = [];
@@ -110,7 +124,10 @@ export class AnalyticsService {
     }
 
     const vaccinesThisMonth = vaccinesByMonth[currentMonthKey] ?? 0;
-    const vaccinationCompliance = totalCattle > 0 ? Math.min(100, (vaccinesThisMonth / totalCattle) * 100) : 0;
+    const vaccinationCompliance =
+      totalCattle > 0
+        ? Math.min(100, (vaccinesThisMonth / totalCattle) * 100)
+        : 0;
 
     return {
       propertyId,
@@ -146,7 +163,10 @@ export class AnalyticsService {
 
   async getPeriod(propertyId: string, startDate: Date, endDate: Date) {
     const movements = await this.prisma.movimento.findMany({
-      where: { propriedadeId: propertyId, data: { gte: startDate, lte: endDate } },
+      where: {
+        propriedadeId: propertyId,
+        data: { gte: startDate, lte: endDate },
+      },
       orderBy: { data: 'asc' },
     });
 
@@ -180,7 +200,11 @@ export class AnalyticsService {
         _sum: { cabecas: true },
       }),
       this.prisma.movimento.aggregate({
-        where: { propriedadeId: propertyId, tipo: 'morte' as any, data: { gte: start } },
+        where: {
+          propriedadeId: propertyId,
+          tipo: 'morte' as any,
+          data: { gte: start },
+        },
         _sum: { quantidade: true },
       }),
     ]);
@@ -203,7 +227,11 @@ export class AnalyticsService {
     const start = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
 
     const movements = await this.prisma.movimento.findMany({
-      where: { propriedadeId: propertyId, tipo: 'venda' as any, data: { gte: start } },
+      where: {
+        propriedadeId: propertyId,
+        tipo: 'venda' as any,
+        data: { gte: start },
+      },
       orderBy: { data: 'asc' },
     });
 
@@ -238,7 +266,10 @@ export class AnalyticsService {
       }),
     ]);
 
-    const totalCattle = (balance as any[]).reduce((sum, row) => sum + (row.cabecas ?? 0), 0);
+    const totalCattle = (balance as any[]).reduce(
+      (sum, row) => sum + (row.cabecas ?? 0),
+      0,
+    );
 
     const birthsByMonth: Record<string, number> = {};
     const deathsByMonth: Record<string, number> = {};
@@ -281,7 +312,10 @@ export class AnalyticsService {
       end: endOfMonth(m),
     }));
 
-    const totalDelta = seriesMonths.reduce((sum, m) => sum + (deltaByMonth[m.key] ?? 0), 0);
+    const totalDelta = seriesMonths.reduce(
+      (sum, m) => sum + (deltaByMonth[m.key] ?? 0),
+      0,
+    );
     const startTotal = Math.max(0, totalCattle - totalDelta);
 
     const evolution: number[] = [];
@@ -309,7 +343,9 @@ export class AnalyticsService {
       return (d / base) * 100;
     });
 
-    const survivalRateSeries = mortalityRateSeries.map((m) => Math.max(0, 100 - m));
+    const survivalRateSeries = mortalityRateSeries.map((m) =>
+      Math.max(0, 100 - m),
+    );
 
     const growthRateSeries = evolution.map((val, i) => {
       if (i === 0) return 0;
@@ -318,19 +354,30 @@ export class AnalyticsService {
       return ((val - prev) / prev) * 100;
     });
 
-    const currentMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth(), 1));
+    const currentMonthKey = monthKey(
+      new Date(now.getFullYear(), now.getMonth(), 1),
+    );
     const birthsThisMonth = birthsByMonth[currentMonthKey] ?? 0;
     const deathsThisMonth = deathsByMonth[currentMonthKey] ?? 0;
     const salesThisMonth = salesByMonth[currentMonthKey] ?? 0;
     const revenueThisMonth = revenueByMonth[currentMonthKey] ?? 0;
 
-    const birthRate = totalCattle > 0 ? (birthsThisMonth / totalCattle) * 100 : 0;
-    const survivalRate = totalCattle > 0 ? Math.max(0, 100 - (deathsThisMonth / totalCattle) * 100) : 0;
-    const herdGrowthPct = startTotal > 0 ? ((totalCattle - startTotal) / startTotal) * 100 : 0;
-    const avgSalePrice = salesThisMonth > 0 ? revenueThisMonth / salesThisMonth : 0;
+    const birthRate =
+      totalCattle > 0 ? (birthsThisMonth / totalCattle) * 100 : 0;
+    const survivalRate =
+      totalCattle > 0
+        ? Math.max(0, 100 - (deathsThisMonth / totalCattle) * 100)
+        : 0;
+    const herdGrowthPct =
+      startTotal > 0 ? ((totalCattle - startTotal) / startTotal) * 100 : 0;
+    const avgSalePrice =
+      salesThisMonth > 0 ? revenueThisMonth / salesThisMonth : 0;
 
     const vaccinesThisMonth = vaccinesByMonth[currentMonthKey] ?? 0;
-    const vaccinationCompliance = totalCattle > 0 ? Math.min(100, (vaccinesThisMonth / totalCattle) * 100) : 0;
+    const vaccinationCompliance =
+      totalCattle > 0
+        ? Math.min(100, (vaccinesThisMonth / totalCattle) * 100)
+        : 0;
 
     const agePriceGroups = ['0-4m', '5-12m', '13-24m', '25-36m', '36m+'];
     const salesByAge = await this.prisma.movimento.findMany({
@@ -356,7 +403,11 @@ export class AnalyticsService {
       return rec.value / rec.qty;
     });
 
-    const years = [now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear()];
+    const years = [
+      now.getFullYear() - 2,
+      now.getFullYear() - 1,
+      now.getFullYear(),
+    ];
     const births3y = await this.prisma.movimento.findMany({
       where: {
         propriedadeId: propertyId,
@@ -379,7 +430,20 @@ export class AnalyticsService {
       birthsHeat[y][m] = (birthsHeat[y][m] ?? 0) + (mv.quantidade ?? 0);
     }
 
-    const heatmapCategories = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const heatmapCategories = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
     const birthHeatmapSeries = years.map((y) => ({
       name: String(y),
       data: new Array(12).fill(0).map((_, idx) => birthsHeat[y]?.[idx] ?? 0),
@@ -395,7 +459,9 @@ export class AnalyticsService {
         avgSalePrice,
       },
       charts: {
-        categories: seriesMonths.map((m) => m.label.charAt(0).toUpperCase() + m.label.slice(1)),
+        categories: seriesMonths.map(
+          (m) => m.label.charAt(0).toUpperCase() + m.label.slice(1),
+        ),
         productivity: {
           birthRate: birthRateSeries,
           survivalRate: survivalRateSeries,
@@ -403,7 +469,9 @@ export class AnalyticsService {
         },
         yearComparison: {
           current: evolution,
-          previous: evolution.map((v) => Math.max(0, v - (totalDelta / monthsCount))),
+          previous: evolution.map((v) =>
+            Math.max(0, v - totalDelta / monthsCount),
+          ),
         },
         health: {
           vaccination: Math.round(vaccinationCompliance),

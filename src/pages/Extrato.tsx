@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { apiClient } from '@/lib/api-client';
 import type { PaginatedResponse } from '@/types';
@@ -54,6 +54,8 @@ import { toast } from 'sonner';
 import { format, subDays, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { printExtract, ExtractData } from '@/lib/pdf-report-final';
+import PageSkeleton from '@/components/PageSkeleton';
+import { AGE_GROUP_BRACKETS, compareAgeGroupIds } from '@/lib/age-groups';
 
 const typeIcons: Record<string, React.ElementType> = {
   birth: Baby,
@@ -88,6 +90,12 @@ export default function Extrato() {
   const { selectedProperty, user } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+
+  const getAgeGroupLabel = (ageGroupId?: string) => {
+    if (!ageGroupId) return undefined;
+    const g = AGE_GROUP_BRACKETS.find((x) => x.id === ageGroupId);
+    return g?.label ?? ageGroupId;
+  };
 
   // Load filters from localStorage
   const loadFilters = () => {
@@ -179,26 +187,33 @@ export default function Extrato() {
 
     let filtered = movements;
 
-    // Age group filter (only for birth/death that have sex)
+    // Age group filter
     if (filterAgeGroup !== 'all') {
       filtered = filtered.filter(m => {
-        if (!m.sex) return false;
-        // TODO: Map movement to age group based on birthDate
-        return true; // Placeholder
+        return m.ageGroupId === filterAgeGroup;
       });
     }
 
     return filtered;
   }, [selectedProperty, movements, filterAgeGroup]);
 
-  if (!selectedProperty) {
-    navigate('/login');
-    return null;
-  }
-
   // Pagination (vinda do backend)
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const paginatedMovements = filteredMovements;
+  const paginatedMovements = useMemo(
+    () =>
+      filteredMovements
+        .slice()
+        .sort((a, b) => {
+          const byAge = compareAgeGroupIds(a.ageGroupId, b.ageGroupId);
+          if (byAge !== 0) return byAge;
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        }),
+    [filteredMovements],
+  );
+
+  if (!selectedProperty) {
+    return <Navigate to="/login" replace />;
+  }
 
   const hasActiveFilters = filterType !== 'all' || filterAgeGroup !== 'all' || dateFrom || dateTo;
 
@@ -238,7 +253,7 @@ export default function Extrato() {
       // Formatar filtros ativos para exibição
       const activeFilters: string[] = [];
       if (filterType !== 'all') activeFilters.push(`Tipo: ${typeLabels[filterType]}`);
-      if (filterAgeGroup !== 'all') activeFilters.push(`Faixa: ${filterAgeGroup}`);
+      if (filterAgeGroup !== 'all') activeFilters.push(`Faixa: ${getAgeGroupLabel(filterAgeGroup) ?? filterAgeGroup}`);
       if (dateFrom || dateTo) {
         const from = dateFrom ? format(dateFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'Início';
         const to = dateTo ? format(dateTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Hoje';
@@ -254,11 +269,20 @@ export default function Extrato() {
           : 'Todo o período',
         filters: activeFilters.join(' | '),
         generatedAt: new Date().toLocaleString('pt-BR'),
-        movements: filteredMovements.map(m => ({
+        movements: filteredMovements
+          .slice()
+          .sort((a, b) => {
+            const byAge = compareAgeGroupIds(a.ageGroupId, b.ageGroupId);
+            if (byAge !== 0) return byAge;
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          })
+          .map(m => ({
           date: m.date,
           type: m.type,
           typeLabel: typeLabels[m.type] || m.type,
           description: m.description,
+          sexLabel: m.sex ? (m.sex === 'male' ? 'Macho' : 'Fêmea') : undefined,
+          ageGroupLabel: getAgeGroupLabel(m.ageGroupId),
           quantity: (m.type === 'death' || m.type === 'sale') ? -m.quantity : m.quantity,
           value: m.value
         })),
@@ -374,7 +398,7 @@ export default function Extrato() {
                     <SelectItem value="5-12m">5-12 meses</SelectItem>
                     <SelectItem value="13-24m">13-24 meses</SelectItem>
                     <SelectItem value="25-36m">25-36 meses</SelectItem>
-                    <SelectItem value="36m+">36+ meses</SelectItem>
+                    <SelectItem value="36+m">36+ meses</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -465,11 +489,7 @@ export default function Extrato() {
       {/* Timeline */}
       <div className="space-y-4">
         {isLoading ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">Carregando extrato...</p>
-            </CardContent>
-          </Card>
+          <PageSkeleton header={false} cards={0} lines={10} />
         ) : paginatedMovements.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -508,6 +528,11 @@ export default function Extrato() {
                             {movement.sex && (
                               <Badge variant="outline" className="text-xs">
                                 {movement.sex === 'male' ? 'Macho' : 'Fêmea'}
+                              </Badge>
+                            )}
+                            {movement.ageGroupId && (
+                              <Badge variant="outline" className="text-xs">
+                                {getAgeGroupLabel(movement.ageGroupId)}
                               </Badge>
                             )}
                           </div>

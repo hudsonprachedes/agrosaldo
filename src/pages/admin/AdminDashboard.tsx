@@ -14,6 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import ReactApexChart from 'react-apexcharts';
+import PageSkeleton from '@/components/PageSkeleton';
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState<AdminDashboardStats | null>(null);
@@ -45,7 +46,7 @@ export default function AdminDashboard() {
   }, []);
 
   if (isLoading || !kpis) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <PageSkeleton cards={4} lines={12} />;
   }
 
   const mrrChartOptions: ApexCharts.ApexOptions = {

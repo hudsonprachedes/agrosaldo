@@ -11,7 +11,7 @@ export async function seedProperties(prisma: PrismaClient) {
       areaNatural: 700,
       quantidadeGado: 2340,
       status: 'ativa' as const,
-      plano: 'porteira' as const,
+      plano: 'estancia' as const,
     },
     {
       nome: 'Fazenda Ouro Verde',

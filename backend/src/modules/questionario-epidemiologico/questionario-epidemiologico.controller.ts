@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Headers, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -13,7 +21,10 @@ export class QuestionarioEpidemiologicoController {
   constructor(private readonly service: QuestionarioEpidemiologicoService) {}
 
   @Post()
-  create(@Headers('x-property-id') propertyId: string, @Body() dto: CreateQuestionarioEpidemiologicoDto) {
+  create(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateQuestionarioEpidemiologicoDto,
+  ) {
     return this.service.create(propertyId, dto);
   }
 
@@ -28,7 +39,10 @@ export class QuestionarioEpidemiologicoController {
   }
 
   @Get(':id')
-  findOne(@Headers('x-property-id') propertyId: string, @Param('id') id: string) {
+  findOne(
+    @Headers('x-property-id') propertyId: string,
+    @Param('id') id: string,
+  ) {
     return this.service.findOne(propertyId, id);
   }
 }

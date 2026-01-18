@@ -1,4 +1,12 @@
-import { Controller, ForbiddenException, Get, Headers, Body, Put, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Headers,
+  Body,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -14,7 +22,10 @@ export class PreferencesController {
   constructor(private readonly preferencesService: PreferencesService) {}
 
   @Get()
-  get(@CurrentUser() user: { id: string }, @Headers('x-property-id') propertyId: string | undefined) {
+  get(
+    @CurrentUser() user: { id: string },
+    @Headers('x-property-id') propertyId: string | undefined,
+  ) {
     if (!propertyId) {
       throw new ForbiddenException('Property header required');
     }

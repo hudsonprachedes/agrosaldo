@@ -44,7 +44,9 @@ describe('Users (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     prismaService = app.get(PrismaService);
@@ -112,9 +114,7 @@ describe('Users (e2e)', () => {
 
   describe('GET /usuarios', () => {
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/usuarios')
-        .expect(401);
+      await request(app.getHttpServer()).get('/usuarios').expect(401);
     });
 
     it('should return list of users with authentication', async () => {

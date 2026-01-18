@@ -4,7 +4,10 @@ import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
 import { createMockPrismaService } from './test-helpers';
-import { validateLoginResponse, validateUserResponse } from './contract-validation';
+import {
+  validateLoginResponse,
+  validateUserResponse,
+} from './contract-validation';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -16,14 +19,16 @@ describe('AuthController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-    
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
+
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
-    
+
     // Mock PrismaService after getting it
     const mockPrismaService = createMockPrismaService();
     Object.assign(prismaService, mockPrismaService);
-    
+
     await app.init();
   });
 
@@ -85,19 +90,27 @@ describe('AuthController (e2e)', () => {
 
       jest.spyOn(prismaService.usuario, 'findFirst').mockResolvedValue(null);
 
-      jest.spyOn(prismaService, '$transaction' as any).mockImplementation(async (fn: any) => {
-        return fn({
-          usuario: {
-            create: jest.fn().mockResolvedValue(mockUser),
-          },
-          propriedade: {
-            create: jest.fn().mockResolvedValue({ id: 'prop-1' }),
-          },
-          usuarioPropriedade: {
-            create: jest.fn().mockResolvedValue({ usuarioId: mockUser.id, propriedadeId: 'prop-1' }),
-          },
+      jest
+        .spyOn(prismaService, '$transaction' as any)
+        .mockImplementation(async (fn: any) => {
+          return fn({
+            usuario: {
+              create: jest.fn().mockResolvedValue(mockUser),
+            },
+            propriedade: {
+              create: jest.fn().mockResolvedValue({ id: 'prop-1' }),
+            },
+            usuarioPropriedade: {
+              create: jest.fn().mockResolvedValue({
+                usuarioId: mockUser.id,
+                propriedadeId: 'prop-1',
+              }),
+            },
+            solicitacaoPendente: {
+              create: jest.fn().mockResolvedValue({ id: 'req-1' }),
+            },
+          });
         });
-      });
 
       return request(app.getHttpServer())
         .post('/auth/register')
@@ -163,9 +176,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should return 401 without token', () => {
-      return request(app.getHttpServer())
-        .get('/auth/me')
-        .expect(401);
+      return request(app.getHttpServer()).get('/auth/me').expect(401);
     });
   });
 });

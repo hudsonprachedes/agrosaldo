@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { plans, determineUserPlan } from '@/lib/plans';
-import { PropertyDTO } from '@/types';
+import { LivestockMirrorDTO, PropertyDTO } from '@/types';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -55,6 +55,7 @@ export default function PropertySelection() {
   const [openDialog, setOpenDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
+  const [cattleCountByProperty, setCattleCountByProperty] = useState<Record<string, number>>({});
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -73,11 +74,63 @@ export default function PropertySelection() {
     },
   });
 
+  const properties = useMemo(() => user?.properties ?? [], [user]);
+
+  useEffect(() => {
+    if (properties.length === 0) {
+      setCattleCountByProperty({});
+      return;
+    }
+
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const results = await Promise.all(
+          properties.map(async (p) => {
+            try {
+              const mirror = await apiClient.get<LivestockMirrorDTO>(`/rebanho/${p.id}/espelho?months=1`);
+              return [p.id, mirror?.totals?.total ?? 0] as const;
+            } catch {
+              return [p.id, p.cattleCount ?? 0] as const;
+            }
+          }),
+        );
+
+        if (cancelled) return;
+
+        const next: Record<string, number> = {};
+        for (const [propertyId, count] of results) {
+          next[propertyId] = count;
+        }
+        setCattleCountByProperty(next);
+      } catch {
+        if (cancelled) return;
+        setCattleCountByProperty({});
+      }
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [properties]);
+
+  const propertiesWithComputedCount = useMemo(
+    () =>
+      properties.map((p) => ({
+        ...p,
+        cattleCount: cattleCountByProperty[p.id] ?? p.cattleCount ?? 0,
+      })),
+    [properties, cattleCountByProperty],
+  );
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  const properties = user.properties ?? [];
+  if (user.role === 'super_admin') {
+    return <Navigate to="/admin" replace />;
+  }
 
   const handleSelectProperty = (propertyId: string) => {
     selectProperty(propertyId);
@@ -93,7 +146,7 @@ export default function PropertySelection() {
   };
 
   // Get unified user plan information
-  const totalCattle = properties.reduce((total, property) => total + (property.cattleCount ?? 0), 0);
+  const totalCattle = propertiesWithComputedCount.reduce((total, property) => total + (property.cattleCount ?? 0), 0);
   const userPlan = determineUserPlan(totalCattle);
 
   // Handle CEP lookup
@@ -231,9 +284,9 @@ export default function PropertySelection() {
           </CardContent>
         </Card>
 
-        {properties.length > 0 ? (
+        {propertiesWithComputedCount.length > 0 ? (
           <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((property, index) => {
+            {propertiesWithComputedCount.map((property, index) => {
               return (
                 <Card 
                   key={property.id}

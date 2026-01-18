@@ -50,6 +50,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { adminService, AdminCommunication } from '@/services/api.service';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import PageSkeleton from '@/components/PageSkeleton';
 
 interface Notification {
   id: string;
@@ -311,7 +313,7 @@ export default function AdminComunicacao() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <PageSkeleton cards={3} lines={14} />;
   }
 
   return (

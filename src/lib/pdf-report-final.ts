@@ -7,8 +7,12 @@ export interface ReportData {
   propertyName: string;
   ownerName: string;
   ownerDocument?: string;
+  ownerEmail?: string;
+  ownerPhone?: string;
   stateRegistration?: string;
   propertyCode?: string;
+  propertyAddress?: string;
+  propertyCep?: string;
   city: string;
   state: string;
   generatedAt: string;
@@ -29,6 +33,17 @@ export interface ReportData {
   monthlyBirths?: number;
   monthlyDeaths?: number;
   monthlyRevenue?: number;
+  latestSurvey?: {
+    submittedAt: string;
+    nextDueAt: string;
+    answers: Array<{ fieldId: string; value: string | string[] | number | boolean }>;
+  };
+
+  includeSurvey?: boolean;
+
+  reportHash?: string;
+  qrCodePayload?: string;
+  qrCodeDataUrl?: string;
 }
 
 export interface ExtractData {
@@ -42,6 +57,8 @@ export interface ExtractData {
     type: string;
     typeLabel: string;
     description: string;
+    sexLabel?: string;
+    ageGroupLabel?: string;
     quantity: number;
     value?: number;
   }>;
@@ -73,6 +90,52 @@ export function formatDate(dateString: string): string {
 export function generateReportHTML(data: ReportData): string {
   const totalMale = data.balances.reduce((sum, b) => sum + b.male, 0);
   const totalFemale = data.balances.reduce((sum, b) => sum + b.female, 0);
+
+  const reportHash = (data.reportHash || Math.random().toString(36).substring(2, 10)).toUpperCase();
+  const qrCodePayload = data.qrCodePayload || `agrosaldo://espelho-oficial?property=${encodeURIComponent(data.propertyCode || data.propertyName)}&hash=${encodeURIComponent(reportHash)}`;
+
+  const surveyFieldLabels: Record<string, string> = {
+    a_email: 'E-mail',
+    a_telefone: 'Telefone',
+    b_area_pastagem_cultivada_ha: 'Área de pastagem cultivada (ha)',
+    b_area_pastagem_natural_ha: 'Área de pastagem natural (ha)',
+    b_quantidade_vacas_leiteiras: 'Quantidade de vacas leiteiras (secas + lactação)',
+    b_finalidade_criacao_bovinos: 'Finalidade da criação de bovinos',
+    b_ordenha: 'Como é feita a ordenha?',
+    b_ordenha_vezes_ao_dia: 'Quantas vezes por dia realiza a ordenha?',
+    c_contato_com_javalis: 'Contato com javalis e cruzados?',
+    d_aves_acesso_agua: 'Aves com acesso a espelho d’água?',
+    d_aves_contato_silvestres: 'Aves domésticas com contato silvestre?',
+    e_mordedura_morcego_ultimos_6_meses: 'Mordedura por morcego nos últimos 6 meses?',
+  };
+
+  const formatSurveyField = (fieldId: string): string => {
+    const mapped = surveyFieldLabels[fieldId];
+    if (mapped) return mapped;
+    return String(fieldId || '').replace(/_/g, ' ').trim() || fieldId;
+  };
+
+  const formatSurveyValue = (value: unknown): string => {
+    if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+    if (typeof value === 'number') return String(value);
+    if (Array.isArray(value)) return value.join(', ');
+
+    const asString = String(value ?? '');
+    const enumMap: Record<string, string> = {
+      nao_se_aplica: 'Não se aplica',
+      mecanica: 'Mecânica',
+      manual: 'Manual',
+      uma: 'Uma',
+      duas: 'Duas',
+      tres: 'Três',
+      leite: 'Leite',
+      corte: 'Corte',
+      mista: 'Mista',
+      sim: 'Sim',
+      nao: 'Não',
+    };
+    return enumMap[asString] ?? asString;
+  };
 
   return `
     <!DOCTYPE html>
@@ -299,6 +362,17 @@ export function generateReportHTML(data: ReportData): string {
           text-align: right;
         }
 
+        .qr-code {
+          width: 60px;
+          height: 60px;
+          object-fit: contain;
+          background: #fff;
+          border: 1px solid var(--border);
+          padding: 2px;
+          margin-left: auto;
+          display: block;
+        }
+
         .qr-placeholder {
           width: 60px;
           height: 60px;
@@ -360,8 +434,24 @@ export function generateReportHTML(data: ReportData): string {
               <span>${data.city} - ${data.state}</span>
             </div>
             <div class="info-item">
-              <label>REGISTRO ESTADUAL / DOCUMENTO</label>
-              <span>${data.stateRegistration || data.ownerDocument || 'Não informado'}</span>
+              <label>DOCUMENTO (CPF/CNPJ)</label>
+              <span>${data.ownerDocument || 'Não informado'}</span>
+            </div>
+            <div class="info-item">
+              <label>INSCRIÇÃO ESTADUAL</label>
+              <span>${data.stateRegistration || 'Não informado'}</span>
+            </div>
+            <div class="info-item">
+              <label>CONTATO</label>
+              <span>${[data.ownerEmail, data.ownerPhone].filter(Boolean).join(' | ') || 'Não informado'}</span>
+            </div>
+            <div class="info-item">
+              <label>ENDEREÇO</label>
+              <span>${data.propertyAddress || 'Não informado'}</span>
+            </div>
+            <div class="info-item">
+              <label>CEP</label>
+              <span>${data.propertyCep || 'Não informado'}</span>
             </div>
           </div>
         </div>
@@ -471,6 +561,39 @@ export function generateReportHTML(data: ReportData): string {
           </div>
         ` : ''}
 
+        ${data.includeSurvey !== false && data.latestSurvey ? `
+          <div class="section">
+            <h3 class="section-title">Questionário Epidemiológico (Último Respondido)</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <label>ENVIADO EM</label>
+                <span>${formatDate(data.latestSurvey.submittedAt)}</span>
+              </div>
+              <div class="info-item">
+                <label>PRÓXIMO (6 MESES)</label>
+                <span>${formatDate(data.latestSurvey.nextDueAt)}</span>
+              </div>
+            </div>
+
+            <table style="margin-top: 12px;">
+              <thead>
+                <tr>
+                  <th style="width: 45%">Pergunta</th>
+                  <th>Resposta</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.latestSurvey.answers.map(a => `
+                  <tr>
+                    <td>${formatSurveyField(a.fieldId)}</td>
+                    <td>${formatSurveyValue(a.value)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
         <!-- RODAPÉ -->
         <footer class="footer">
           <div class="signature-box">
@@ -480,19 +603,40 @@ export function generateReportHTML(data: ReportData): string {
           </div>
           
           <div class="system-info">
-            <div class="qr-placeholder">QR CODE<br>VALIDAÇÃO</div>
+            ${data.qrCodeDataUrl ? `<img class="qr-code" src="${data.qrCodeDataUrl}" alt="QR Code de validação" />` : `<img class="qr-code" id="agrosaldo-qr" alt="QR Code de validação" />`}
             <p style="margin-top: 5px;">Gerado via AgroSaldo</p>
-            <p>Hash: ${Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
+            <p>Hash: ${reportHash}</p>
           </div>
         </footer>
       </div>
 
+      <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
       <script>
         // Auto-print ao carregar
         window.onload = function() {
-          setTimeout(function() {
-            window.print();
-          }, 500);
+          try {
+            var img = document.getElementById('agrosaldo-qr');
+            if (img && window.QRCode) {
+              window.QRCode.toDataURL(${JSON.stringify(qrCodePayload)}, {
+                margin: 1,
+                width: 240,
+                color: {
+                  dark: '#111827',
+                  light: '#ffffff'
+                }
+              }, function(err, url) {
+                if (!err && url) {
+                  img.src = url;
+                }
+                setTimeout(function() { window.print(); }, 600);
+              });
+              return;
+            }
+          } catch (e) {
+            // silencioso
+          }
+
+          setTimeout(function() { window.print(); }, 600);
         };
       </script>
     </body>
@@ -749,6 +893,8 @@ export function generateExtractHTML(data: ExtractData): string {
               <th style="width: 80px;">Data</th>
               <th style="width: 100px;">Tipo</th>
               <th>Descrição / Categoria</th>
+              <th style="width: 90px;">Sexo</th>
+              <th style="width: 130px;">Faixa Etária</th>
               <th class="text-right" style="width: 80px;">Qtd.</th>
               <th class="text-right" style="width: 100px;">Valor (R$)</th>
             </tr>
@@ -761,6 +907,8 @@ export function generateExtractHTML(data: ExtractData): string {
                   <span class="type-badge" style="background: #f3f4f6;">${m.typeLabel}</span>
                 </td>
                 <td>${m.description}</td>
+                <td>${m.sexLabel ?? '-'}</td>
+                <td>${m.ageGroupLabel ?? '-'}</td>
                 <td class="text-right font-bold ${m.quantity > 0 ? 'text-success' : 'text-error'}">
                   ${m.quantity > 0 ? '+' : ''}${m.quantity}
                 </td>
@@ -770,7 +918,7 @@ export function generateExtractHTML(data: ExtractData): string {
               </tr>
             `).join('') : `
               <tr>
-                <td colspan="5" class="text-center" style="padding: 20px; color: #6b7280;">
+                <td colspan="7" class="text-center" style="padding: 20px; color: #6b7280;">
                   Nenhuma movimentação encontrada neste período.
                 </td>
               </tr>

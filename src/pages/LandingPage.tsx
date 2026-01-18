@@ -57,7 +57,7 @@ const heroHighlights = [
   {
     icon: Leaf,
     title: 'Operação sustentável',
-    description: 'GTA validada e rastreabilidade ambiental.',
+    description: 'Rotina simples para o campo e confiança para o escritório.',
   },
 ];
 
@@ -65,12 +65,12 @@ const features = [
   {
     icon: BarChart3,
     title: 'Dashboard inteligente',
-    description: 'Saldo físico x oficial em tempo real, com gráficos e alertas.',
+    description: 'Saldo do rebanho e evolução por faixa etária, com alertas e gráficos.',
   },
   {
     icon: Shield,
     title: 'Compliance sanitário',
-    description: 'Fluxo nativo para INDEA, IAGRO, ADAPAR e demais órgãos.',
+    description: 'Registros organizados para facilitar a declaração na Defesa Agropecuária.',
   },
   {
     icon: Smartphone,
@@ -80,7 +80,7 @@ const features = [
   {
     icon: FileCheck,
     title: 'Declaração oficial',
-    description: 'PDF pronto em 1 clique para enviar ao órgão sanitarista.',
+    description: 'Relatórios e exportações para você informar o saldo com segurança.',
   },
   {
     icon: Clock,
@@ -89,51 +89,91 @@ const features = [
   },
   {
     icon: Beef,
-    title: 'Multi-espécies',
-    description: 'Bovinos, equinos, ovinos, suínos e aves em um só painel.',
+    title: 'Movimentações do rebanho',
+    description: 'Nascimentos, mortes e vendas organizados em um fluxo simples.',
   },
 ];
 
 const testimonials = [
   {
     name: 'João Pedro Mendes',
-    role: 'Proprietário · Fazenda Santa Maria',
-    location: 'Campo Grande, MS',
+    role: 'Produtor rural',
+    location: 'Juara, MT',
     content:
-      'Acabou a dor de cabeça com planilha. Meu saldo bate com o INDEA sempre e a evolução automática me economiza um dia inteiro por mês.',
-    metric: 'Reduzi 40% do tempo em controles',
+      'Na hora de declarar no INDEA, sempre virava um caos: faltava registro do que nasceu, do que morreu e do que vendeu. Agora eu lanço na rotina e confiro tudo com calma.',
+    metric: 'Declaração no INDEA com mais segurança',
     rating: 5,
     photo: 'https://ui-avatars.com/api/?name=João+Pedro+Mendes&size=128&background=10b981&color=fff',
   },
   {
     name: 'Maria Clara Santos',
-    role: 'Gerente Operacional · Agropecuária Bela Vista',
-    location: 'Dourados, MS',
+    role: 'Gestora de fazenda',
+    location: 'Sinop, MT',
     content:
-      'O app é tão simples que nossos vaqueiros lançam pelo celular. A sincronização offline salvou nossa operação no campo.',
-    metric: 'Economizei R$ 8.000/ano em deslocamentos',
+      'A equipe lança do campo e eu confiro no fim do dia. Quando chega a época de declarar no INDEA, eu não preciso correr atrás de informação em caderno e planilha.',
+    metric: 'Menos retrabalho na época da declaração',
     rating: 5,
     photo: 'https://ui-avatars.com/api/?name=Maria+Clara+Santos&size=128&background=3b82f6&color=fff',
   },
   {
     name: 'Carlos Eduardo Silva',
-    role: 'Proprietário · Rancho Ouro Verde',
-    location: 'Três Lagoas, MS',
+    role: 'Produtor rural',
+    location: 'Juína, MT',
     content:
-      'Declaração oficial caiu de 2 dias para 5 minutos. Hoje clico em gerar PDF e envio direto para o INDEA.',
-    metric: 'Zero multas em 18 meses',
+      'A melhor parte é que o sistema me obriga a registrar a rotina. Na hora de declarar no INDEA, eu não dependo da memória e evito divergência no saldo.',
+    metric: 'Menos risco de divergência no saldo',
     rating: 5,
     photo: 'https://ui-avatars.com/api/?name=Carlos+Eduardo+Silva&size=128&background=f59e0b&color=fff',
   },
   {
     name: 'Ana Paula Oliveira',
-    role: 'Gestora de Rebanho · Fazenda São José',
-    location: 'Corumbá, MS',
+    role: 'Gestora de rebanho',
+    location: 'Sorriso, MT',
     content:
-      'Controlo 2.800 cabeças em tempo real. O dashboard me dá visão completa e confiança para decidir rápido.',
-    metric: 'Aumento de 25% na precisão de estoque',
+      'Quando o saldo informado não bate com o que o INDEA já tem, é só dor de cabeça. Com o AgroSaldo eu mantenho o histórico em dia e declaro com mais confiança.',
+    metric: 'Menos dor de cabeça com INDEA',
     rating: 5,
     photo: 'https://ui-avatars.com/api/?name=Ana+Paula+Oliveira&size=128&background=ec4899&color=fff',
+  },
+  {
+    name: 'Rafael Almeida',
+    role: 'Produtor rural',
+    location: 'Maringá, PR',
+    content:
+      'Eu sempre anotava no caderno e quando ia fechar o saldo tinha coisa faltando. Com o AgroSaldo eu registro na rotina e o histórico fica pronto na hora de declarar.',
+    metric: 'Menos dependência de caderno e planilha',
+    rating: 5,
+    photo: 'https://ui-avatars.com/api/?name=Rafael+Almeida&size=128&background=0ea5e9&color=fff',
+  },
+  {
+    name: 'Fernanda Ribeiro',
+    role: 'Gestora de fazenda',
+    location: 'Ribeirão Preto, SP',
+    content:
+      'O que mais ajuda é a consistência: a equipe lança e eu acompanho. Na hora de informar, não vira correria de última hora buscando número que ninguém registrou.',
+    metric: 'Rotina mais organizada e sem correria',
+    rating: 5,
+    photo: 'https://ui-avatars.com/api/?name=Fernanda+Ribeiro&size=128&background=22c55e&color=fff',
+  },
+  {
+    name: 'Diego Carvalho',
+    role: 'Produtor rural',
+    location: 'Rio Verde, GO',
+    content:
+      'Antes eu só lembrava de registrar quando dava problema. Agora eu lanço no dia a dia e a declaração sai com mais segurança, sem divergência no saldo.',
+    metric: 'Menos risco de divergência',
+    rating: 5,
+    photo: 'https://ui-avatars.com/api/?name=Diego+Carvalho&size=128&background=f97316&color=fff',
+  },
+  {
+    name: 'Patrícia Souza',
+    role: 'Gestora de rebanho',
+    location: 'Dourados, MS',
+    content:
+      'A rotina de vacina e movimentação é o que mais dá trabalho de controlar. Com o AgroSaldo, fica tudo registrado e eu confiro antes de declarar.',
+    metric: 'Mais controle de rotina e sanidade',
+    rating: 5,
+    photo: 'https://ui-avatars.com/api/?name=Patricia+Souza&size=128&background=a855f7&color=fff',
   },
 ];
 
@@ -373,14 +413,15 @@ export default function LandingPage() {
             <div className="mx-auto grid max-w-6xl items-start gap-12 px-4 sm:px-6 lg:grid-cols-[0.95fr_1.05fr]">
               <div className="space-y-6 animate-slide-in-left">
                 <Badge className="w-fit border border-white/30 bg-white/10 text-[0.65rem] uppercase tracking-[0.35em] text-white">
-                  Nova experiência
+                  AgroSaldo
                 </Badge>
                 <h1 className="font-display text-4xl leading-tight text-white md:text-5xl lg:text-6xl">
-                  Controle oficial do seu rebanho com uma atmosfera feita para inspirar confiança todos os dias.
+                  AgroSaldo — saldo do rebanho em dia, GTA sem dor de cabeça.
                 </h1>
                 <p className="text-lg text-white/75">
-                  O AgroSaldo entrega indicadores vivos, compliance automático e um visual imersivo. Você acorda com clareza,
-                  delega com precisão e dorme tranquilo sabendo que seu saldo físico bate com o oficial.
+                  Toda vez que chega a hora de informar saldo, vacinas e movimentações para a Defesa Agropecuária, vira um caos:
+                  ninguém lembra o que não foi registrado. O AgroSaldo organiza a rotina do rebanho para você declarar com segurança
+                  e evitar divergências que travam a emissão de GTA e podem gerar multa.
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {heroHighlights.map(({ icon: Icon, title, description }) => (
@@ -413,7 +454,7 @@ export default function LandingPage() {
                     Falar com especialista
                   </Button>
                 </div>
-                <p className="text-sm text-white/60">✓ 7 dias grátis · ✓ Sem cartão · ✓ Aprovação segura</p>
+                <p className="text-sm text-white/60">✓ 7 dias grátis · ✓ Sem cartão</p>
               </div>
 
               <div className="animate-slide-in-right">
@@ -449,7 +490,7 @@ export default function LandingPage() {
                         <div className="mt-3 space-y-2">
                           <div className="flex items-center gap-2 text-xs">
                             <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                            Revisar GTA — 12 propriedades
+                            Revisar registros antes da declaração
                           </div>
                           <div className="flex items-center gap-2 text-xs">
                             <div className="h-2 w-2 rounded-full bg-amber-500" />
@@ -457,14 +498,14 @@ export default function LandingPage() {
                           </div>
                           <div className="flex items-center gap-2 text-xs">
                             <div className="h-2 w-2 rounded-full bg-emerald-300" />
-                            4 técnicos em campo agora
+                            Checklist do rebanho atualizado
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center justify-between rounded-2xl border border-white/40 bg-white/90 p-4">
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-emerald-900/70">+2.500 propriedades</p>
-                          <p className="text-lg font-semibold text-emerald-900">Monitoradas em tempo real</p>
+                          <p className="text-xs uppercase tracking-wide text-emerald-900/70">Rotina organizada</p>
+                          <p className="text-lg font-semibold text-emerald-900">Registre no campo. Declare com confiança.</p>
                         </div>
                         <Sparkles className="h-8 w-8 text-amber-500" />
                       </div>
@@ -481,14 +522,28 @@ export default function LandingPage() {
                 <Badge className="bg-white/10 text-white">Quem somos</Badge>
                 <h2 className="font-display text-4xl text-white">Tecnologia criada por pecuaristas, para pecuaristas.</h2>
                 <p className="text-lg text-white/75">
-                  Nasceu em Campo Grande para resolver a dor real de conciliar saldos oficiais com o que acontece no campo.
-                  Traduzimos processos complexos em fluxos simples, com um time que vive a pecuária diariamente.
+                  O AgroSaldo nasceu em Maringá/PR. O desenvolvedor é entusiasta do agro e vem de família de produtores de soja,
+                  milho e também de pecuária de corte e leite. Com mais de 10 anos de experiência em gestão, tecnologia e transporte
+                  de cargas, criou o sistema para resolver uma dor comum: na hora de declarar o saldo do rebanho e a sanidade,
+                  sempre falta informação — e qualquer divergência com o que a Defesa já tem em sistema pode travar a GTA.
                 </p>
                 <div className="space-y-4">
                   {[
-                    { title: 'Missão', description: 'Simplificar a gestão pecuária e garantir compliance sanitário.' },
-                    { title: 'Visão', description: 'Ser a plataforma nº1 de gestão pecuária do Brasil até 2030.' },
-                    { title: 'Valores', description: 'Simplicidade, transparência e foco no produtor.' },
+                    {
+                      title: 'Missão',
+                      description:
+                        'Dar ao produtor rural a tranquilidade de declarar saldo e sanidade com segurança, registrando a rotina do rebanho de forma simples.',
+                    },
+                    {
+                      title: 'Visão',
+                      description:
+                        'Ser a plataforma mais prática e confiável do Brasil para organizar a rotina do rebanho e reduzir o risco de divergências na declaração.',
+                    },
+                    {
+                      title: 'Valores',
+                      description:
+                        'Simplicidade no campo, responsabilidade com dados, transparência e foco total na realidade do produtor.',
+                    },
                   ].map(item => (
                     <div key={item.title} className="flex gap-4">
                       <div className="mt-1 rounded-xl bg-emerald-400/20 p-2">
@@ -509,26 +564,26 @@ export default function LandingPage() {
                       <Beef className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                      <p className="text-sm uppercase tracking-wide text-white/70">Impacto 2025</p>
-                      <h3 className="text-3xl font-bold">+2.500 fazendas</h3>
+                      <p className="text-sm uppercase tracking-wide text-white/70">O que você ganha</p>
+                      <h3 className="text-3xl font-bold">Menos caos. Mais controle.</h3>
                     </div>
                   </div>
                   <div className="mt-8 grid grid-cols-2 gap-6 text-sm">
                     <div>
-                      <p className="text-2xl font-semibold text-white">12.4K</p>
-                      <p className="text-white/70">GTAs validadas</p>
+                      <p className="text-2xl font-semibold text-white">Rotina</p>
+                      <p className="text-white/70">nascimentos, vendas, mortes e vacinas registrados</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-semibold text-white">98%</p>
-                      <p className="text-white/70">satisfação no suporte</p>
+                      <p className="text-2xl font-semibold text-white">Saldo</p>
+                      <p className="text-white/70">organizado para declarar com segurança</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-semibold text-white">840</p>
-                      <p className="text-white/70">declarações/mês</p>
+                      <p className="text-2xl font-semibold text-white">Equipe</p>
+                      <p className="text-white/70">trabalhando com menos retrabalho</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-semibold text-white">15</p>
-                      <p className="text-white/70">estados atendidos</p>
+                      <p className="text-2xl font-semibold text-white">Decisão</p>
+                      <p className="text-white/70">mais rápida com histórico consistente</p>
                     </div>
                   </div>
                 </div>
@@ -598,7 +653,7 @@ export default function LandingPage() {
               <div className="text-center">
                 <Badge className="bg-emerald-100 text-emerald-900">Depoimentos</Badge>
                 <h2 className="mt-4 font-display text-4xl">Produtores que já vivem o AgroSaldo</h2>
-                <p className="mt-2 text-lg text-slate-600">Mais de 500 pecuaristas transformaram sua operação.</p>
+                <p className="mt-2 text-lg text-slate-600">Gente do campo que prefere registrar na rotina do que correr atrás depois.</p>
               </div>
               <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 {testimonials.map((testimonial, index) => (
@@ -717,7 +772,7 @@ export default function LandingPage() {
               <h2 className="font-display text-3xl md:text-4xl">Pronto para simplificar sua gestão?</h2>
               <p className="mt-4 text-lg opacity-90">Comece agora e tenha 7 dias grátis para testar tudo, sem cartão.</p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
-                <Link to="/login">
+                <Link to="/cadastro">
                   <Button size="lg" variant="secondary" className="h-14 px-8 text-lg font-semibold text-emerald-700">
                     Criar Conta Grátis
                     <ChevronRight className="ml-2 h-5 w-5" />
@@ -748,7 +803,7 @@ export default function LandingPage() {
                   <span className="font-display text-lg font-semibold">AgroSaldo</span>
                 </div>
                 <p className="text-sm text-slate-600">
-                  Controle oficial do seu rebanho, sem planilha. Simples para o peão, completo para o dono.
+                  Saldo do rebanho em dia, sem caderno e sem planilha. Registre na rotina e declare com confiança.
                 </p>
                 <div className="flex gap-3">
                   <a

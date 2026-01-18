@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { apiClient } from '@/lib/api-client';
-import { LivestockMirrorDTO, OtherSpeciesMirrorDTO } from '@/types';
+import { EpidemiologySurveyDTO, LivestockMirrorDTO, OtherSpeciesMirrorDTO } from '@/types';
 import ReactApexChart from 'react-apexcharts';
 import {
   Beef,
@@ -16,6 +16,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -27,6 +33,7 @@ import { ApexOptions } from 'apexcharts';
 import { generatePDF, printReport, ReportData } from '@/lib/pdf-report-final';
 import { formatReportForWhatsApp, shareViaWhatsApp } from '@/lib/whatsapp-share';
 import { useToast } from '@/hooks/use-toast';
+import { AGE_GROUP_BRACKETS, compareAgeGroupIds } from '@/lib/age-groups';
 
 export default function Rebanho() {
   const { selectedProperty, user } = useAuth();
@@ -64,17 +71,19 @@ export default function Rebanho() {
   }, [selectedProperty?.id]);
 
   const ageGroups = useMemo(
-    () => [
-      { id: '0-4', label: '0 a 4 meses' },
-      { id: '5-12', label: '5 a 12 meses' },
-      { id: '12-24', label: '12 a 24 meses' },
-      { id: '24-36', label: '24 a 36 meses' },
-      { id: '36+', label: 'Acima de 36 meses' },
-    ],
+    () =>
+      AGE_GROUP_BRACKETS.map((g) => ({
+        id: g.id,
+        label: g.label,
+      })),
     [],
   );
 
-  const balances = mirror?.balances ?? [];
+  const balances = useMemo(() => mirror?.balances ?? [], [mirror?.balances]);
+  const sortedBalances = useMemo(
+    () => balances.slice().sort((a, b) => compareAgeGroupIds(a.ageGroupId, b.ageGroupId)),
+    [balances],
+  );
   const totalCattle = mirror?.totals.total ?? 0;
 
   const otherSpeciesBalances = otherMirror?.balances ?? [];
@@ -88,6 +97,20 @@ export default function Rebanho() {
       { id: 'ovinos', name: 'Ovinos (Ovelhas)', unit: 'cabeças' as const, icon: '🐑' },
     ],
     [],
+  );
+
+  const activeOtherSpeciesBalances = useMemo(
+    () =>
+      otherSpeciesBalances.filter((b) => {
+        const previous = (b.currentBalance ?? 0) - (b.entries ?? 0) + (b.exits ?? 0);
+        return (
+          (b.currentBalance ?? 0) > 0 ||
+          (b.entries ?? 0) > 0 ||
+          (b.exits ?? 0) > 0 ||
+          previous > 0
+        );
+      }),
+    [otherSpeciesBalances],
   );
 
   const getAgeGroupLabel = (ageGroupId: string) => {
@@ -112,21 +135,29 @@ export default function Rebanho() {
     propertyName: selectedProperty.name,
     ownerName: user?.name || 'Proprietário',
     ownerDocument: user?.cpfCnpj,
+    ownerEmail: user?.email,
+    ownerPhone: user?.phone,
     stateRegistration: selectedProperty.stateRegistration,
     propertyCode: selectedProperty.propertyCode || selectedProperty.id,
+    propertyAddress: [
+      selectedProperty.street,
+      selectedProperty.number,
+      selectedProperty.complement,
+      selectedProperty.district,
+    ].filter(Boolean).join(', '),
+    propertyCep: selectedProperty.cep,
     city: selectedProperty.city || 'N/A',
     state: selectedProperty.state || 'N/A',
     generatedAt: new Date().toLocaleString('pt-BR'),
     totalCattle: totalCattle,
-    balances: balances.map(b => ({
+    balances: sortedBalances.map(b => ({
       ageGroup: getAgeGroupLabel(b.ageGroupId),
       male: b.male.currentBalance,
       female: b.female.currentBalance,
       total: b.male.currentBalance + b.female.currentBalance,
       ageGroupId: b.ageGroupId, // Mantendo caso necessário para keys
     })),
-    otherSpecies: otherSpeciesBalances
-      .filter(balance => balance.currentBalance > 0)
+    otherSpecies: activeOtherSpeciesBalances
       .map(b => ({
         name: b.speciesName,
         balance: b.currentBalance,
@@ -136,23 +167,46 @@ export default function Rebanho() {
       })),
   });
 
-  const handlePrintReport = () => {
-    try {
-      const reportData = getReportData();
-      printReport(reportData);
-    } catch (error) {
-      console.error('Erro ao imprimir:', error);
-      toast({ 
-        title: '❌ Erro ao Imprimir', 
-        description: 'Tente novamente', 
-        variant: 'destructive' 
-      });
-    }
+  const handlePrintReport = (includeSurvey: boolean) => {
+    void (async () => {
+      try {
+        const reportData = getReportData();
+
+        let latestSurvey: EpidemiologySurveyDTO | null = null;
+        try {
+          const surveys = await apiClient.get<EpidemiologySurveyDTO[]>('/questionario-epidemiologico');
+          latestSurvey = surveys
+            .slice()
+            .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())[0] ?? null;
+        } catch (error) {
+          latestSurvey = null;
+        }
+
+        printReport({
+          ...reportData,
+          includeSurvey,
+          latestSurvey: latestSurvey
+            ? {
+                submittedAt: latestSurvey.submittedAt,
+                nextDueAt: latestSurvey.nextDueAt,
+                answers: latestSurvey.answers,
+              }
+            : undefined,
+        });
+      } catch (error) {
+        console.error('Erro ao imprimir:', error);
+        toast({
+          title: '❌ Erro ao Imprimir',
+          description: 'Tente novamente',
+          variant: 'destructive',
+        });
+      }
+    })();
   };
 
   const handleShareWhatsApp = () => {
     try {
-      const ageDistribution = balances.map(b => ({
+      const ageDistribution = sortedBalances.map(b => ({
         label: getAgeGroupLabel(b.ageGroupId),
         total: b.male.currentBalance + b.female.currentBalance,
       }));
@@ -163,8 +217,7 @@ export default function Rebanho() {
         state: selectedProperty.state || 'N/A',
         totalCattle: totalCattle,
         ageDistribution,
-        otherSpecies: otherSpeciesBalances
-          .filter(balance => balance.currentBalance > 0)
+        otherSpecies: activeOtherSpeciesBalances
           .map(b => ({
             name: b.speciesName,
             balance: b.currentBalance,
@@ -231,7 +284,7 @@ export default function Rebanho() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 0 },
     xaxis: {
-      categories: balances.map(b => getAgeGroupLabel(b.ageGroupId)),
+      categories: sortedBalances.map(b => getAgeGroupLabel(b.ageGroupId)),
       labels: {
         style: { colors: '#64748b', fontSize: '11px' }
       }
@@ -261,11 +314,11 @@ export default function Rebanho() {
   const ageDistributionSeries = [
     {
       name: 'Machos',
-      data: balances.map(b => b.male.currentBalance)
+      data: sortedBalances.map(b => b.male.currentBalance)
     },
     {
       name: 'Fêmeas',
-      data: balances.map(b => b.female.currentBalance)
+      data: sortedBalances.map(b => b.female.currentBalance)
     }
   ];
 
@@ -278,8 +331,7 @@ export default function Rebanho() {
       fontFamily: 'Inter, sans-serif',
     },
     colors: ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'],
-    labels: otherSpeciesBalances
-      .filter(balance => balance.currentBalance > 0)
+    labels: activeOtherSpeciesBalances
       .map(balance => balance.speciesName),
     legend: {
       position: 'bottom',
@@ -297,8 +349,7 @@ export default function Rebanho() {
     }
   };
 
-  const otherSpeciesSeries = otherSpeciesBalances
-    .filter(balance => balance.currentBalance > 0)
+  const otherSpeciesSeries = activeOtherSpeciesBalances
     .map(balance => balance.currentBalance);
 
   // Gráfico de Movimentação de Outras Espécies
@@ -320,8 +371,7 @@ export default function Rebanho() {
     dataLabels: { enabled: false },
     stroke: { show: true, width: 0 },
     xaxis: {
-      categories: otherSpeciesBalances
-        .filter(balance => balance.currentBalance > 0)
+      categories: activeOtherSpeciesBalances
         .map(balance => balance.speciesName),
       labels: {
         style: { colors: '#64748b', fontSize: '11px' }
@@ -352,14 +402,12 @@ export default function Rebanho() {
   const otherSpeciesMovementSeries = [
     {
       name: 'Entradas',
-      data: otherSpeciesBalances
-        .filter(balance => balance.currentBalance > 0)
+      data: activeOtherSpeciesBalances
         .map(balance => balance.entries)
     },
     {
       name: 'Saídas',
-      data: otherSpeciesBalances
-        .filter(balance => balance.currentBalance > 0)
+      data: activeOtherSpeciesBalances
         .map(balance => balance.exits)
     }
   ];
@@ -399,10 +447,22 @@ export default function Rebanho() {
         
         {/* Botões de Ação */}
         <div className="flex flex-wrap gap-2">
-          <Button onClick={handlePrintReport} variant="outline" size={isMobile ? 'default' : 'default'}>
-            <Printer className="w-4 h-4 mr-2" />
-            Imprimir Oficial / Salvar PDF
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size={isMobile ? 'default' : 'default'}>
+                <Printer className="w-4 h-4 mr-2" />
+                Imprimir Oficial / Salvar PDF
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handlePrintReport(true)}>
+                PDF com Questionário Epidemiológico
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handlePrintReport(false)}>
+                PDF sem Questionário Epidemiológico
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={handleShareWhatsApp} variant="default" size={isMobile ? 'default' : 'default'}>
             <Share2 className="w-4 h-4 mr-2" />
             WhatsApp
@@ -596,7 +656,7 @@ export default function Rebanho() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {balances.map((balance) => {
+              {sortedBalances.map((balance) => {
                 const ageGroup = ageGroups.find(g => g.id === balance.ageGroupId);
                 const totalCurrent = balance.male.currentBalance + balance.female.currentBalance;
                 
@@ -670,12 +730,12 @@ export default function Rebanho() {
       </Card>
 
       {/* Tabela de Outras Espécies */}
-      {otherSpeciesBalances.some(balance => balance.currentBalance > 0) && (
+      {activeOtherSpeciesBalances.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <span className="text-2xl">🐾</span>
-              Controle de Outras Espécies
+              Espelho Oficial do Rebanho (Outras Espécies)
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
@@ -691,9 +751,7 @@ export default function Rebanho() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {otherSpeciesBalances
-                  .filter(balance => balance.currentBalance > 0)
-                  .map((balance) => {
+                {activeOtherSpeciesBalances.map((balance) => {
                     const species = otherSpecies.find(s => s.id === balance.speciesId);
                     return (
                       <TableRow key={balance.speciesId}>
@@ -723,23 +781,19 @@ export default function Rebanho() {
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell>TOTAL</TableCell>
                   <TableCell className="text-center">
-                    {otherSpeciesBalances
-                      .filter(b => b.currentBalance > 0)
+                    {activeOtherSpeciesBalances
                       .reduce((s, b) => s + b.previousBalance, 0)}
                   </TableCell>
                   <TableCell className="text-center text-success">
-                    +{otherSpeciesBalances
-                      .filter(b => b.currentBalance > 0)
+                    +{activeOtherSpeciesBalances
                       .reduce((s, b) => s + b.entries, 0)}
                   </TableCell>
                   <TableCell className="text-center text-error">
-                    -{otherSpeciesBalances
-                      .filter(b => b.currentBalance > 0)
+                    -{activeOtherSpeciesBalances
                       .reduce((s, b) => s + b.exits, 0)}
                   </TableCell>
                   <TableCell className="text-center text-primary text-lg">
-                    {otherSpeciesBalances
-                      .filter(b => b.currentBalance > 0)
+                    {activeOtherSpeciesBalances
                       .reduce((s, b) => s + b.currentBalance, 0)}
                   </TableCell>
                   <TableCell></TableCell>

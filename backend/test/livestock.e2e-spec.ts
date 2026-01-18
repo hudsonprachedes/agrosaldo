@@ -72,21 +72,31 @@ describe('Livestock (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     prismaService = app.get<PrismaService>(PrismaService);
 
-    jest.spyOn(prismaService.usuario, 'findUnique').mockResolvedValue(mockUser as any);
-    jest.spyOn(prismaService.rebanho, 'findMany').mockResolvedValue(mockLivestock as any);
-    jest.spyOn(prismaService.movimento, 'findMany').mockResolvedValue(mockMovements as any);
+    jest
+      .spyOn(prismaService.usuario, 'findUnique')
+      .mockResolvedValue(mockUser as any);
+    jest
+      .spyOn(prismaService.rebanho, 'findMany')
+      .mockResolvedValue(mockLivestock as any);
+    jest
+      .spyOn(prismaService.movimento, 'findMany')
+      .mockResolvedValue(mockMovements as any);
     jest.spyOn(prismaService.rebanho, 'groupBy').mockResolvedValue([
       { faixaEtaria: 'calf', _sum: { cabecas: 50 } },
       { faixaEtaria: 'heifer', _sum: { cabecas: 30 } },
     ] as any);
 
     if (!(prismaService.rebanho as any).updateMany) {
-      (prismaService.rebanho as any).updateMany = jest.fn().mockResolvedValue({ count: 0 });
+      (prismaService.rebanho as any).updateMany = jest
+        .fn()
+        .mockResolvedValue({ count: 0 });
     }
 
     const loginResponse = await request(app.getHttpServer())
@@ -224,7 +234,9 @@ describe('Livestock (e2e)', () => {
 
   describe('POST /rebanho/:propertyId/recalcular-faixas', () => {
     it('should recalculate age groups', async () => {
-      jest.spyOn(prismaService.rebanho, 'updateMany').mockResolvedValue({ count: 5 } as any);
+      jest
+        .spyOn(prismaService.rebanho, 'updateMany')
+        .mockResolvedValue({ count: 5 } as any);
 
       const response = await request(app.getHttpServer())
         .post(`/rebanho/${propertyId}/recalcular-faixas`)

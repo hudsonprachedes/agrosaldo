@@ -1,4 +1,19 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -21,7 +36,7 @@ export class MovementsController {
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
-    })
+    }),
   )
   async uploadPhoto(
     @Param('id') id: string,
@@ -76,36 +91,60 @@ export class MovementsController {
     @Headers('x-property-id') propertyId?: string,
     @Query('days') days?: string,
   ) {
-    return this.movementsService.cleanupOldPhotos(propertyId ?? '', days ? Number(days) : 180);
+    return this.movementsService.cleanupOldPhotos(
+      propertyId ?? '',
+      days ? Number(days) : 180,
+    );
   }
 
   @Post()
-  create(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
+  create(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateMovementDto,
+  ) {
     return this.movementsService.create(propertyId, dto);
   }
 
   @Post('nascimento')
-  createBirth(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
-    return this.movementsService.create(propertyId, { ...dto, type: 'nascimento' });
+  createBirth(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateMovementDto,
+  ) {
+    return this.movementsService.create(propertyId, {
+      ...dto,
+      type: 'nascimento',
+    });
   }
 
   @Post('mortalidade')
-  createDeath(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
+  createDeath(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateMovementDto,
+  ) {
     return this.movementsService.create(propertyId, { ...dto, type: 'morte' });
   }
 
   @Post('venda')
-  createSale(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
+  createSale(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateMovementDto,
+  ) {
     return this.movementsService.create(propertyId, { ...dto, type: 'venda' });
   }
 
   @Post('vacina')
-  createVaccine(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
+  createVaccine(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateMovementDto,
+  ) {
     return this.movementsService.create(propertyId, { ...dto, type: 'vacina' });
   }
 
   @Post('compra')
-  createPurchase(@Headers('x-property-id') propertyId: string, @Body() dto: CreateMovementDto) {
+  createPurchase(
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: CreateMovementDto,
+  ) {
     return this.movementsService.create(propertyId, { ...dto, type: 'compra' });
   }
 
@@ -115,8 +154,14 @@ export class MovementsController {
   }
 
   @Get('historico')
-  findHistory(@Headers('x-property-id') propertyId?: string, @Query('months') months?: string) {
-    return this.movementsService.findHistory(propertyId ?? '', months ? Number(months) : 6);
+  findHistory(
+    @Headers('x-property-id') propertyId?: string,
+    @Query('months') months?: string,
+  ) {
+    return this.movementsService.findHistory(
+      propertyId ?? '',
+      months ? Number(months) : 6,
+    );
   }
 
   @Get(':id')

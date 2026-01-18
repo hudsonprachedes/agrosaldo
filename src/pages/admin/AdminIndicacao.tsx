@@ -24,10 +24,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import PageSkeleton from '@/components/PageSkeleton';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { adminService, AdminCoupon, AdminReferrer } from '@/services/api.service';
@@ -130,7 +132,7 @@ export default function AdminIndicacao() {
   ];
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
+    return <PageSkeleton cards={4} lines={12} />;
   }
 
   return (

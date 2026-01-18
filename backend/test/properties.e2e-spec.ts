@@ -52,7 +52,9 @@ describe('Properties (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
 
     prismaService = app.get<PrismaService>(PrismaService);
@@ -144,9 +146,7 @@ describe('Properties (e2e)', () => {
     });
 
     it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
-        .get('/propriedades')
-        .expect(401);
+      await request(app.getHttpServer()).get('/propriedades').expect(401);
     });
   });
 
@@ -164,7 +164,9 @@ describe('Properties (e2e)', () => {
     });
 
     it('should return 404 for non-existent property', async () => {
-      (prismaService as any).propriedade.findUnique = jest.fn().mockResolvedValueOnce(null);
+      (prismaService as any).propriedade.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(null);
 
       await request(app.getHttpServer())
         .get('/propriedades/non-existent-id')
@@ -260,7 +262,10 @@ describe('Properties (e2e)', () => {
         .expect(200);
 
       expect(response.body).toHaveProperty('nome', updateData.name);
-      expect(response.body).toHaveProperty('quantidadeGado', updateData.cattleCount);
+      expect(response.body).toHaveProperty(
+        'quantidadeGado',
+        updateData.cattleCount,
+      );
     });
 
     it('should validate area values on update', async () => {
@@ -299,7 +304,9 @@ describe('Properties (e2e)', () => {
     });
 
     it('should return 404 when deleting non-existent property', async () => {
-      (prismaService as any).propriedade.delete = jest.fn().mockRejectedValueOnce(new Error('Property not found'));
+      (prismaService as any).propriedade.delete = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Property not found'));
 
       await request(app.getHttpServer())
         .delete('/propriedades/non-existent-id')
