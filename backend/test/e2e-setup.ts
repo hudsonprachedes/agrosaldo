@@ -125,5 +125,5 @@ jest.mock('bcryptjs', () => ({
 // Set test environment variables
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret';
-process.env.DATABASE_URL =
+process.env.PRISMA_DATABASE_URL =
   'postgresql://test:test@localhost:5432/agrosaldo_test';

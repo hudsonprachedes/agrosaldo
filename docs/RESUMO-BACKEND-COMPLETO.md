@@ -174,7 +174,7 @@ Swagger em: `http://localhost:3000/swagger`
 Certifique-se que PostgreSQL está rodando e configure em `backend/.env`:
 
 ```env
-DATABASE_URL=postgresql://postgres:senha@localhost:5432/agrosaldo?schema=public
+PRISMA_DATABASE_URL=postgresql://postgres:senha@localhost:5432/agrosaldo?schema=public
 ```
 
 ### 3. Testar Endpoints

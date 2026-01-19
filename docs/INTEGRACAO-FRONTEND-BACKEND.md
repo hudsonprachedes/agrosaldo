@@ -65,10 +65,10 @@ Swagger em `http://localhost:3000/swagger`
 
 ### 3. Banco de Dados
 
-Certifique-se que PostgreSQL está rodando e a `DATABASE_URL` está configurada em `backend/.env`:
+Certifique-se que PostgreSQL está rodando e a `PRISMA_DATABASE_URL` está configurada em `backend/.env`:
 
 ```env
-DATABASE_URL=postgresql://postgres:senha@localhost:5432/agrosaldo?schema=public
+PRISMA_DATABASE_URL=postgresql://postgres:senha@localhost:5432/agrosaldo?schema=public
 ```
 
 ---
@@ -380,7 +380,7 @@ npm run start:dev
 
 **Problema**: `PrismaClient needs datasourceUrl`
 
-**Solução**: Verificar `backend/.env` tem `DATABASE_URL` configurada
+**Solução**: Verificar `backend/.env` tem `PRISMA_DATABASE_URL` configurada
 
 ---
 

@@ -1,41 +1,99 @@
-import { INestApplication, Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { ConfigService } from '@nestjs/config';
 import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-type GlobalWithPgPool = typeof globalThis & {
-  __agrosaldo_pg_pool__?: Pool;
-};
+/**
+ * Detecta se está usando Prisma Accelerate (connection pooling)
+ * Nota: db.prisma.io com postgres:// é conexão direta PostgreSQL, não Accelerate
+ */
+function isPrismaAccelerate(databaseUrl: string): boolean {
+  const url = databaseUrl.toLowerCase();
+  // Usar Accelerate somente quando a URL explicitamente for prisma:// ou prisma+postgres://
+  // Ou quando a variável PRISMA_ACCELERATE estiver forçada
+  return (
+    url.startsWith('prisma://') ||
+    url.startsWith('prisma+postgres://') ||
+    process.env.PRISMA_ACCELERATE === 'true'
+  );
+}
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
-  constructor() {
-    const datasourceUrl = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
+  private readonly logger = new Logger(PrismaService.name);
 
-    if (!datasourceUrl) {
-      throw new Error('Nenhuma URL de banco de dados encontrada. Configure DIRECT_DATABASE_URL ou DATABASE_URL.');
+  constructor(private configService: ConfigService) {
+    // Obter DATABASE_URL (suporta PRISMA_DATABASE_URL como fallback para compatibilidade)
+    const databaseUrl = configService.get<string>('DATABASE_URL') || 
+                        configService.get<string>('PRISMA_DATABASE_URL');
+
+    if (!databaseUrl || databaseUrl.trim() === '') {
+      throw new Error(
+        'DATABASE_URL não está definida. Verifique o arquivo .env na raiz do backend.',
+      );
     }
 
-    // Para Prisma v7 - usar adapter para conexão direta
-    const globalForPool = globalThis as GlobalWithPgPool;
-    const pool =
-      globalForPool.__agrosaldo_pg_pool__ ??
-      new Pool({ connectionString: datasourceUrl });
+    const isCloud = isPrismaAccelerate(databaseUrl);
 
-    if (!globalForPool.__agrosaldo_pg_pool__) {
-      globalForPool.__agrosaldo_pg_pool__ = pool;
+    // Preparar configuração do Prisma antes de chamar super()
+    let prismaConfig: any;
+    if (isCloud) {
+      prismaConfig = {
+        accelerateUrl: databaseUrl,
+        log: ['error', 'warn'],
+      };
+    } else {
+      // Para conexão direta PostgreSQL (desenvolvimento local)
+      // Garantir UTF-8 na conexão
+      const poolConfig: any = {
+        connectionString: databaseUrl,
+      };
+
+      // Adicionar parâmetros de encoding UTF-8 se não estiverem na URL
+      if (!databaseUrl.includes('client_encoding')) {
+        // O PostgreSQL usa UTF-8 por padrão, mas vamos garantir explicitamente
+        poolConfig.client_encoding = 'UTF8';
+      }
+
+      const pool = new Pool(poolConfig);
+      prismaConfig = {
+        adapter: new PrismaPg(pool),
+        log: ['error'],
+      };
     }
-    const adapter = new PrismaPg(pool);
-    super({ adapter });
+
+    // Chamada única a super com a configuração preparada
+    super(prismaConfig);
+    if (isCloud) {
+      this.logger.log(
+        '☁️  Detectado: Conexão na nuvem (Prisma Accelerate). Aplicando configurações otimizadas...',
+      );
+    }
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+      this.logger.log('✅ Conexão com banco de dados estabelecida com sucesso');
+    } catch (error) {
+      this.logger.error('❌ Falha ao conectar com o banco de dados:', error);
+      // Em serverless, não abortar - deixar lazy connection
+      if (process.env.VERCEL !== '1' && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+        throw error;
+      }
+    }
   }
 
-  async enableShutdownHooks(app: INestApplication) {
-    process.on('beforeExit', async () => {
-      await app.close();
-    });
+  async onModuleDestroy() {
+    await this.$disconnect();
   }
 }

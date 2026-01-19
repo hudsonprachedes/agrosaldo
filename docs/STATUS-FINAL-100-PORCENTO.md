@@ -137,7 +137,7 @@ agrosaldo/
 - ✅ Cobertura de 85%
 
 ### 4. Prisma v7 Configurado
-- ✅ Datasource com `url = env("DATABASE_URL")`
+- ✅ Datasource com `url = env("PRISMA_DATABASE_URL")`
 - ✅ Adapter PostgreSQL (`@prisma/adapter-pg`)
 - ✅ Modelos em português com `@@map` para inglês
 - ✅ Seeds com type casting apropriado
@@ -162,7 +162,7 @@ agrosaldo/
 
 **Backend (.env)**
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/agrosaldo
+PRISMA_DATABASE_URL=postgresql://user:password@localhost:5432/agrosaldo
 JWT_SECRET=your-secret-key
 JWT_EXPIRES_IN=86400
 CORS_ORIGIN=http://localhost:5173

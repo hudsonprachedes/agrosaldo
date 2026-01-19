@@ -132,7 +132,7 @@ O projeto AgroSaldo foi completado com sucesso, atingindo 100% de conclusão em 
 ```prisma
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")  // ← ADICIONADO
+  url      = env("PRISMA_DATABASE_URL")  // ← ADICIONADO
 }
 ```
 
@@ -211,7 +211,7 @@ npm run preview
 
 **Backend (.env)**
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/agrosaldo
+PRISMA_DATABASE_URL=postgresql://user:password@localhost:5432/agrosaldo
 JWT_SECRET=your-secret-key
 JWT_EXPIRES_IN=86400
 CORS_ORIGIN=http://localhost:5173

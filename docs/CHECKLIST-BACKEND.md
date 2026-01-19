@@ -78,5 +78,5 @@
 
 ## 📝 Notas
 - Checklist será atualizado a cada etapa concluída.
-- Ajustar `DATABASE_URL` no `.env` antes de rodar migrations e seeds.
+- Ajustar `PRISMA_DATABASE_URL` no `.env` antes de rodar migrations e seeds.
 - Estrutura segue padrões NestJS: módulos, DTOs, entities, guards, filters, interceptors.

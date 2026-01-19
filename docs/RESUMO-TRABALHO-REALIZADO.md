@@ -11,7 +11,7 @@
 - **Problema**: 92 erros de compilação TypeScript no backend
 - **Causa Raiz**: Prisma schema sem configuração de `url` no datasource
 - **Solução**: 
-  - Adicionado `url = env("DATABASE_URL")` ao datasource do Prisma
+  - Adicionado `url = env("PRISMA_DATABASE_URL")` ao datasource do Prisma
   - Regenerado cliente Prisma com `npx prisma generate`
   - Resultado: **0 erros de compilação**
 
@@ -73,7 +73,7 @@
    ```prisma
    datasource db {
      provider = "postgresql"
-     url      = env("DATABASE_URL")  // ← ADICIONADO
+     url      = env("PRISMA_DATABASE_URL")  // ← ADICIONADO
    }
    ```
 

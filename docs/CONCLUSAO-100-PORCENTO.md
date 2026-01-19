@@ -309,7 +309,7 @@ function MyComponent() {
 ### Deploy
 
 1. **Backend**: Railway, Render ou Vercel
-   - Configurar DATABASE_URL
+   - Configurar PRISMA_DATABASE_URL
    - Configurar variáveis de ambiente
    - Deploy automático via Git
 

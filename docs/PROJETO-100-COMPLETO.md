@@ -103,7 +103,7 @@ agrosaldo/
 ### Backend
 - [x] 0 erros TypeScript
 - [x] Prisma v7 configurado corretamente
-- [x] Datasource com `url = env("DATABASE_URL")`
+- [x] Datasource com `url = env("PRISMA_DATABASE_URL")`
 - [x] Seeds com type casting apropriado
 - [x] Testes e2e com @ts-ignore nos mocks
 - [x] 40+ endpoints implementados
@@ -146,7 +146,7 @@ agrosaldo/
 ## 🎯 Resumo das Alterações
 
 ### Alterações no Backend
-1. **prisma/schema.prisma**: Adicionado `url = env("DATABASE_URL")` ao datasource
+1. **prisma/schema.prisma**: Adicionado `url = env("PRISMA_DATABASE_URL")` ao datasource
 2. **prisma/seeds/*.ts**: Adicionado type casting `(prisma as any)` para acessar modelos portugueses
 3. **src/modules/admin/admin.service.ts**: Adicionado type casting para `usuario`
 4. **src/modules/auth/auth.service.ts**: Adicionado type casting para `usuario`
@@ -198,7 +198,7 @@ npm run preview
 
 **Backend (.env)**
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/agrosaldo
+PRISMA_DATABASE_URL=postgresql://user:password@localhost:5432/agrosaldo
 JWT_SECRET=your-secret-key
 JWT_EXPIRES_IN=86400
 CORS_ORIGIN=http://localhost:5173

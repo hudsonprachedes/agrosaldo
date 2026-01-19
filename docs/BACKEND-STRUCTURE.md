@@ -169,7 +169,7 @@ export class UserEntity {
 ## 🎯 Próximos Passos
 
 1. ✅ Estrutura corrigida e documentada
-2. ⏳ Configurar DATABASE_URL
+2. ⏳ Configurar PRISMA_DATABASE_URL
 3. ⏳ Rodar migrations (`prisma migrate dev`)
 4. ⏳ Rodar seeds (`prisma db seed`)
 5. ⏳ Testar endpoints via Swagger
