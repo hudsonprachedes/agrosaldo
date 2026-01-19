@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { Buffer } from "buffer";
 
 if (import.meta.env.PROD) {
 	console.log = () => {};
@@ -9,6 +10,10 @@ if (import.meta.env.PROD) {
 	console.info = () => {};
 	console.warn = () => {};
 	console.error = () => {};
+}
+
+if (typeof globalThis !== 'undefined' && !(globalThis as any).Buffer) {
+  (globalThis as any).Buffer = Buffer;
 }
 
 createRoot(document.getElementById("root")!).render(

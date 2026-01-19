@@ -335,6 +335,27 @@ export default function AdminClientes() {
     }
   };
 
+  const formatLastLogin = (value?: string | null) => {
+    if (!value) return '-';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return date.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    });
+  };
+
+  const getOnboardingBadge = (onboardingCompletedAt?: string | null) => {
+    if (onboardingCompletedAt) {
+      return <Badge className="bg-success/10 text-success border-success/30">Concluído</Badge>;
+    }
+
+    return <Badge className="bg-muted text-muted-foreground border-border">Pendente</Badge>;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -367,11 +388,15 @@ export default function AdminClientes() {
               <TableRow>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Telefone</TableHead>
+                <TableHead className="hidden lg:table-cell">Telefone</TableHead>
                 <TableHead>Plano</TableHead>
                 <TableHead>Cabeças</TableHead>
                 <TableHead>Propriedades</TableHead>
-                <TableHead>Papel</TableHead>
+                <TableHead className="hidden xl:table-cell">Papel</TableHead>
+                <TableHead className="hidden lg:table-cell">Versão app</TableHead>
+                <TableHead className="hidden lg:table-cell">Último login</TableHead>
+                <TableHead className="hidden lg:table-cell">Financeiro</TableHead>
+                <TableHead className="hidden lg:table-cell">Onboarding</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -393,7 +418,7 @@ export default function AdminClientes() {
                   <TableCell className="text-muted-foreground text-sm">
                     {tenant.email}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">
                     {tenant.phone || '-'}
                   </TableCell>
                   <TableCell>
@@ -405,8 +430,20 @@ export default function AdminClientes() {
                   <TableCell className="text-muted-foreground text-sm">
                     {typeof tenant.propertyCount === 'number' ? tenant.propertyCount : (tenant.properties?.length ?? '-')}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden xl:table-cell">
                     <Badge variant="outline">{tenant.role}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <Badge variant="outline">{tenant.appVersion ?? '-'}</Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">
+                    {formatLastLogin(tenant.lastLoginAt)}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {tenant.financialStatus ? getFinancialBadge(tenant.financialStatus) : '-'}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {getOnboardingBadge(tenant.onboardingCompletedAt)}
                   </TableCell>
                   <TableCell>{getStatusBadge(tenant.status)}</TableCell>
                   <TableCell>

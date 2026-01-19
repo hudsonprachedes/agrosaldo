@@ -24,6 +24,9 @@ export interface User {
   role: string;
   status: string;
   financialStatus?: string | null;
+  appVersion?: string | null;
+  lastLoginAt?: string | null;
+  onboardingCompletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   currentPlan?: string | null;
@@ -58,6 +61,13 @@ type UserBackendLike = Partial<User> & {
   papel?: string;
   statusFinanceiro?: string | null;
   financialStatus?: string | null;
+  versaoApp?: string | null;
+  appVersion?: string | null;
+  ultimoLogin?: string | null;
+  ultimoLoginEm?: string | null;
+  lastLoginAt?: string | null;
+  onboardingCompletedAt?: string | null;
+  onboardingConcluidoEm?: string | null;
   criadoEm?: string;
   atualizadoEm?: string;
   currentPlan?: string | null;
@@ -114,6 +124,9 @@ const mapUserFromBackend = (raw: UserBackendLike): User => {
     role: raw.role ?? raw.papel ?? '',
     status: raw.status ?? '',
     financialStatus: raw.financialStatus ?? raw.statusFinanceiro ?? null,
+    appVersion: raw.appVersion ?? raw.versaoApp ?? null,
+    lastLoginAt: raw.lastLoginAt ?? raw.ultimoLogin ?? raw.ultimoLoginEm ?? null,
+    onboardingCompletedAt: raw.onboardingCompletedAt ?? raw.onboardingConcluidoEm ?? null,
     createdAt: raw.createdAt ?? raw.criadoEm ?? new Date().toISOString(),
     updatedAt: raw.updatedAt ?? raw.atualizadoEm ?? new Date().toISOString(),
     currentPlan: raw.currentPlan ?? null,
