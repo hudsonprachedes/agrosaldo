@@ -23,6 +23,7 @@ export interface User {
   phone: string | null;
   role: string;
   status: string;
+  financialStatus?: string | null;
   createdAt: string;
   updatedAt: string;
   currentPlan?: string | null;
@@ -55,6 +56,8 @@ type UserBackendLike = Partial<User> & {
   nome?: string;
   telefone?: string | null;
   papel?: string;
+  statusFinanceiro?: string | null;
+  financialStatus?: string | null;
   criadoEm?: string;
   atualizadoEm?: string;
   currentPlan?: string | null;
@@ -110,6 +113,7 @@ const mapUserFromBackend = (raw: UserBackendLike): User => {
     phone: (raw.phone ?? raw.telefone ?? null) as string | null,
     role: raw.role ?? raw.papel ?? '',
     status: raw.status ?? '',
+    financialStatus: raw.financialStatus ?? raw.statusFinanceiro ?? null,
     createdAt: raw.createdAt ?? raw.criadoEm ?? new Date().toISOString(),
     updatedAt: raw.updatedAt ?? raw.atualizadoEm ?? new Date().toISOString(),
     currentPlan: raw.currentPlan ?? null,

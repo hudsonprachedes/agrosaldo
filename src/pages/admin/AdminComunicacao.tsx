@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { adminService, AdminCommunication } from '@/services/api.service';
+import { adminService, AdminCommunication, User } from '@/services/api.service';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PageSkeleton from '@/components/PageSkeleton';
 
@@ -75,16 +75,23 @@ const bannerColors = [
   { id: 'chart-3', label: 'Info', class: 'bg-chart-3' },
 ];
 
-const audienceOptions = [
-  { value: 'all', label: 'Todos os usuários', count: 312 },
-  { value: 'active', label: 'Apenas ativos', count: 284 },
-  { value: 'overdue', label: 'Inadimplentes', count: 28 },
-  { value: 'new', label: 'Novos (últimos 30 dias)', count: 45 },
+type AudienceOption = {
+  value: 'all' | 'active' | 'overdue' | 'new';
+  label: string;
+  count: number;
+};
+
+const initialAudienceOptions: AudienceOption[] = [
+  { value: 'all', label: 'Todos os usuários', count: 0 },
+  { value: 'active', label: 'Apenas ativos', count: 0 },
+  { value: 'overdue', label: 'Inadimplentes', count: 0 },
+  { value: 'new', label: 'Novos (últimos 30 dias)', count: 0 },
 ];
 
 export default function AdminComunicacao() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [audienceOptions, setAudienceOptions] = useState<AudienceOption[]>(initialAudienceOptions);
 
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [bannerDialogOpen, setBannerDialogOpen] = useState(false);
@@ -95,7 +102,29 @@ export default function AdminComunicacao() {
   useEffect(() => {
     const load = async () => {
       try {
-        const rows = await adminService.listCommunications();
+        const [rows, tenants] = await Promise.all([
+          adminService.listCommunications(),
+          adminService.getTenants(),
+        ]);
+
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        const allCount = tenants.length;
+        const activeCount = tenants.filter((t: User) => String(t.status ?? '').toLowerCase() === 'ativo').length;
+        const overdueCount = tenants.filter((t: User) => String(t.financialStatus ?? '').toLowerCase() === 'inadimplente').length;
+        const newCount = tenants.filter((t: User) => {
+          const createdAt = t.createdAt ? new Date(t.createdAt) : null;
+          return createdAt ? createdAt >= thirtyDaysAgo : false;
+        }).length;
+
+        setAudienceOptions([
+          { value: 'all', label: 'Todos os usuários', count: allCount },
+          { value: 'active', label: 'Apenas ativos', count: activeCount },
+          { value: 'overdue', label: 'Inadimplentes', count: overdueCount },
+          { value: 'new', label: 'Novos (últimos 30 dias)', count: newCount },
+        ]);
+
         const mapped: Notification[] = rows.map((r: AdminCommunication) => {
           const type = (r.type ?? r.tipo ?? 'push') as 'push' | 'banner';
           const title = r.title ?? r.titulo ?? '';
@@ -126,6 +155,7 @@ export default function AdminComunicacao() {
         console.error('Erro ao carregar comunicações:', error);
         toast.error('Erro ao carregar comunicações');
         setNotifications([]);
+        setAudienceOptions(initialAudienceOptions);
       } finally {
         setIsLoading(false);
       }
@@ -178,7 +208,7 @@ export default function AdminComunicacao() {
       title: pushTitle,
       message: pushMessage,
       sentAt: pushScheduled ? pushScheduleDate : new Date().toISOString(),
-      recipients: audience?.count || 312,
+      recipients: audience?.count ?? 0,
       status: pushScheduled ? 'scheduled' : 'sent',
       targetAudience: pushAudience,
     };
@@ -230,7 +260,7 @@ export default function AdminComunicacao() {
       title: bannerTitle,
       message: bannerMessage,
       sentAt: new Date(bannerStartDate).toISOString(),
-      recipients: 312,
+      recipients: audienceOptions.find((a) => a.value === 'all')?.count ?? 0,
       status: 'active',
       targetAudience: 'all',
       color: bannerColor,

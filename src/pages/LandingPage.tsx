@@ -12,10 +12,9 @@ import {
   HelpCircle,
   Leaf,
   LineChart,
-  Linkedin,
+  Instagram,
   MapPin,
   Menu,
-  Phone,
   Send,
   Shield,
   ShieldCheck,
@@ -798,7 +797,7 @@ export default function LandingPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/5">
-                    <Beef className="h-5 w-5 text-emerald-600" />
+                    <img src="/agrosaldo-logo.png" alt="AgroSaldo" className="h-6 w-6" />
                   </div>
                   <span className="font-display text-lg font-semibold">AgroSaldo</span>
                 </div>
@@ -807,28 +806,12 @@ export default function LandingPage() {
                 </p>
                 <div className="flex gap-3">
                   <a
-                    href="https://linkedin.com/company/agrosaldo"
+                    href="https://www.instagram.com/agrosaldo/"
                     target="_blank"
                     rel="noreferrer"
                     className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100"
                   >
-                    <Linkedin className="h-5 w-5" />
-                  </a>
-                  <a
-                    href="https://instagram.com/agrosaldo"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  >
-                    <Sparkles className="h-5 w-5" />
-                  </a>
-                  <a
-                    href="https://wa.me/5567999999999"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  >
-                    <Phone className="h-5 w-5" />
+                    <Instagram className="h-5 w-5" />
                   </a>
                 </div>
               </div>

@@ -1011,12 +1011,59 @@ export class AdminService {
   }
 
   async getFinancialReport() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [paidPayments, activeTenantsCount, overdueTenantsCount] =
+      await Promise.all([
+        this.prisma.pagamentoFinanceiro.findMany({
+          where: { status: 'paid' as any },
+          select: {
+            valor: true,
+            pagoEm: true,
+            frequenciaPagamento: true,
+          },
+        }),
+        this.prisma.usuario.count({
+          where: {
+            papel: { in: ['proprietario', 'operador'] as any },
+            status: 'ativo' as any,
+          },
+        }),
+        this.prisma.usuario.count({
+          where: {
+            papel: { in: ['proprietario', 'operador'] as any },
+            statusFinanceiro: 'inadimplente' as any,
+          },
+        }),
+      ]);
+
+    const totalRevenue = paidPayments.reduce(
+      (sum, p) => sum + Number(p.valor ?? 0),
+      0,
+    );
+
+    const mrr = paidPayments
+      .filter(
+        (p) =>
+          String(p.frequenciaPagamento ?? '').toLowerCase() === 'monthly' &&
+          p.pagoEm &&
+          p.pagoEm >= monthStart,
+      )
+      .reduce((sum, p) => sum + Number(p.valor ?? 0), 0);
+
+    const arpu = activeTenantsCount > 0 ? mrr / activeTenantsCount : 0;
+
+    const totalTenantsBase = activeTenantsCount + overdueTenantsCount;
+    const churnRate =
+      totalTenantsBase > 0 ? (overdueTenantsCount / totalTenantsBase) * 100 : 0;
+
     return {
-      totalRevenue: 15000,
-      activeSubscriptions: 45,
-      mrr: 3500,
-      churnRate: 2.5,
-      arpu: 77.78,
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      activeSubscriptions: activeTenantsCount,
+      mrr: Number(mrr.toFixed(2)),
+      churnRate: Number(churnRate.toFixed(2)),
+      arpu: Number(arpu.toFixed(2)),
     };
   }
 

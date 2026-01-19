@@ -33,6 +33,26 @@ export default function AdminAnalises() {
   const totalRevenue = analytics?.kpis.mrr || 0;
   const totalCattle = analytics?.kpis.totalCattle || 0;
 
+  const pctChange = (prev: number, current: number) => {
+    if (!Number.isFinite(prev) || prev === 0) return null;
+    return ((current - prev) / prev) * 100;
+  };
+
+  const lastTwo = <T,>(arr: T[] | undefined) => {
+    if (!arr || arr.length < 2) return null;
+    return { prev: arr[arr.length - 2], current: arr[arr.length - 1] };
+  };
+
+  const tenantsSeriesLastTwo = lastTwo(analytics?.clientGrowth.activeTenants);
+  const tenantGrowthPct = tenantsSeriesLastTwo
+    ? pctChange(Number(tenantsSeriesLastTwo.prev), Number(tenantsSeriesLastTwo.current))
+    : null;
+
+  const mrrSeriesLastTwo = lastTwo(analytics?.revenue.mrr);
+  const mrrGrowthPct = mrrSeriesLastTwo
+    ? pctChange(Number(mrrSeriesLastTwo.prev), Number(mrrSeriesLastTwo.current))
+    : null;
+
   const categories = analytics?.categories ?? [];
 
   // Gráfico de crescimento de clientes
@@ -280,7 +300,7 @@ export default function AdminAnalises() {
               <div className="text-3xl font-bold text-gray-900">{totalTenants}</div>
               <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
                 <TrendingUp className="w-4 h-4" />
-                +12.5% vs mês anterior
+                {tenantGrowthPct === null ? '—' : `${tenantGrowthPct >= 0 ? '+' : ''}${tenantGrowthPct.toFixed(1)}% vs mês anterior`}
               </p>
             </CardContent>
           </Card>
@@ -313,7 +333,7 @@ export default function AdminAnalises() {
               </div>
               <p className="text-sm text-green-600 mt-1 flex items-center gap-1">
                 <TrendingUp className="w-4 h-4" />
-                +8.3% vs mês anterior
+                {mrrGrowthPct === null ? '—' : `${mrrGrowthPct >= 0 ? '+' : ''}${mrrGrowthPct.toFixed(1)}% vs mês anterior`}
               </p>
             </CardContent>
           </Card>

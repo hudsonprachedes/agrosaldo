@@ -83,6 +83,10 @@ export default function AdminFinanceiro() {
     .filter(p => p.status === 'paid' && p.paidAt && new Date(p.paidAt).getMonth() === new Date().getMonth())
     .reduce((sum, p) => sum + p.amount, 0);
 
+  const totalPaymentsCount = payments.length;
+  const paidCount = payments.filter((p) => p.status === 'paid').length;
+  const conversionRate = totalPaymentsCount > 0 ? (paidCount / totalPaymentsCount) * 100 : 0;
+
   const openPaymentDialog = (payment: FinancialPayment) => {
     setSelectedPayment(payment);
     setShowPaymentDialog(true);
@@ -267,10 +271,8 @@ export default function AdminFinanceiro() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">92.5%</div>
-              <p className="text-sm text-green-600 mt-1">
-                +3.2% vs mês anterior
-              </p>
+              <div className="text-3xl font-bold text-gray-900">{conversionRate.toFixed(1)}%</div>
+              <p className="text-sm text-gray-500 mt-1">—</p>
             </CardContent>
           </Card>
         </div>
