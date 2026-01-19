@@ -11,7 +11,11 @@ import { UpdatePropertyDto } from './dto/update-property.dto';
 export class PropertiesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private mapPropertyToDto(property: any, userId: string) {
+  private mapPropertyToDto(
+    property: any,
+    userId: string,
+    cattleCountOverride?: number,
+  ) {
     return {
       id: property.id,
       userId,
@@ -33,7 +37,10 @@ export class PropertiesService {
       pastureNaturalHa: property.pastoNaturalHa ?? undefined,
       pastureCultivatedHa: property.pastoCultivadoHa ?? undefined,
       areaTotalHa: property.areaTotalHa ?? undefined,
-      cattleCount: property.quantidadeGado,
+      cattleCount:
+        typeof cattleCountOverride === 'number'
+          ? cattleCountOverride
+          : property.quantidadeGado,
       status: property.status,
       plan: property.plano,
       speciesEnabled: property.especiesHabilitadas ?? undefined,
@@ -61,7 +68,32 @@ export class PropertiesService {
       include: { propriedade: true },
       orderBy: { id: 'asc' },
     });
-    return rows.map((r) => this.mapPropertyToDto(r.propriedade as any, userId));
+
+    const propertyIds = rows.map((r) => (r.propriedade as any).id).filter(Boolean);
+
+    const cattleAgg = await this.prisma.rebanho.groupBy({
+      by: ['propriedadeId'],
+      where: {
+        propriedadeId: { in: propertyIds },
+        especie: 'bovino',
+      },
+      _sum: { cabecas: true },
+    });
+
+    const cattleByPropertyId = (cattleAgg ?? []).reduce(
+      (acc: Record<string, number>, row: any) => {
+        const key = row.propriedadeId;
+        acc[key] = row._sum?.cabecas ?? 0;
+        return acc;
+      },
+      {},
+    );
+
+    return rows.map((r) => {
+      const prop = r.propriedade as any;
+      const cattleCount = cattleByPropertyId[prop.id] ?? 0;
+      return this.mapPropertyToDto(prop, userId, cattleCount);
+    });
   }
 
   async createForUser(userId: string, dto: CreatePropertyDto) {

@@ -236,8 +236,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setSelectedProperty(null);
+    apiClient.clearAuth();
     localStorage.removeItem('agrosaldo_user_id');
     localStorage.removeItem('agrosaldo_property_id');
+    localStorage.removeItem('agrosaldo_admin_token_before_impersonation');
+    localStorage.removeItem('agrosaldo_is_impersonating');
   };
 
   const selectProperty = (propertyOrId: PropertyDTO | string) => {

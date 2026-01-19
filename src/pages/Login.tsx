@@ -97,7 +97,11 @@ export default function Login() {
           navigate('/selecionar-propriedade');
         }
       } else {
-        toast.error('CPF/CNPJ ou senha inválidos');
+        if (navigator.onLine === false) {
+          toast.error('Sem internet. Conecte para fazer login e sincronizar seus dados.');
+        } else {
+          toast.error('CPF/CNPJ ou senha inválidos');
+        }
       }
     } finally {
       setIsLoading(false);

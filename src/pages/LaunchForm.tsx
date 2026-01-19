@@ -49,6 +49,7 @@ import {
 } from '@/lib/indexeddb';
 import { compressImage } from '@/lib/image-compression';
 import { apiClient } from '@/lib/api-client';
+import { LivestockMirrorDTO } from '@/types';
 
 import CameraCapture from '@/components/CameraCapture';
 interface LaunchFormProps {
@@ -99,6 +100,13 @@ const normalizeAgeGroupId = (raw: unknown): AgeGroupId | null => {
   };
 
   return directMap[raw] ?? null;
+};
+
+const normalizeSex = (raw: unknown): 'male' | 'female' | null => {
+  if (raw === 'male' || raw === 'female') return raw;
+  if (raw === 'macho') return 'male';
+  if (raw === 'femea' || raw === 'fêmea') return 'female';
+  return null;
 };
 
 interface SaleItem {
@@ -219,6 +227,52 @@ export default function LaunchForm({ type }: LaunchFormProps) {
       }
 
       try {
+        // Preferir saldo do servidor quando disponível (evita ficar zerado com IndexedDB vazio)
+        try {
+          const mirror = await apiClient.get<LivestockMirrorDTO>(
+            `/rebanho/${selectedProperty.id}/espelho?months=1`,
+          );
+
+          const ageGroupIds: AgeGroupId[] = ageGroups.map((g) => g.id);
+          const totalByAge: Record<string, number> = Object.fromEntries(
+            ageGroupIds.map((id) => [id, 0]),
+          );
+          const maleByAge: Record<string, number> = Object.fromEntries(
+            ageGroupIds.map((id) => [id, 0]),
+          );
+          const femaleByAge: Record<string, number> = Object.fromEntries(
+            ageGroupIds.map((id) => [id, 0]),
+          );
+
+          for (const row of mirror?.balances ?? []) {
+            const ageId = normalizeAgeGroupId(row.ageGroupId);
+            if (!ageId) continue;
+
+            maleByAge[ageId] = Number(row.male?.currentBalance ?? 0);
+            femaleByAge[ageId] = Number(row.female?.currentBalance ?? 0);
+            totalByAge[ageId] =
+              (maleByAge[ageId] ?? 0) + (femaleByAge[ageId] ?? 0);
+          }
+
+          const total = (femaleByAge['25-36m'] ?? 0) + (femaleByAge['36+m'] ?? 0);
+          setAvailableMatrizes(total);
+          setAvailableByAgeTotal(totalByAge);
+          setAvailableByAgeSex(
+            Object.fromEntries(
+              ageGroupIds.map((id) => [
+                id,
+                {
+                  male: Math.min(maleByAge[id] ?? 0, totalByAge[id] ?? 0),
+                  female: Math.min(femaleByAge[id] ?? 0, totalByAge[id] ?? 0),
+                },
+              ]),
+            ),
+          );
+          return;
+        } catch (e) {
+          // fallback para IndexedDB
+        }
+
         const [initialStock, movements] = await Promise.all([
           getInitialStock(selectedProperty.id),
           getMovementsByProperty(selectedProperty.id),
@@ -240,9 +294,10 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           if (qty <= 0) continue;
 
           totalByAge[ageId] += qty;
-          if (entry.sex === 'male') {
+          const sex = normalizeSex(entry.sex);
+          if (sex === 'male') {
             maleByAge[ageId] += qty;
-          } else if (entry.sex === 'female') {
+          } else if (sex === 'female') {
             femaleByAge[ageId] += qty;
           }
         }
@@ -253,13 +308,14 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           if (!ageGroupIdSet.has(ageId)) continue;
           const qty = Number(m.quantity) || 0;
           if (qty <= 0) continue;
+          const sex = normalizeSex(m.sex);
 
           const applyDelta = (delta: number) => {
             totalByAge[ageId] = Math.max(0, totalByAge[ageId] + delta);
 
-            if (m.sex === 'male') {
+            if (sex === 'male') {
               maleByAge[ageId] = Math.max(0, maleByAge[ageId] + delta);
-            } else if (m.sex === 'female') {
+            } else if (sex === 'female') {
               femaleByAge[ageId] = Math.max(0, femaleByAge[ageId] + delta);
             }
           };
@@ -430,7 +486,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         }
 
         const totalQty = cleanedItems.reduce((sum, it) => sum + it.quantity, 0);
-        const baseDescription = `Compra${supplier ? ` - ${supplier}` : ''}`;
+        const baseDescription = `Compra${supplier ? ` - ${supplier}` : ''}${notes ? ` | Obs: ${notes}` : ''}`;
 
         for (const it of cleanedItems) {
           const proportionalValue = totalQty > 0 ? (purchaseTotalValue * it.quantity) / totalQty : 0;
@@ -469,11 +525,13 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         : type === 'vacina' ? 'vaccine'
         : 'adjustment';
 
-      const description = type === 'nascimento' ? `Nascimento - ${sex === 'male' ? 'Machos' : 'Fêmeas'}`
+      const baseDescription = type === 'nascimento' ? `Nascimento - ${sex === 'male' ? 'Machos' : 'Fêmeas'}`
         : type === 'mortalidade' ? `${deathType === 'natural' ? 'Morte Natural' : 'Consumo'} - ${deathCause || 'Não especificado'}`
         : type === 'venda' ? `Venda para ${destination} - ${buyer}`
-        : type === 'vacina' ? `Vacinação - ${campaign}`
-        : notes || 'Ajuste manual';
+        : type === 'vacina' ? `Vacinação - ${campaign}${laboratory ? ` - ${laboratory}` : ''}`
+        : 'Ajuste manual';
+
+      const description = `${baseDescription}${notes ? ` | Obs: ${notes}` : ''}`;
 
       // Salvar movimento no IndexedDB
       const movement = await saveMovement({

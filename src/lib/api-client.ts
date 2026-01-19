@@ -21,6 +21,7 @@ const MAX_RETRIES = 3;
 class ApiClient {
   private instance: AxiosInstance;
   private refreshTokenRequest: Promise<string> | null = null;
+  private inflightGets = new Map<string, Promise<unknown>>();
 
   constructor() {
     this.instance = axios.create({
@@ -244,15 +245,32 @@ class ApiClient {
    * Requisição GET genérica com validação de contrato
    */
   async get<T>(url: string, config?: AxiosRequestConfig & { schema?: z.ZodSchema<T> }): Promise<T> {
-    const response = await this.instance.get<ApiResponse<T> | T>(url, config);
-    const data = this.extractData(response.data);
-    
-    // Validar contra schema se fornecido
-    if (config?.schema) {
-      return validateApiResponse(data, config.schema);
+    const { schema, ...axiosConfig } = config ?? {};
+
+    const method = 'GET';
+    const paramsKey = axiosConfig?.params ? JSON.stringify(axiosConfig.params) : '';
+    const headersKey = axiosConfig?.headers ? JSON.stringify(axiosConfig.headers) : '';
+    const key = `${method} ${url} ${paramsKey} ${headersKey}`;
+
+    const existing = this.inflightGets.get(key);
+    if (existing) {
+      const data = (await existing) as T;
+      return schema ? validateApiResponse(data, schema) : data;
     }
-    
-    return data;
+
+    const request = (async () => {
+      const response = await this.instance.get<ApiResponse<T> | T>(url, axiosConfig);
+      return this.extractData(response.data) as T;
+    })();
+
+    this.inflightGets.set(key, request as Promise<unknown>);
+
+    try {
+      const data = await request;
+      return schema ? validateApiResponse(data, schema) : data;
+    } finally {
+      this.inflightGets.delete(key);
+    }
   }
 
   /**

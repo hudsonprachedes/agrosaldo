@@ -629,10 +629,31 @@ export class AdminService {
         ? row.vencimentoEm.toISOString()
         : row.vencimentoEm,
       paidAt: row.pagoEm?.toISOString ? row.pagoEm.toISOString() : row.pagoEm,
+      cattleCountAtPayment: row.cabecasNoPagamento ?? null,
       createdAt: row.criadoEm?.toISOString
         ? row.criadoEm.toISOString()
         : row.criadoEm,
     };
+  }
+
+  private async getCattleCountSnapshotForTenant(tenantId: string) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { cpfCnpj: tenantId },
+      select: { id: true },
+    });
+    if (!user?.id) return null;
+
+    const propAgg = await this.prisma.propriedade.aggregate({
+      _sum: { quantidadeGado: true },
+      where: {
+        usuarios: {
+          some: {
+            usuarioId: user.id,
+          },
+        },
+      },
+    });
+    return propAgg._sum?.quantidadeGado ?? 0;
   }
 
   async listPayments() {
@@ -644,7 +665,11 @@ export class AdminService {
   }
 
   async createPayment(dto: CreatePaymentDto) {
-    const created = await this.prisma.pagamentoFinanceiro.create({
+    const snapshot = dto.paidAt
+      ? await this.getCattleCountSnapshotForTenant(dto.tenantId)
+      : null;
+
+    const created = await (this.prisma as any).pagamentoFinanceiro.create({
       data: {
         tenantId: dto.tenantId,
         tenantName: dto.tenantName,
@@ -655,6 +680,7 @@ export class AdminService {
         status: dto.status,
         vencimentoEm: new Date(dto.dueDate),
         pagoEm: dto.paidAt ? new Date(dto.paidAt) : null,
+        cabecasNoPagamento: dto.paidAt ? snapshot : null,
       },
     });
 
@@ -666,6 +692,23 @@ export class AdminService {
       where: { id: paymentId },
     });
     if (!existing) throw new NotFoundException('Pagamento não encontrado');
+
+    const willSetPaidAt = dto.paidAt !== undefined;
+    const nextPaidAt = willSetPaidAt
+      ? dto.paidAt
+        ? new Date(dto.paidAt)
+        : null
+      : existing.pagoEm ?? null;
+
+    const shouldUpdateSnapshot =
+      willSetPaidAt &&
+      nextPaidAt &&
+      (existing.cabecasNoPagamento === null ||
+        existing.cabecasNoPagamento === undefined);
+
+    const snapshot = shouldUpdateSnapshot
+      ? await this.getCattleCountSnapshotForTenant(existing.tenantId)
+      : null;
 
     const updated = await (this.prisma as any).pagamentoFinanceiro.update({
       where: { id: paymentId },
@@ -685,6 +728,7 @@ export class AdminService {
         ...(dto.paidAt !== undefined
           ? { pagoEm: dto.paidAt ? new Date(dto.paidAt) : null }
           : {}),
+        ...(shouldUpdateSnapshot ? { cabecasNoPagamento: snapshot } : {}),
       },
     });
 

@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "engines": {
-    "node": "22.x"
+    "node": ">=24.0.0 <26.0.0"
   },
   "scripts": {
     "build": "nest build",
@@ -63,7 +63,6 @@
     "@nestjs/cli": "^11.0.15",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.12",
-    "@types/bcryptjs": "^3.0.0",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.0.9",

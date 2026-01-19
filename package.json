@@ -1,10 +1,10 @@
 {
   "name": "agrosaldo",
   "private": true,
-  "version": "0.0.0.4",
+  "version": "0.0.0.5",
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": ">=24.0.0 <26.0.0"
   },
   "workspaces": [
     "backend"
@@ -110,6 +110,7 @@
   },
   "overrides": {
     "diff": "^8.0.3",
-    "express": "4.18.2"
+    "express": "4.18.2",
+    "test-exclude": "^7.0.1"
   }
 }

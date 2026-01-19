@@ -207,24 +207,6 @@ export default function Rebanho() {
           validationUrl = undefined;
         }
 
-        // 2) Buscar lançamentos e montar tabela de outras espécies
-        let otherSpeciesMovements: ReportData['otherSpeciesMovements'] | undefined;
-        try {
-          const movements = await apiClient.get<any[]>(`/lancamentos/historico?months=1`);
-          const filtered = (movements ?? [])
-            .filter((m) => String(m.especie ?? '').toLowerCase() !== 'bovino' && m.especie)
-            .slice(0, 50)
-            .map((m) => ({
-              date: m.data ? new Date(m.data).toISOString() : new Date().toISOString(),
-              species: String(m.especie),
-              typeLabel: getMovementTypeLabel(m.type ?? m.tipo),
-              quantity: Number(m.quantidade ?? m.quantity ?? 0),
-            }));
-          otherSpeciesMovements = filtered;
-        } catch (e) {
-          otherSpeciesMovements = undefined;
-        }
-
         let latestSurvey: EpidemiologySurveyDTO | null = null;
         try {
           const surveys = await apiClient.get<EpidemiologySurveyDTO[]>('/questionario-epidemiologico');
@@ -240,7 +222,6 @@ export default function Rebanho() {
           includeSurvey,
           documentNumber,
           qrCodePayload: validationUrl,
-          otherSpeciesMovements,
           latestSurvey: latestSurvey
             ? {
                 submittedAt: latestSurvey.submittedAt,

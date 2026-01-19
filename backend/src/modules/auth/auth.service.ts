@@ -31,7 +31,11 @@ export class AuthService {
     return null;
   }
 
-  private mapPropertyToDto(property: any, userId: string) {
+  private mapPropertyToDto(
+    property: any,
+    userId: string,
+    cattleCountOverride?: number,
+  ) {
     return {
       id: property.id,
       userId,
@@ -49,7 +53,10 @@ export class AuthService {
       pastureNaturalHa: property.pastoNaturalHa ?? undefined,
       pastureCultivatedHa: property.pastoCultivadoHa ?? undefined,
       areaTotalHa: property.areaTotalHa ?? undefined,
-      cattleCount: property.quantidadeGado,
+      cattleCount:
+        typeof cattleCountOverride === 'number'
+          ? cattleCountOverride
+          : property.quantidadeGado,
       status: property.status,
       plan: property.plano,
       speciesEnabled: property.especiesHabilitadas ?? undefined,
@@ -95,6 +102,28 @@ export class AuthService {
       | null
       | undefined;
 
+    const propertyIds = (user.propriedades ?? [])
+      .map((item: any) => item?.propriedade?.id)
+      .filter(Boolean);
+
+    const cattleAgg = await this.prisma.rebanho.groupBy({
+      by: ['propriedadeId'],
+      where: {
+        propriedadeId: { in: propertyIds },
+        especie: 'bovino',
+      },
+      _sum: { cabecas: true },
+    });
+
+    const cattleByPropertyId = (cattleAgg ?? []).reduce(
+      (acc: Record<string, number>, row: any) => {
+        const key = row.propriedadeId;
+        acc[key] = row._sum?.cabecas ?? 0;
+        return acc;
+      },
+      {},
+    );
+
     return {
       user: {
         id: user.id,
@@ -110,7 +139,11 @@ export class AuthService {
           : null,
         properties: user.propriedades
           ? user.propriedades.map((item: any) =>
-              this.mapPropertyToDto(item.propriedade, user.id),
+              this.mapPropertyToDto(
+                item.propriedade,
+                user.id,
+                cattleByPropertyId[item?.propriedade?.id] ?? 0,
+              ),
             )
           : [],
       },
@@ -245,6 +278,28 @@ export class AuthService {
       | null
       | undefined;
 
+    const propertyIds = (user.propriedades ?? [])
+      .map((item: any) => item?.propriedade?.id)
+      .filter(Boolean);
+
+    const cattleAgg = await this.prisma.rebanho.groupBy({
+      by: ['propriedadeId'],
+      where: {
+        propriedadeId: { in: propertyIds },
+        especie: 'bovino',
+      },
+      _sum: { cabecas: true },
+    });
+
+    const cattleByPropertyId = (cattleAgg ?? []).reduce(
+      (acc: Record<string, number>, row: any) => {
+        const key = row.propriedadeId;
+        acc[key] = row._sum?.cabecas ?? 0;
+        return acc;
+      },
+      {},
+    );
+
     return {
       id: user.id,
       name: user.nome,
@@ -258,7 +313,11 @@ export class AuthService {
         ? onboardingConcluidoEm.toISOString()
         : null,
       properties: user.propriedades.map((item: any) =>
-        this.mapPropertyToDto(item.propriedade, user.id),
+        this.mapPropertyToDto(
+          item.propriedade,
+          user.id,
+          cattleByPropertyId[item?.propriedade?.id] ?? 0,
+        ),
       ),
     };
   }

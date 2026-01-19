@@ -28,6 +28,11 @@ export class SubscriptionsController {
     );
   }
 
+  @Get('assinaturas/pagamentos/minha')
+  getMyPaymentHistory(@CurrentUser() user: { id: string; cpfCnpj?: string }) {
+    return this.subscriptionsService.getMyPaymentHistory(user.id, user.cpfCnpj);
+  }
+
   @Get('planos')
   getPlansCatalog() {
     return this.subscriptionsService.getPlansCatalog();

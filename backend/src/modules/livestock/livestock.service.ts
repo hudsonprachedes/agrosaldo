@@ -216,6 +216,24 @@ export class LivestockService {
   async getMirror(propertyId: string, months?: number) {
     const startDate = this.getStartDateFromMonths(months);
 
+    const normalizeAgeGroupId = (raw: unknown): string => {
+      if (typeof raw !== 'string' || !raw) return 'unknown';
+      const value = raw.trim();
+      if (value.endsWith('m')) return value;
+      const directMap: Record<string, string> = {
+        '0-4': '0-4m',
+        '5-12': '5-12m',
+        '12-24': '13-24m',
+        '13-24': '13-24m',
+        '24-36': '25-36m',
+        '25-36': '25-36m',
+        '36+': '36+m',
+      };
+      return directMap[value] ?? value;
+    };
+
+    const canonicalAgeGroups = ['0-4m', '5-12m', '13-24m', '25-36m', '36+m'];
+
     const [balance, movements] = await this.prisma.$transaction(async (tx) => {
       await this.ensureAgeGroupEvolution(tx as any, propertyId);
 
@@ -252,8 +270,12 @@ export class LivestockService {
       return rowsByAge[ageGroupId];
     };
 
+    for (const id of canonicalAgeGroups) {
+      ensure(id);
+    }
+
     for (const item of balance as any[]) {
-      const ageGroupId = item.faixaEtaria ?? 'unknown';
+      const ageGroupId = normalizeAgeGroupId(item.faixaEtaria);
       const sex = item.sexo;
       const row = ensure(ageGroupId);
       if (sex === 'macho') row.male.currentBalance += item.cabecas ?? 0;
@@ -272,7 +294,7 @@ export class LivestockService {
         continue;
       }
 
-      const ageGroupId = mv.faixaEtaria ?? 'unknown';
+      const ageGroupId = normalizeAgeGroupId(mv.faixaEtaria);
       const sex = mv.sexo;
       const qty = mv.quantidade ?? 0;
       if (!qty || !sex) continue;

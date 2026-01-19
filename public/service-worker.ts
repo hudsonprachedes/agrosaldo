@@ -3,14 +3,23 @@
  * Detecta volta da internet e sincroniza dados automaticamente
  */
 
+/// <reference lib="webworker" />
+
 declare global {
   interface ServiceWorkerGlobalScope {
-    skipWaiting: () => void;
+    skipWaiting: () => Promise<void>;
   }
 }
 
+interface SyncEvent extends ExtendableEvent {
+  tag: string;
+}
+
+const sw = self as unknown as ServiceWorkerGlobalScope;
+
 const CACHE_NAME = 'agrosaldo-v1';
 const API_URLS = [
+  '/api/auth',
   '/api/lancamentos',
   '/api/rebanho',
   '/api/usuarios',
@@ -18,19 +27,19 @@ const API_URLS = [
 ];
 
 // Instalar Service Worker
-self.addEventListener('install', (event: ExtendableEvent) => {
+sw.addEventListener('install', (event: ExtendableEvent) => {
   console.log('[ServiceWorker] Instalando...');
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       console.log('[ServiceWorker] Cache aberto');
-      self.skipWaiting();
+      await sw.skipWaiting();
     })()
   );
 });
 
 // Ativar Service Worker
-self.addEventListener('activate', (event: ExtendableEvent) => {
+sw.addEventListener('activate', (event: ExtendableEvent) => {
   console.log('[ServiceWorker] Ativando...');
   event.waitUntil(
     (async () => {
@@ -41,14 +50,14 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );
-      const client = await self.clients.claim();
+      await sw.clients.claim();
       console.log('[ServiceWorker] Pronto para substituir clientes antigos');
     })()
   );
 });
 
 // Estratégia de cache: network first para APIs, cache fallback para assets
-self.addEventListener('fetch', (event: FetchEvent) => {
+sw.addEventListener('fetch', (event: FetchEvent) => {
   const { request } = event;
   const url = new URL(request.url);
 
@@ -125,7 +134,7 @@ async function cacheFirstStrategy(request: Request): Promise<Response> {
 }
 
 // Sincronização em background
-self.addEventListener('sync', (event: SyncEvent) => {
+(sw as unknown as { addEventListener: (type: string, listener: (event: SyncEvent) => void) => void }).addEventListener('sync', (event: SyncEvent) => {
   console.log('[ServiceWorker] Evento de sincronização:', event.tag);
 
   if (event.tag === 'sync-movements') {
@@ -141,8 +150,8 @@ async function syncMovements(): Promise<void> {
     console.log('[ServiceWorker] Iniciando sincronização de movimentos');
 
     // Notificar clientes sobre sincronização
-    const clients = await self.clients.matchAll();
-    clients.forEach((client) => {
+    const clients = await sw.clients.matchAll();
+    clients.forEach((client: Client) => {
       client.postMessage({
         type: 'SYNC_START',
         message: 'Iniciando sincronização',
@@ -153,7 +162,7 @@ async function syncMovements(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Notificar sucesso
-    clients.forEach((client) => {
+    clients.forEach((client: Client) => {
       client.postMessage({
         type: 'SYNC_SUCCESS',
         message: 'Sincronização completa',
@@ -164,8 +173,8 @@ async function syncMovements(): Promise<void> {
   } catch (error) {
     console.error('[ServiceWorker] Erro na sincronização:', error);
 
-    const clients = await self.clients.matchAll();
-    clients.forEach((client) => {
+    const clients = await sw.clients.matchAll();
+    clients.forEach((client: Client) => {
       client.postMessage({
         type: 'SYNC_ERROR',
         message: 'Erro ao sincronizar',
@@ -176,16 +185,20 @@ async function syncMovements(): Promise<void> {
 }
 
 // Detectar volta da internet
-self.addEventListener('message', (event) => {
+sw.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    sw.skipWaiting();
   }
 
   // Requisitar sincronização em background quando voltar online
   if (event.data && event.data.type === 'ONLINE') {
     console.log('[ServiceWorker] Volta da internet detectada, sincronizando...');
-    if (self.registration && self.registration.sync) {
-      self.registration.sync.register('sync-movements');
+    const registration = sw.registration as ServiceWorkerRegistration & {
+      sync?: { register: (tag: string) => Promise<void> };
+    };
+
+    if (registration && registration.sync) {
+      registration.sync.register('sync-movements');
     }
   }
 });

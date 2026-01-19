@@ -6,6 +6,7 @@ import {
   MapPin,
   User,
   CreditCard,
+  Receipt,
   Settings,
   Edit2,
   Save,
@@ -92,6 +93,26 @@ type SubscriptionDTO = {
   atualizadoEm: string;
 } | null;
 
+type PaymentMethod = 'pix' | 'cartao' | 'boleto' | 'transferencia' | 'outros';
+
+type PaymentHistoryItem = {
+  id: string;
+  paidAt: string;
+  amount: number;
+  method: PaymentMethod;
+  planId: PlanId;
+  cattleCountAtPayment: number;
+};
+
+type PaymentHistoryApiItem = {
+  id: string;
+  paidAt: string;
+  amount: number;
+  method: string;
+  planId: string;
+  cattleCountAtPayment: number;
+};
+
 export default function MinhaFazenda() {
   const { user, selectedProperty, refreshMe, preferences, updatePreferences } = useAuth();
   const navigate = useNavigate();
@@ -131,6 +152,7 @@ export default function MinhaFazenda() {
 
   const [plansCatalog, setPlansCatalog] = useState<PlanCatalogItem[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionDTO>(null);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
 
   useEffect(() => {
     const loadProperties = async () => {
@@ -166,6 +188,59 @@ export default function MinhaFazenda() {
 
     if (user?.id) {
       void loadPlansAndSubscription();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadPaymentHistory = async () => {
+      try {
+        const data = await apiClient.get<PaymentHistoryApiItem[]>(
+          '/assinaturas/pagamentos/minha',
+        );
+
+        const mapped: PaymentHistoryItem[] = (data ?? [])
+          .map((item) => {
+            const planIdLower = String(item.planId ?? '').toLowerCase() as PlanId;
+            const methodLower = String(item.method ?? '').toLowerCase() as PaymentMethod;
+
+            const planId: PlanId =
+              planIdLower === 'porteira' ||
+              planIdLower === 'piquete' ||
+              planIdLower === 'retiro' ||
+              planIdLower === 'estancia' ||
+              planIdLower === 'barao'
+                ? planIdLower
+                : 'porteira';
+
+            const method: PaymentMethod =
+              methodLower === 'pix' ||
+              methodLower === 'cartao' ||
+              methodLower === 'boleto' ||
+              methodLower === 'transferencia' ||
+              methodLower === 'outros'
+                ? methodLower
+                : 'outros';
+
+            return {
+              id: item.id,
+              paidAt: item.paidAt,
+              amount: item.amount,
+              method,
+              planId,
+              cattleCountAtPayment: item.cattleCountAtPayment ?? 0,
+            };
+          })
+          .filter((x) => Boolean(x.id) && Boolean(x.paidAt));
+
+        setPaymentHistory(mapped);
+      } catch (error) {
+        console.error('Erro ao carregar histórico de pagamentos:', error);
+        setPaymentHistory([]);
+      }
+    };
+
+    if (user?.id) {
+      void loadPaymentHistory();
     }
   }, [user?.id]);
 
@@ -214,6 +289,81 @@ export default function MinhaFazenda() {
   const subscriptionStatus = (subscription?.status ?? '').toLowerCase();
   const hasSubscription = Boolean(subscription?.id);
   const isSubscriptionActive = hasSubscription && subscriptionStatus === 'ativa';
+
+  const formatMoney = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const formatDate = (iso: string) =>
+    new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(new Date(iso));
+
+  const methodLabel = (method: PaymentMethod) => {
+    switch (method) {
+      case 'pix':
+        return 'Pix';
+      case 'cartao':
+        return 'Cartão';
+      case 'boleto':
+        return 'Boleto';
+      case 'transferencia':
+        return 'Transferência';
+      default:
+        return 'Outros';
+    }
+  };
+
+  const planLabel = (planId: PlanId) => plansCatalog.find((p) => p.id === planId)?.name ?? planId;
+
+  const paymentHistorySorted = paymentHistory
+    .slice()
+    .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+
+  const paymentHistorySection = (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Receipt className="w-5 h-5 text-primary" />
+          Histórico de Pagamentos
+        </h3>
+      </div>
+
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data</TableHead>
+              <TableHead>Valor</TableHead>
+              <TableHead>Forma</TableHead>
+              <TableHead>Plano</TableHead>
+              <TableHead className="text-right">Cabeças na época</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paymentHistorySorted.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  Nenhum pagamento registrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              paymentHistorySorted.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{formatDate(item.paidAt)}</TableCell>
+                  <TableCell>{formatMoney(item.amount)}</TableCell>
+                  <TableCell>{methodLabel(item.method)}</TableCell>
+                  <TableCell>{planLabel(item.planId)}</TableCell>
+                  <TableCell className="text-right">{item.cattleCountAtPayment.toLocaleString('pt-BR')}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 
   const planRank = (planId: PlanId | null | undefined) => {
     const order: PlanId[] = ['porteira', 'piquete', 'retiro', 'estancia', 'barao'];
@@ -945,6 +1095,8 @@ export default function MinhaFazenda() {
                     </div>
                   </div>
 
+                  {paymentHistorySection}
+
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Planos Disponíveis</h3>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1049,6 +1201,8 @@ export default function MinhaFazenda() {
                       </div>
                     </div>
                   </div>
+
+                  {paymentHistorySection}
 
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Planos Disponíveis</h3>

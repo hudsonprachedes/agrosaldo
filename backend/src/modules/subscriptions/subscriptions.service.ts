@@ -140,6 +140,42 @@ export class SubscriptionsService {
     return updated;
   }
 
+  async getMyPaymentHistory(userId: string, cpfCnpj?: string) {
+    const propAgg = await this.prisma.propriedade.aggregate({
+      _sum: { quantidadeGado: true },
+      where: {
+        usuarios: {
+          some: {
+            usuarioId: userId,
+          },
+        },
+      },
+    });
+    const cattleCountFallback = propAgg._sum?.quantidadeGado ?? 0;
+
+    if (!cpfCnpj) return [];
+
+    const rows = await (this.prisma as any).pagamentoFinanceiro.findMany({
+      where: {
+        tenantId: cpfCnpj,
+        pagoEm: { not: null },
+      },
+      orderBy: { pagoEm: 'desc' },
+    });
+
+    return (rows ?? []).map((r: any) => ({
+      id: r.id,
+      paidAt: r.pagoEm?.toISOString ? r.pagoEm.toISOString() : r.pagoEm,
+      amount: r.valor,
+      method: r.metodoPagamento,
+      planId: String(r.plano ?? '').toLowerCase(),
+      cattleCountAtPayment:
+        r.cabecasNoPagamento === null || r.cabecasNoPagamento === undefined
+          ? cattleCountFallback
+          : r.cabecasNoPagamento,
+    }));
+  }
+
   getPlansCatalog() {
     return [
       { id: 'porteira', name: 'Porteira', price: 49.9, maxCattle: 500 },

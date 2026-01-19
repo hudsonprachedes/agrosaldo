@@ -273,6 +273,7 @@ model PagamentoFinanceiro {
   status            String   @map("status")
   vencimentoEm      DateTime @map("dueDate")
   pagoEm            DateTime? @map("paidAt")
+  cabecasNoPagamento Int?    @map("cattleCountAtPayment")
   criadoEm          DateTime @default(now()) @map("createdAt")
 
   @@map("FinancialPayment")

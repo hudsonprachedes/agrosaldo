@@ -34,7 +34,9 @@ export class AnalyticsService {
     const months = getLastNMonths(6, now);
 
     const [balance, movements] = await Promise.all([
-      this.prisma.rebanho.findMany({ where: { propriedadeId: propertyId } }),
+      this.prisma.rebanho.findMany({
+        where: { propriedadeId: propertyId, especie: 'bovino' },
+      }),
       this.prisma.movimento.findMany({
         where: {
           propriedadeId: propertyId,
