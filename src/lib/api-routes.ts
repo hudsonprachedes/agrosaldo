@@ -364,6 +364,11 @@ export const API_ROUTES = {
     // Request: { reason: string }
     // Response: ApprovalRequestDTO
 
+    DELETE_SOLICITATION: '/admin/solicitacoes/:id',
+    // DELETE /admin/solicitacoes/:id
+    // Headers: { Authorization: Bearer token (super_admin) }
+    // Response: { success: true }
+
     GET_AUDIT_LOG: '/admin/auditoria',
     // GET /admin/auditoria
     // Headers: { Authorization: Bearer token (super_admin) }

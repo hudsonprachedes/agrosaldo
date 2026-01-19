@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, CheckCircle, XCircle, Eye, Calendar } from 'lucide-react';
+import { UserPlus, CheckCircle, XCircle, Eye, Calendar, Trash2 } from 'lucide-react';
 import { adminService } from '@/services/api.service';
 import { toast } from 'sonner';
 
@@ -52,6 +52,7 @@ export default function AdminCadastros() {
   const [selectedSignup, setSelectedSignup] = useState<PendingSignup | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [trialDays, setTrialDays] = useState(30);
   const [trialPlan, setTrialPlan] = useState<'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao'>('porteira');
@@ -150,6 +151,38 @@ export default function AdminCadastros() {
     } catch (error) {
       console.error('Erro ao rejeitar cadastro:', error);
       toast.error('Erro ao rejeitar cadastro');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedSignup) return;
+
+    try {
+      if (!selectedSignup.solicitacaoId) {
+        toast.error('Solicitação inválida');
+        return;
+      }
+
+      // Verificar se o CPF/CNPJ está associado a algum cliente
+      const tenants = await adminService.getTenants();
+      const isClient = tenants.some(tenant => tenant.cpfCnpj === selectedSignup.cpfCnpj);
+      
+      if (isClient) {
+        toast.error('Não é possível excluir este cadastro pois está associado a um cliente ativo');
+        setShowDeleteDialog(false);
+        setSelectedSignup(null);
+        return;
+      }
+
+      await adminService.deleteRequest(selectedSignup.solicitacaoId);
+      const updated = signups.filter(s => s.id !== selectedSignup.id);
+      setSignups(updated);
+      setShowDeleteDialog(false);
+      setSelectedSignup(null);
+      toast.success(`Cadastro de ${selectedSignup.nome} foi excluído`);
+    } catch (error) {
+      console.error('Erro ao excluir cadastro:', error);
+      toast.error('Erro ao excluir cadastro');
     }
   };
 
@@ -305,6 +338,19 @@ export default function AdminCadastros() {
                                 <XCircle className="w-4 h-4" />
                               </Button>
                             </>
+                          )}
+                          {signup.status === 'rejected' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:bg-red-50"
+                              onClick={() => {
+                                setSelectedSignup(signup);
+                                setShowDeleteDialog(true);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>
@@ -476,6 +522,43 @@ export default function AdminCadastros() {
                   Aprovar
                 </Button>
               )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de Confirmação de Exclusão */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Excluir Cadastro Rejeitado</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir permanentemente o cadastro de {selectedSignup?.nome}?
+                Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedSignup && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Dados do Cadastro</h4>
+                <div className="text-sm space-y-1">
+                  <p><strong>Nome:</strong> {selectedSignup.nome}</p>
+                  <p><strong>CPF/CNPJ:</strong> {selectedSignup.cpfCnpj}</p>
+                  <p><strong>Email:</strong> {selectedSignup.email}</p>
+                  <p><strong>Celular:</strong> {selectedSignup.celular}</p>
+                  <p><strong>Localização:</strong> {selectedSignup.municipio}/{selectedSignup.uf}</p>
+                  <p><strong>Cabeças:</strong> {selectedSignup.numeroCabecas}</p>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleDelete}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir Cadastro
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

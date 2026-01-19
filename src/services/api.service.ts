@@ -686,6 +686,10 @@ export const adminService = {
     return apiClient.patch<unknown>(API_ROUTES.ADMIN.REJECT_SOLICITATION.replace(':id', id), { reason });
   },
 
+  async deleteRequest(id: string): Promise<unknown> {
+    return apiClient.delete<unknown>(API_ROUTES.ADMIN.DELETE_SOLICITATION.replace(':id', id));
+  },
+
   async listAdminPlans(): Promise<AdminPlan[]> {
     return apiClient.get<AdminPlan[]>(API_ROUTES.ADMIN.PLANS);
   },

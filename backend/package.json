@@ -26,6 +26,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "prisma db seed",
+    "seed:dev": "tsx prisma/seeds/main.ts",
+    "seed:prod": "tsx prisma/seeds/prod.ts",
     "prisma:refresh": "rimraf node_modules/.prisma && prisma generate",
     "db:local": "npm run prisma:refresh && prisma migrate status",
     "db:cloud": "npm run prisma:refresh && prisma migrate status"
