@@ -1,5 +1,5 @@
 import express from 'express';
-import { createApp } from '../src/server';
+import { createApp } from '../backend/src/server';
 
 let expressApp: express.Express | null = null;
 let isInitialized = false;
@@ -17,7 +17,10 @@ async function init() {
   await initPromise;
 }
 
-export default async function handler(req: express.Request, res: express.Response) {
+export default async function handler(
+  req: express.Request,
+  res: express.Response,
+) {
   await init();
   return (expressApp as express.Express)(req, res);
 }

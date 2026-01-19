@@ -38,7 +38,7 @@ export async function seedProperties(prisma: PrismaClient) {
   }
 
   const owner = await prisma.usuario.findUnique({
-    where: { cpfCnpj: '529.982.247-25' },
+    where: { cpfCnpj: '52998224725' },
   });
 
   if (owner) {
