@@ -10,6 +10,8 @@ import axios, {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { ApiResponse, ValidationError } from '@/types';
+import { validateApiResponse, ContractSchemas } from './contract-schemas';
+import { z } from 'zod';
 
 // Configuração base
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -239,43 +241,78 @@ class ApiClient {
   }
 
   /**
-   * Requisição GET genérica
+   * Requisição GET genérica com validação de contrato
    */
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T>(url: string, config?: AxiosRequestConfig & { schema?: z.ZodSchema<T> }): Promise<T> {
     const response = await this.instance.get<ApiResponse<T> | T>(url, config);
-    return this.extractData(response.data);
+    const data = this.extractData(response.data);
+    
+    // Validar contra schema se fornecido
+    if (config?.schema) {
+      return validateApiResponse(data, config.schema);
+    }
+    
+    return data;
   }
 
   /**
-   * Requisição POST genérica
+   * Requisição POST genérica com validação de contrato
    */
-  async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  async post<T>(url: string, data?: unknown, config?: AxiosRequestConfig & { schema?: z.ZodSchema<T> }): Promise<T> {
     const response = await this.instance.post<ApiResponse<T> | T>(url, data, config);
-    return this.extractData(response.data);
+    const extractedData = this.extractData(response.data);
+    
+    // Validar contra schema se fornecido
+    if (config?.schema) {
+      return validateApiResponse(extractedData, config.schema);
+    }
+    
+    return extractedData;
   }
 
   /**
-   * Requisição PUT genérica
+   * Requisição PUT genérica com validação de contrato
    */
-  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig & { schema?: z.ZodSchema<T> }): Promise<T> {
     const response = await this.instance.put<ApiResponse<T> | T>(url, data, config);
-    return this.extractData(response.data);
+    const extractedData = this.extractData(response.data);
+    
+    // Validar contra schema se fornecido
+    if (config?.schema) {
+      return validateApiResponse(extractedData, config.schema);
+    }
+    
+    return extractedData;
   }
 
   /**
-   * Requisição PATCH genérica
+   * Requisição PATCH genérica com validação de contrato
    */
-  async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+  async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig & { schema?: z.ZodSchema<T> }): Promise<T> {
     const response = await this.instance.patch<ApiResponse<T> | T>(url, data, config);
-    return this.extractData(response.data);
+    const extractedData = this.extractData(response.data);
+    
+    // Validar contra schema se fornecido
+    if (config?.schema) {
+      return validateApiResponse(extractedData, config.schema);
+    }
+    
+    return extractedData;
   }
 
   /**
-   * Requisição DELETE genérica
+   * Requisição DELETE genérica com validação de contrato
    */
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async delete<T>(url: string, config?: AxiosRequestConfig & { schema?: z.ZodSchema<T> }): Promise<T> {
     const response = await this.instance.delete<ApiResponse<T> | T>(url, config);
-    return this.extractData(response.data);
+    const data = this.extractData(response.data);
+    
+    // Validar contra schema se fornecido
+    if (config?.schema) {
+      return validateApiResponse(data, config.schema);
+    }
+    
+    return data;
   }
 
   /**
