@@ -224,7 +224,7 @@ const faqs = [
   {
     question: 'Posso migrar minha planilha atual?',
     answer:
-      'É só importar seu estoque via Excel ou copiar/colar seus dados. Nossa equipe ajuda gratuitamente na primeira carga.',
+      'Nossa equipe ajuda gratuitamente na primeira carga.',
   },
   {
     question: 'O sistema garante compliance com órgãos estaduais?',

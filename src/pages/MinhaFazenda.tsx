@@ -131,7 +131,7 @@ export default function MinhaFazenda() {
   const [produtorForm, setProdutorForm] = useState({
     name: user?.name || '',
     cpfCnpj: user?.cpfCnpj || '',
-    celular: '(67) 99999-9999',
+    celular: '(44) 99114-7084',
     email: user?.email || '',
     cep: '',
     endereco: '',

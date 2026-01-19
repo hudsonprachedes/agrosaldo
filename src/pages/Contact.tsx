@@ -126,8 +126,8 @@ export default function Contact() {
                   </div>
                   <div>
                     <p className="font-medium text-sm mb-1">E-mail</p>
-                    <a href="mailto:contato@agrosaldo.com.br" className="text-sm text-muted-foreground hover:text-primary">
-                      contato@agrosaldo.com.br
+                    <a href="mailto:agrosaldo.app@gmail.com" className="text-sm text-muted-foreground hover:text-primary">
+                      agrosaldo.app@gmail.com
                     </a>
                   </div>
                 </div>
@@ -139,7 +139,7 @@ export default function Contact() {
                   <div>
                     <p className="font-medium text-sm mb-1">Telefone</p>
                     <a href="tel:+556799999999" className="text-sm text-muted-foreground hover:text-primary">
-                      (67) 99999-9999
+                      (44) 99114-7084
                     </a>
                   </div>
                 </div>
@@ -151,7 +151,7 @@ export default function Contact() {
                   <div>
                     <p className="font-medium text-sm mb-1">Endereço</p>
                     <p className="text-sm text-muted-foreground">
-                      Campo Grande, MS<br />
+                      Maringá, PR<br />
                       Brasil
                     </p>
                   </div>
