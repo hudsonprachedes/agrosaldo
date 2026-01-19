@@ -493,8 +493,11 @@ export interface StateRegulation {
   stateName: string;
   reportingDeadline: number;
   requiredDocuments: string[];
-  saldoReportFrequency: string;
-  saldoReportDay: number;
+  declarationFrequency: number;
+  declarationPeriods: Record<string, unknown>;
+  responsibleAgency: string;
+  requiredVaccines: string[];
+  notificationLeadDays: number[];
   gtaRequired: boolean;
   observations: string;
   updatedAt: string;
@@ -506,8 +509,11 @@ export interface CreateRegulationDto {
   stateName: string;
   reportingDeadline: number;
   requiredDocuments: string[];
-  saldoReportFrequency: string;
-  saldoReportDay: number;
+  declarationFrequency: number;
+  declarationPeriods: Record<string, unknown>;
+  responsibleAgency: string;
+  requiredVaccines: string[];
+  notificationLeadDays: number[];
   gtaRequired: boolean;
   observations: string;
 }

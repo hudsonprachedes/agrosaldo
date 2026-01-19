@@ -8,6 +8,7 @@ import { seedLivestock } from './livestock.seed';
 import { seedMovements } from './movements.seed';
 import { seedEpidemiologySurveys } from './epidemiology.seed';
 import { seedAdmin } from './admin.seed';
+import { seedRegulations } from './regulations.seed';
 
 const TEST_USER_CPF_CNPJ = '52998224725';
 const SUPER_ADMIN_CPF_CNPJ = '04252011000110';
@@ -98,6 +99,10 @@ async function main() {
     console.log('👨‍💼 Criando dados administrativos...');
     await seedAdmin(prisma);
     console.log('✅ Dados administrativos criados com sucesso\n');
+
+    console.log('📜 Criando regulamentações estaduais...');
+    await seedRegulations(prisma);
+    console.log('✅ Regulamentações criadas com sucesso\n');
 
     console.log('🎉 Seed concluído com sucesso!');
   } catch (error) {

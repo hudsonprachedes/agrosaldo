@@ -42,8 +42,11 @@ export default function AdminRegulamentacoes() {
     stateName: '',
     reportingDeadline: 15,
     requiredDocuments: [],
-    saldoReportFrequency: 'monthly',
-    saldoReportDay: 10,
+    declarationFrequency: 2,
+    declarationPeriods: { periods: [] },
+    responsibleAgency: '',
+    requiredVaccines: [],
+    notificationLeadDays: [30, 15, 7, 3, 0],
     gtaRequired: true,
     observations: '',
   });
@@ -78,8 +81,11 @@ export default function AdminRegulamentacoes() {
       stateName: '',
       reportingDeadline: 15,
       requiredDocuments: [],
-      saldoReportFrequency: 'monthly',
-      saldoReportDay: 10,
+      declarationFrequency: 2,
+      declarationPeriods: { periods: [] },
+      responsibleAgency: '',
+      requiredVaccines: [],
+      notificationLeadDays: [30, 15, 7, 3, 0],
       gtaRequired: true,
       observations: '',
     });
@@ -94,27 +100,37 @@ export default function AdminRegulamentacoes() {
     }
 
     try {
-      const newReg: StateRegulation = {
-        id: isEditing ? selectedReg!.id : `reg-${formData.uf?.toLowerCase()}`,
-        uf: formData.uf!,
-        stateName: formData.stateName!,
-        reportingDeadline: formData.reportingDeadline || 15,
-        requiredDocuments: formData.requiredDocuments || [],
-        saldoReportFrequency: formData.saldoReportFrequency || 'monthly',
-        saldoReportDay: formData.saldoReportDay || 10,
-        gtaRequired: formData.gtaRequired ?? true,
-        observations: formData.observations || '',
-        updatedAt: new Date().toISOString(),
-        updatedBy: 'Admin Master',
-      };
-
       if (isEditing) {
-        await adminService.updateRegulation(selectedReg!.id, newReg);
-        setRegulations(regulations.map(r => r.id === selectedReg!.id ? newReg : r));
+        const updated = await adminService.updateRegulation(selectedReg!.id, {
+          uf: formData.uf!,
+          stateName: formData.stateName!,
+          reportingDeadline: formData.reportingDeadline || 15,
+          requiredDocuments: formData.requiredDocuments || [],
+          declarationFrequency: formData.declarationFrequency || 1,
+          declarationPeriods: formData.declarationPeriods || { periods: [] },
+          responsibleAgency: formData.responsibleAgency || '',
+          requiredVaccines: formData.requiredVaccines || [],
+          notificationLeadDays: formData.notificationLeadDays || [30, 15, 7, 3, 0],
+          gtaRequired: formData.gtaRequired ?? true,
+          observations: formData.observations || '',
+        });
+        setRegulations(regulations.map(r => r.id === selectedReg!.id ? updated : r));
         toast.success('Regulamentação atualizada');
       } else {
-        await adminService.createRegulation(newReg);
-        setRegulations([...regulations, newReg]);
+        const created = await adminService.createRegulation({
+          uf: formData.uf!,
+          stateName: formData.stateName!,
+          reportingDeadline: formData.reportingDeadline || 15,
+          requiredDocuments: formData.requiredDocuments || [],
+          declarationFrequency: formData.declarationFrequency || 1,
+          declarationPeriods: formData.declarationPeriods || { periods: [] },
+          responsibleAgency: formData.responsibleAgency || '',
+          requiredVaccines: formData.requiredVaccines || [],
+          notificationLeadDays: formData.notificationLeadDays || [30, 15, 7, 3, 0],
+          gtaRequired: formData.gtaRequired ?? true,
+          observations: formData.observations || '',
+        });
+        setRegulations([...regulations, created]);
         toast.success('Regulamentação criada');
       }
 
@@ -125,14 +141,12 @@ export default function AdminRegulamentacoes() {
     }
   };
 
-  const getFrequencyLabel = (freq: string) => {
-    const labels = {
-      monthly: 'Mensal',
-      quarterly: 'Trimestral',
-      biannual: 'Semestral',
-      annual: 'Anual',
-    };
-    return labels[freq as keyof typeof labels] || freq;
+  const getFrequencyLabel = (freq: number) => (freq === 2 ? '2x ao ano' : '1x ao ano');
+
+  const getPeriodsLabel = (periods: Record<string, unknown>) => {
+    const p = (periods as any)?.periods;
+    if (!Array.isArray(p) || p.length === 0) return 'Não configurado';
+    return p.map((x: any) => x?.label || x?.code).filter(Boolean).join(' / ');
   };
 
   if (isLoading) {
@@ -172,7 +186,7 @@ export default function AdminRegulamentacoes() {
                   <TableHead>UF</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Prazo Movimentação</TableHead>
-                  <TableHead>Declaração Saldo</TableHead>
+                  <TableHead>Declaração</TableHead>
                   <TableHead>GTA</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -184,7 +198,10 @@ export default function AdminRegulamentacoes() {
                     <TableCell>{reg.stateName}</TableCell>
                     <TableCell>{reg.reportingDeadline} dias</TableCell>
                     <TableCell>
-                      {getFrequencyLabel(reg.saldoReportFrequency)} (dia {reg.saldoReportDay})
+                      {getFrequencyLabel(reg.declarationFrequency)}
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {getPeriodsLabel(reg.declarationPeriods)}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {reg.gtaRequired ? (
@@ -281,38 +298,77 @@ export default function AdminRegulamentacoes() {
                 </div>
 
                 <div>
-                  <Label htmlFor="saldoReportDay">Dia da Declaração de Saldo</Label>
+                  <Label htmlFor="responsibleAgency">Órgão Responsável</Label>
                   <Input
-                    id="saldoReportDay"
-                    type="number"
-                    value={formData.saldoReportDay}
-                    onChange={(e) => setFormData({ ...formData, saldoReportDay: parseInt(e.target.value) })}
+                    id="responsibleAgency"
+                    value={formData.responsibleAgency}
+                    onChange={(e) => setFormData({ ...formData, responsibleAgency: e.target.value })}
                     className="mt-2"
-                    min="1"
-                    max="31"
+                    placeholder="Ex.: INDEA, IAGRO"
                   />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Dia do mês/período
-                  </p>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="saldoReportFrequency">Frequência de Declaração de Saldo</Label>
+                <Label htmlFor="declarationFrequency">Frequência de Declaração</Label>
                 <Select
-                  value={formData.saldoReportFrequency}
-                  onValueChange={(value: 'monthly' | 'quarterly' | 'biannual' | 'annual') => setFormData({ ...formData, saldoReportFrequency: value })}
+                  value={String(formData.declarationFrequency ?? 1)}
+                  onValueChange={(value) => setFormData({ ...formData, declarationFrequency: Number(value) })}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Mensal</SelectItem>
-                    <SelectItem value="quarterly">Trimestral</SelectItem>
-                    <SelectItem value="biannual">Semestral</SelectItem>
-                    <SelectItem value="annual">Anual</SelectItem>
+                    <SelectItem value="1">1x ao ano</SelectItem>
+                    <SelectItem value="2">2x ao ano</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="declarationPeriods">Períodos da Declaração (JSON)</Label>
+                <Textarea
+                  id="declarationPeriods"
+                  value={JSON.stringify(formData.declarationPeriods ?? { periods: [] }, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      setFormData({ ...formData, declarationPeriods: parsed });
+                    } catch {
+                      setFormData({ ...formData });
+                    }
+                  }}
+                  className="mt-2 font-mono"
+                  rows={6}
+                  placeholder={'{\n  "periods": [\n    {"code":"MAIO","label":"Maio","start":"05-01","end":"05-31"}\n  ]\n}'}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Estrutura esperada: {'{ periods: [{ code, label, start, end }] }'} com datas no formato MM-DD
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="requiredVaccines">Vacinas Obrigatórias (separar por vírgula)</Label>
+                  <Input
+                    id="requiredVaccines"
+                    value={formData.requiredVaccines?.join(', ') || ''}
+                    onChange={(e) => setFormData({ ...formData, requiredVaccines: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
+                    className="mt-2"
+                    placeholder="Brucelose, Raiva"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="notificationLeadDays">Dias de aviso (separar por vírgula)</Label>
+                  <Input
+                    id="notificationLeadDays"
+                    value={formData.notificationLeadDays?.join(', ') || ''}
+                    onChange={(e) => setFormData({ ...formData, notificationLeadDays: e.target.value.split(',').map(v => Number(v.trim())).filter(v => Number.isFinite(v)) })}
+                    className="mt-2"
+                    placeholder="30, 15, 7, 3, 0"
+                  />
+                </div>
               </div>
 
               <div>

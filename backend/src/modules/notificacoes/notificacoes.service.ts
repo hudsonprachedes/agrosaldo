@@ -22,6 +22,143 @@ export interface NotificationDTO {
 export class NotificacoesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private parseMonthDayToDate(year: number, monthDay: string) {
+    const [mmRaw, ddRaw] = String(monthDay).split('-');
+    const mm = Number(mmRaw);
+    const dd = Number(ddRaw);
+    if (!Number.isInteger(mm) || !Number.isInteger(dd) || mm < 1 || mm > 12)
+      return null;
+    const date = new Date(year, mm - 1, dd);
+    if (Number.isNaN(date.getTime())) return null;
+    return date;
+  }
+
+  private getDiffDaysTo(target: Date) {
+    return Math.ceil(
+      (target.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
+    );
+  }
+
+  private getEarliestUpcomingDeadline(
+    periods: Array<{ code?: unknown; label?: unknown; start?: unknown; end?: unknown }>,
+  ): { year: number; competence: string; label: string; deadline: Date } | null {
+    const now = new Date();
+    const candidates: Array<{
+      year: number;
+      competence: string;
+      label: string;
+      deadline: Date;
+    }> = [];
+
+    for (const p of periods) {
+      const code = typeof p?.code === 'string' && p.code ? p.code : 'PERIODO';
+      const label =
+        typeof p?.label === 'string' && p.label ? p.label : String(code);
+      const end = typeof p?.end === 'string' ? p.end : null;
+      if (!end) continue;
+
+      const deadlineThisYear = this.parseMonthDayToDate(now.getFullYear(), end);
+      const deadlineNextYear = this.parseMonthDayToDate(now.getFullYear() + 1, end);
+
+      if (deadlineThisYear) {
+        candidates.push({
+          year: deadlineThisYear.getFullYear(),
+          competence: code,
+          label,
+          deadline: deadlineThisYear,
+        });
+      }
+      if (deadlineNextYear) {
+        candidates.push({
+          year: deadlineNextYear.getFullYear(),
+          competence: code,
+          label,
+          deadline: deadlineNextYear,
+        });
+      }
+    }
+
+    const upcoming = candidates
+      .filter((c) => c.deadline.getTime() >= now.getTime())
+      .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+    return upcoming[0] ?? null;
+  }
+
+  private async buildHerdDeclarationNotifications(
+    userId: string,
+    propertyId: string,
+  ): Promise<Omit<NotificationDTO, 'status' | 'readAt'>[]> {
+    await this.assertUserHasProperty(userId, propertyId);
+
+    const property = await this.prisma.propriedade.findUnique({
+      where: { id: propertyId },
+      select: { id: true, estado: true, nome: true },
+    });
+    const uf = property?.estado ? String(property.estado) : '';
+    if (!uf) return [];
+
+    const regulation = await (this.prisma as any).regulamentacaoEstadual.findUnique({
+      where: { uf },
+    });
+    if (!regulation) return [];
+
+    const declarationPeriods = regulation.periodosDeclaracao as any;
+    const periods = Array.isArray(declarationPeriods?.periods)
+      ? declarationPeriods.periods
+      : [];
+    const next = this.getEarliestUpcomingDeadline(periods);
+    if (!next) return [];
+
+    const leadDays = Array.isArray(regulation.diasAvisoNotificacao)
+      ? (regulation.diasAvisoNotificacao as number[]).filter((d) => Number.isFinite(d))
+      : [];
+    if (leadDays.length === 0) return [];
+
+    const diffDays = this.getDiffDaysTo(next.deadline);
+    if (!leadDays.includes(diffDays)) return [];
+
+    const userPropertiesSameUf = await this.prisma.usuarioPropriedade.findMany({
+      where: { usuarioId: userId, propriedade: { estado: uf } },
+      select: { propriedadeId: true },
+    });
+    const propertyIdsSameUf = userPropertiesSameUf
+      .map((x) => String(x.propriedadeId))
+      .filter(Boolean);
+
+    if (propertyIdsSameUf.length === 0) return [];
+
+    const alreadySubmitted = await (this.prisma as any).declaracaoRebanho.findFirst({
+      where: {
+        uf,
+        ano: next.year,
+        competencia: next.competence,
+        propriedadeId: { in: propertyIdsSameUf },
+        status: 'entregue',
+      },
+      select: { id: true },
+    });
+    if (alreadySubmitted) return [];
+
+    const agency = String(regulation.orgaoResponsavel ?? '').trim();
+    const agencyText = agency ? ` (${agency})` : '';
+
+    return [
+      {
+        id: `system-herd-declaration-${uf}-${next.year}-${next.competence}`,
+        propertyId,
+        type: 'reminder' as const,
+        title: `Declaração de Rebanho${agencyText}`,
+        message:
+          diffDays <= 0
+            ? `A declaração ${next.label} vence hoje (${uf}). Faça a declaração no órgão do seu estado.`
+            : `Faltam ${diffDays} dia(s) para o vencimento da declaração ${next.label} (${uf}). Faça a declaração no órgão do seu estado.`,
+        icon: '📋',
+        actionUrl: '/rebanho',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+  }
+
   private async assertUserHasProperty(userId: string, propertyId: string) {
     const link = await this.prisma.usuarioPropriedade.findFirst({
       where: { usuarioId: userId, propriedadeId: propertyId },
@@ -122,6 +259,11 @@ export class NotificacoesService {
       } as any,
     });
 
+    const herdDeclarationNotifs = await this.buildHerdDeclarationNotifications(
+      userId,
+      propertyId,
+    );
+
     const rows = await this.prisma.questionarioEpidemiologico.findMany({
       where: { propriedadeId: propertyId },
       orderBy: { proximoEm: 'desc' },
@@ -147,17 +289,18 @@ export class NotificacoesService {
       };
     });
 
-    if (rows.length === 0) return evolutionNotifs;
+    if (rows.length === 0) return [...evolutionNotifs, ...herdDeclarationNotifs];
 
     const nextDue = rows[0].proximoEm;
     const diffDays = Math.ceil(
       (nextDue.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
     );
 
-    if (diffDays > 7) return [];
+    if (diffDays > 7) return herdDeclarationNotifs;
 
     return [
       ...evolutionNotifs,
+      ...herdDeclarationNotifs,
       {
         id: `system-survey-${propertyId}-${rows[0].id}`,
         propertyId,

@@ -578,19 +578,54 @@ export class AdminService {
 
   // --- Regulations ---
 
+  private mapRegulationToDto(row: any) {
+    return {
+      id: row.id,
+      uf: row.uf,
+      stateName: row.nomeEstado,
+      reportingDeadline: row.prazoEntrega,
+      requiredDocuments: row.documentosNecessarios ?? [],
+      declarationFrequency: row.frequenciaDeclaracao,
+      declarationPeriods: row.periodosDeclaracao,
+      responsibleAgency: row.orgaoResponsavel,
+      requiredVaccines: row.vacinasObrigatorias ?? [],
+      notificationLeadDays: row.diasAvisoNotificacao ?? [],
+      gtaRequired: row.gtaObrigatoria,
+      observations: row.observacoes,
+      updatedAt: row.atualizadoEm?.toISOString
+        ? row.atualizadoEm.toISOString()
+        : row.atualizadoEm,
+      updatedBy: row.atualizadoPor,
+    };
+  }
+
   async listRegulations() {
-    return this.prisma.regulamentacaoEstadual.findMany({
+    const rows = await this.prisma.regulamentacaoEstadual.findMany({
       orderBy: { nomeEstado: 'asc' },
     });
+
+    return rows.map((r: any) => this.mapRegulationToDto(r));
   }
 
   async createRegulation(dto: CreateRegulationDto, adminName: string) {
-    return (this.prisma as any).regulamentacaoEstadual.create({
+    const created = await (this.prisma as any).regulamentacaoEstadual.create({
       data: {
-        ...dto,
+        uf: dto.uf,
+        nomeEstado: dto.stateName,
+        prazoEntrega: dto.reportingDeadline,
+        documentosNecessarios: dto.requiredDocuments ?? [],
+        frequenciaDeclaracao: dto.declarationFrequency,
+        periodosDeclaracao: dto.declarationPeriods ?? {},
+        orgaoResponsavel: dto.responsibleAgency,
+        vacinasObrigatorias: dto.requiredVaccines ?? [],
+        diasAvisoNotificacao: dto.notificationLeadDays ?? [],
+        gtaObrigatoria: dto.gtaRequired,
+        observacoes: dto.observations,
         atualizadoPor: adminName,
       },
     });
+
+    return this.mapRegulationToDto(created);
   }
 
   async updateRegulation(
@@ -598,13 +633,43 @@ export class AdminService {
     dto: UpdateRegulationDto,
     adminName: string,
   ) {
-    return (this.prisma as any).regulamentacaoEstadual.update({
+    const updated = await (this.prisma as any).regulamentacaoEstadual.update({
       where: { id },
       data: {
-        ...dto,
+        ...(dto.uf !== undefined ? { uf: dto.uf } : {}),
+        ...(dto.stateName !== undefined ? { nomeEstado: dto.stateName } : {}),
+        ...(dto.reportingDeadline !== undefined
+          ? { prazoEntrega: dto.reportingDeadline }
+          : {}),
+        ...(dto.requiredDocuments !== undefined
+          ? { documentosNecessarios: dto.requiredDocuments }
+          : {}),
+        ...(dto.declarationFrequency !== undefined
+          ? { frequenciaDeclaracao: dto.declarationFrequency }
+          : {}),
+        ...(dto.declarationPeriods !== undefined
+          ? { periodosDeclaracao: dto.declarationPeriods }
+          : {}),
+        ...(dto.responsibleAgency !== undefined
+          ? { orgaoResponsavel: dto.responsibleAgency }
+          : {}),
+        ...(dto.requiredVaccines !== undefined
+          ? { vacinasObrigatorias: dto.requiredVaccines }
+          : {}),
+        ...(dto.notificationLeadDays !== undefined
+          ? { diasAvisoNotificacao: dto.notificationLeadDays }
+          : {}),
+        ...(dto.gtaRequired !== undefined
+          ? { gtaObrigatoria: dto.gtaRequired }
+          : {}),
+        ...(dto.observations !== undefined
+          ? { observacoes: dto.observations }
+          : {}),
         atualizadoPor: adminName,
       },
     });
+
+    return this.mapRegulationToDto(updated);
   }
 
   async deleteRegulation(id: string) {

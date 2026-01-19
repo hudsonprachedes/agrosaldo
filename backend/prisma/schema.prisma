@@ -142,6 +142,7 @@ model Propriedade {
   rebanho         Rebanho[]
   movimentos      Movimento[]
   questionariosEpidemiologicos QuestionarioEpidemiologico[]
+  declaracoesRebanho DeclaracaoRebanho[]
   validacoesDocumentoPublico ValidacaoDocumentoPublico[]
 
   @@map("Property")
@@ -251,15 +252,46 @@ model RegulamentacaoEstadual {
   uf                 String   @map("uf")
   nomeEstado         String   @map("stateName")
   prazoEntrega       Int      @map("reportingDeadline")
-  documentosObrigatorios String[] @map("requiredDocuments")
-  frequenciaRelatorioSaldo String @map("saldoReportFrequency")
-  diaRelatorioSaldo  Int      @map("saldoReportDay")
+  documentosNecessarios String[] @map("requiredDocuments")
+  frequenciaDeclaracao Int     @map("declarationFrequency")
+  periodosDeclaracao  Json    @map("declarationPeriods")
+  orgaoResponsavel    String  @map("responsibleAgency")
+  vacinasObrigatorias String[] @map("requiredVaccines")
+  diasAvisoNotificacao Int[]  @map("notificationLeadDays")
   gtaObrigatoria     Boolean  @map("gtaRequired")
   observacoes        String   @map("observations")
   atualizadoEm       DateTime @default(now()) @map("updatedAt")
   atualizadoPor      String   @map("updatedBy")
 
+  @@unique([uf])
   @@map("StateRegulation")
+}
+
+enum StatusDeclaracaoRebanho {
+  pendente @map("pending")
+  entregue @map("submitted")
+
+  @@map("HerdDeclarationStatus")
+}
+
+model DeclaracaoRebanho {
+  id            String   @id @default(uuid()) @map("id")
+  propriedadeId String   @map("propertyId")
+  uf            String   @map("uf")
+  ano           Int      @map("year")
+  competencia   String   @map("competence")
+  status        StatusDeclaracaoRebanho @default(pendente) @map("status")
+  enviadoEm     DateTime? @map("submittedAt")
+  protocolo     String?  @map("protocol")
+  observacoes   String?  @map("notes")
+  criadoEm      DateTime @default(now()) @map("createdAt")
+  atualizadoEm  DateTime @updatedAt @map("updatedAt")
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@unique([propriedadeId, uf, ano, competencia])
+  @@index([propriedadeId])
+  @@index([uf, ano, competencia])
+  @@map("HerdDeclaration")
 }
 
 model PagamentoFinanceiro {

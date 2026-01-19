@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { seedRegulations } from './regulations.seed';
 
 const SUPER_ADMIN_EMAIL = 'admin@agrosaldo.com';
 const SUPER_ADMIN_CPF_CNPJ = '04252011000110';
@@ -35,7 +36,7 @@ if (isAccelerate) {
 }
 
 async function main() {
-  console.log('🌱 Seed de PRODUÇÃO: recriando superadmin e planos...\n');
+  console.log('🌱 Seed de PRODUÇÃO: recriando superadmin, planos e regulamentações...\n');
 
   const passwordHash = await bcrypt.hash('admin123', 10);
 
@@ -65,6 +66,7 @@ async function main() {
         ]
       : []),
     (prisma as any).planoSaas.deleteMany({}),
+    (prisma as any).regulamentacaoEstadual.deleteMany({}),
   ]);
 
   await (prisma as any).usuario.upsert({
@@ -107,7 +109,9 @@ async function main() {
     ],
   });
 
-  console.log('✅ Seed de produção concluído (superadmin + planos).');
+  await seedRegulations(prisma);
+
+  console.log('✅ Seed de produção concluído (superadmin + planos + regulamentações).');
 }
 
 main()

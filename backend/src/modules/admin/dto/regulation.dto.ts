@@ -5,6 +5,8 @@ import {
   IsArray,
   IsEnum,
   IsBoolean,
+  IsInt,
+  IsObject,
 } from 'class-validator';
 
 export class CreateRegulationDto {
@@ -14,18 +16,29 @@ export class CreateRegulationDto {
   @IsString()
   stateName: string;
 
-  @IsNumber()
+  @IsInt()
   reportingDeadline: number;
 
   @IsArray()
   @IsString({ each: true })
   requiredDocuments: string[];
 
-  @IsString()
-  saldoReportFrequency: string;
+  @IsInt()
+  declarationFrequency: number;
 
-  @IsNumber()
-  saldoReportDay: number;
+  @IsObject()
+  declarationPeriods: Record<string, unknown>;
+
+  @IsString()
+  responsibleAgency: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  requiredVaccines: string[];
+
+  @IsArray()
+  @IsInt({ each: true })
+  notificationLeadDays: number[];
 
   @IsBoolean()
   gtaRequired: boolean;
