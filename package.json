@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0.3",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "workspaces": [
     "backend"
   ],
@@ -58,7 +61,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
-    "express": "^4.21.2",
+    "express": "4.18.2",
     "idb": "^8.0.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.562.0",
@@ -106,6 +109,7 @@
     "vite": "^7.3.1"
   },
   "overrides": {
-    "diff": "^8.0.3"
+    "diff": "^8.0.3",
+    "express": "4.18.2"
   }
 }

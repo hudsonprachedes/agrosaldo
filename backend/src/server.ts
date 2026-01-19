@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -14,7 +16,11 @@ export async function createApp(
   expressInstance?: Express,
 ): Promise<INestApplication> {
   const app = expressInstance
-    ? await NestFactory.create(AppModule, new ExpressAdapter(expressInstance))
+    ? await NestFactory.create(
+        AppModule,
+        new ExpressAdapter(expressInstance),
+        { bodyParser: false },
+      )
     : await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');

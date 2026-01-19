@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { MaskedInput } from '@/components/ui/masked-input';
 import { validateCpfCnpj } from '@/lib/document-validation';
@@ -36,6 +38,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const supportWhatsAppNumber = '5544991147084';
@@ -47,6 +50,28 @@ export default function Login() {
     defaultValues: { cpfCnpj: '', password: '' },
   });
 
+  useEffect(() => {
+    const remembered = localStorage.getItem('agrosaldo_remember_me') === 'true';
+    setRememberMe(remembered);
+
+    if (!remembered) return;
+
+    const rawCredentials = localStorage.getItem('agrosaldo_saved_credentials');
+    if (!rawCredentials) return;
+
+    try {
+      const parsed = JSON.parse(rawCredentials) as { cpfCnpj?: string; password?: string };
+      if (typeof parsed.cpfCnpj === 'string') {
+        loginForm.setValue('cpfCnpj', parsed.cpfCnpj, { shouldDirty: false });
+      }
+      if (typeof parsed.password === 'string') {
+        loginForm.setValue('password', parsed.password, { shouldDirty: false });
+      }
+    } catch {
+      localStorage.removeItem('agrosaldo_saved_credentials');
+    }
+  }, [loginForm]);
+
   const isCnpjLogin = loginForm.watch('cpfCnpj').replace(/\D/g, '').length > 11;
   const loginMask = isCnpjLogin ? '99.999.999/9999-99' : '999.999.999-99';
 
@@ -57,6 +82,14 @@ export default function Login() {
       const { user: loggedUser, success } = await login(data.cpfCnpj, data.password);
 
       if (success && loggedUser) {
+        if (rememberMe) {
+          localStorage.setItem('agrosaldo_remember_me', 'true');
+          localStorage.setItem('agrosaldo_saved_credentials', JSON.stringify({ cpfCnpj: data.cpfCnpj, password: data.password }));
+        } else {
+          localStorage.removeItem('agrosaldo_remember_me');
+          localStorage.removeItem('agrosaldo_saved_credentials');
+        }
+
         toast.success('Login realizado com sucesso!');
         if (loggedUser.role === 'super_admin') {
           navigate('/admin');
@@ -262,6 +295,17 @@ export default function Login() {
                         </FormItem>
                       )}
                     />
+
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="remember-me"
+                        checked={rememberMe}
+                        onCheckedChange={(checked) => setRememberMe(checked === true)}
+                      />
+                      <Label htmlFor="remember-me" className="text-muted-foreground">
+                        Lembrar-me
+                      </Label>
+                    </div>
 
                     <Button
                       type="submit"

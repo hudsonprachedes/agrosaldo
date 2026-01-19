@@ -4,6 +4,7 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 
@@ -30,6 +31,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -39,10 +42,29 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
+    const exceptionMessage =
+      exception instanceof Error
         ? exception.message
-        : 'Internal server error';
+        : exception instanceof HttpException
+          ? exception.message
+          : 'Internal server error';
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isConfigError =
+      typeof exceptionMessage === 'string' &&
+      (exceptionMessage.includes('JWT_SECRET') ||
+        exceptionMessage.includes('DATABASE_URL') ||
+        exceptionMessage.includes('PRISMA_DATABASE_URL'));
+
+    const message = !isProduction || isConfigError
+      ? exceptionMessage
+      : 'Internal server error';
+
+    if (exception instanceof Error) {
+      this.logger.error(exception.message, exception.stack);
+    } else {
+      this.logger.error(String(exception));
+    }
 
     response.status(status).json({
       statusCode: status,
