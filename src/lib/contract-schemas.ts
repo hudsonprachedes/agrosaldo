@@ -86,7 +86,7 @@ const MovimentoSchema = z.object({
   valor: z.number().nullable(),
   numeroGta: z.string().nullable(),
   fotoUrl: z.string().nullable(),
-  fotoData: z.instanceof(Buffer).nullable(),
+  fotoData: z.instanceof(Uint8Array).nullable(),
   fotoMimeType: z.string().nullable(),
   causa: z.string().nullable(),
   criadoEm: z.string().datetime(),
@@ -190,14 +190,14 @@ const CattleReportSchema = z.object({
   propertyId: z.string().uuid(),
   livestock: z.array(RebanhoSchema),
   total: z.number(),
-  byAgeGroup: z.record(z.number()),
-  bySex: z.record(z.number()),
+  byAgeGroup: z.record(z.string(), z.number()),
+  bySex: z.record(z.string(), z.number()),
 });
 
 const LivestockSummarySchema = z.object({
   total: z.number(),
-  byAgeGroup: z.record(z.number()),
-  bySex: z.record(z.number()),
+  byAgeGroup: z.record(z.string(), z.number()),
+  bySex: z.record(z.string(), z.number()),
 });
 
 // =============================================================================
@@ -319,8 +319,14 @@ export type ContractTypes = {
  */
 export function generateMockData<T>(schema: z.ZodSchema<T>): T {
   // Implementação básica - pode ser expandida com bibliotecas como faker
-  if (schema === UsuarioSchema) {
-    return {
+  // Para evitar comparações de tipos incompatíveis, usamos uma abordagem baseada em tipos
+  // Esta implementação é um placeholder - em produção, considere usar uma lib como faker
+
+  // Por enquanto, retornamos dados mock para Usuario como exemplo
+  // Usamos uma verificação mais segura baseada no tipo retornado
+  try {
+    // Tentativa de validar um objeto Usuario para identificar o schema
+    const testUsuario = {
       id: '550e8400-e29b-41d4-a716-446655440000',
       nome: 'Usuário Teste',
       email: 'teste@example.com',
@@ -335,8 +341,13 @@ export function generateMockData<T>(schema: z.ZodSchema<T>): T {
       onboardingConcluidoEm: null,
       criadoEm: new Date().toISOString(),
       atualizadoEm: new Date().toISOString(),
-    } as T;
+    };
+
+    // Se conseguir fazer parse, é compatível com UsuarioSchema
+    schema.parse(testUsuario);
+    return testUsuario as T;
+  } catch {
+    // Não é compatível, lançar erro
+    throw new Error(`Mock data não implementado para este schema. Considere usar uma biblioteca como faker para geração automática.`);
   }
-  
-  throw new Error(`Mock data não implementado para schema: ${schema.description || 'unknown'}`);
 }
