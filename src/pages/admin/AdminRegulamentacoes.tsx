@@ -14,9 +14,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Edit, Save, Shield } from 'lucide-react';
+import { FileText, Edit, Save, Shield, Trash2, Plus, X } from 'lucide-react';
 import { adminService, StateRegulation } from '@/services/api.service';
 import { toast } from 'sonner';
 
@@ -30,12 +41,20 @@ const UF_NAMES: Record<string, string> = {
   SE: 'Sergipe', TO: 'Tocantins',
 };
 
+type DeclarationPeriod = {
+  code: string;
+  label: string;
+  start: string;
+  end: string;
+};
+
 export default function AdminRegulamentacoes() {
   const [regulations, setRegulations] = useState<StateRegulation[]>([]);
   const [selectedReg, setSelectedReg] = useState<StateRegulation | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [formData, setFormData] = useState<Partial<StateRegulation>>({
     uf: '',
@@ -67,9 +86,35 @@ export default function AdminRegulamentacoes() {
     void loadRegulations();
   }, []);
 
+  const getDeclarationPeriodsArray = (value: Partial<StateRegulation>['declarationPeriods']): DeclarationPeriod[] => {
+    const periods = (value as any)?.periods;
+    if (!Array.isArray(periods)) return [];
+    return periods.map((p: any) => ({
+      code: String(p?.code ?? ''),
+      label: String(p?.label ?? ''),
+      start: String(p?.start ?? ''),
+      end: String(p?.end ?? ''),
+    }));
+  };
+
+  const setDeclarationPeriodsArray = (periods: DeclarationPeriod[]) => {
+    setFormData({
+      ...formData,
+      declarationPeriods: { periods },
+    });
+  };
+
+  const isValidMmDd = (value: string) => /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/.test(value);
+
   const openEditDialog = (reg: StateRegulation) => {
     setSelectedReg(reg);
-    setFormData(reg);
+    setFormData({
+      ...reg,
+      declarationPeriods: reg.declarationPeriods ?? { periods: [] },
+      notificationLeadDays: reg.notificationLeadDays ?? [30, 15, 7, 3, 0],
+      requiredDocuments: reg.requiredDocuments ?? [],
+      requiredVaccines: reg.requiredVaccines ?? [],
+    });
     setIsEditing(true);
     setShowDialog(true);
   };
@@ -99,12 +144,23 @@ export default function AdminRegulamentacoes() {
       return;
     }
 
+    const periods = getDeclarationPeriodsArray(formData.declarationPeriods);
+    const invalidPeriodIndex = periods.findIndex((p) => {
+      if (!p.code.trim() || !p.label.trim() || !p.start.trim() || !p.end.trim()) return true;
+      if (!isValidMmDd(p.start) || !isValidMmDd(p.end)) return true;
+      return false;
+    });
+    if (invalidPeriodIndex !== -1) {
+      toast.error(`Verifique o período #${invalidPeriodIndex + 1}: preencha e use datas no formato MM-DD`);
+      return;
+    }
+
     try {
       if (isEditing) {
         const updated = await adminService.updateRegulation(selectedReg!.id, {
           uf: formData.uf!,
           stateName: formData.stateName!,
-          reportingDeadline: formData.reportingDeadline || 15,
+          reportingDeadline: Number.isFinite(formData.reportingDeadline) ? (formData.reportingDeadline as number) : 15,
           requiredDocuments: formData.requiredDocuments || [],
           declarationFrequency: formData.declarationFrequency || 1,
           declarationPeriods: formData.declarationPeriods || { periods: [] },
@@ -120,7 +176,7 @@ export default function AdminRegulamentacoes() {
         const created = await adminService.createRegulation({
           uf: formData.uf!,
           stateName: formData.stateName!,
-          reportingDeadline: formData.reportingDeadline || 15,
+          reportingDeadline: Number.isFinite(formData.reportingDeadline) ? (formData.reportingDeadline as number) : 15,
           requiredDocuments: formData.requiredDocuments || [],
           declarationFrequency: formData.declarationFrequency || 1,
           declarationPeriods: formData.declarationPeriods || { periods: [] },
@@ -138,6 +194,22 @@ export default function AdminRegulamentacoes() {
     } catch (error) {
       console.error('Erro ao salvar regulamentação:', error);
       toast.error('Erro ao salvar regulamentação');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedReg?.id) return;
+    try {
+      setIsDeleting(true);
+      await adminService.deleteRegulation(selectedReg.id);
+      setRegulations(regulations.filter((r) => r.id !== selectedReg.id));
+      setShowDialog(false);
+      toast.success('Regulamentação excluída');
+    } catch (error) {
+      console.error('Erro ao excluir regulamentação:', error);
+      toast.error('Erro ao excluir regulamentação');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -287,7 +359,10 @@ export default function AdminRegulamentacoes() {
                     id="reportingDeadline"
                     type="number"
                     value={formData.reportingDeadline}
-                    onChange={(e) => setFormData({ ...formData, reportingDeadline: parseInt(e.target.value) })}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setFormData({ ...formData, reportingDeadline: Number.isFinite(v) ? v : 15 });
+                    }}
                     className="mt-2"
                     min="1"
                     max="90"
@@ -326,24 +401,128 @@ export default function AdminRegulamentacoes() {
               </div>
 
               <div>
-                <Label htmlFor="declarationPeriods">Períodos da Declaração (JSON)</Label>
-                <Textarea
-                  id="declarationPeriods"
-                  value={JSON.stringify(formData.declarationPeriods ?? { periods: [] }, null, 2)}
-                  onChange={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setFormData({ ...formData, declarationPeriods: parsed });
-                    } catch {
-                      setFormData({ ...formData });
-                    }
-                  }}
-                  className="mt-2 font-mono"
-                  rows={6}
-                  placeholder={'{\n  "periods": [\n    {"code":"MAIO","label":"Maio","start":"05-01","end":"05-31"}\n  ]\n}'}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Estrutura esperada: {'{ periods: [{ code, label, start, end }] }'} com datas no formato MM-DD
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Períodos da Declaração</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const current = getDeclarationPeriodsArray(formData.declarationPeriods);
+                      setDeclarationPeriodsArray([
+                        ...current,
+                        { code: '', label: '', start: '', end: '' },
+                      ]);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar período
+                  </Button>
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  {getDeclarationPeriodsArray(formData.declarationPeriods).length === 0 ? (
+                    <div className="rounded-md border p-4 text-sm text-gray-600">
+                      Nenhum período configurado. Clique em “Adicionar período”.
+                    </div>
+                  ) : (
+                    getDeclarationPeriodsArray(formData.declarationPeriods).map((p, idx) => {
+                      const startOk = !p.start || isValidMmDd(p.start);
+                      const endOk = !p.end || isValidMmDd(p.end);
+                      return (
+                        <div key={`${idx}-${p.code}`} className="rounded-md border p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm font-medium">Período #{idx + 1}</div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const current = getDeclarationPeriodsArray(formData.declarationPeriods);
+                                setDeclarationPeriodsArray(current.filter((_, i) => i !== idx));
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`period-code-${idx}`}>Código</Label>
+                              <Input
+                                id={`period-code-${idx}`}
+                                value={p.code}
+                                onChange={(e) => {
+                                  const current = getDeclarationPeriodsArray(formData.declarationPeriods);
+                                  current[idx] = { ...current[idx], code: e.target.value };
+                                  setDeclarationPeriodsArray(current);
+                                }}
+                                className="mt-2"
+                                placeholder="Ex.: MAIO"
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`period-label-${idx}`}>Nome</Label>
+                              <Input
+                                id={`period-label-${idx}`}
+                                value={p.label}
+                                onChange={(e) => {
+                                  const current = getDeclarationPeriodsArray(formData.declarationPeriods);
+                                  current[idx] = { ...current[idx], label: e.target.value };
+                                  setDeclarationPeriodsArray(current);
+                                }}
+                                className="mt-2"
+                                placeholder="Ex.: Maio"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`period-start-${idx}`}>Início (MM-DD)</Label>
+                              <Input
+                                id={`period-start-${idx}`}
+                                value={p.start}
+                                onChange={(e) => {
+                                  const current = getDeclarationPeriodsArray(formData.declarationPeriods);
+                                  current[idx] = { ...current[idx], start: e.target.value };
+                                  setDeclarationPeriodsArray(current);
+                                }}
+                                className="mt-2"
+                                placeholder="05-01"
+                              />
+                              {!startOk && (
+                                <p className="text-sm text-red-600 mt-1">Use o formato MM-DD</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`period-end-${idx}`}>Fim (MM-DD)</Label>
+                              <Input
+                                id={`period-end-${idx}`}
+                                value={p.end}
+                                onChange={(e) => {
+                                  const current = getDeclarationPeriodsArray(formData.declarationPeriods);
+                                  current[idx] = { ...current[idx], end: e.target.value };
+                                  setDeclarationPeriodsArray(current);
+                                }}
+                                className="mt-2"
+                                placeholder="05-31"
+                              />
+                              {!endOk && (
+                                <p className="text-sm text-red-600 mt-1">Use o formato MM-DD</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <p className="text-sm text-gray-500 mt-2">
+                  Datas no formato MM-DD. Ex.: 05-01 até 05-31.
                 </p>
               </div>
 
@@ -410,13 +589,41 @@ export default function AdminRegulamentacoes() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowDialog(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSave}>
-                <Save className="w-4 h-4 mr-2" />
-                Salvar
-              </Button>
+              <div className="flex w-full items-center justify-between gap-3">
+                <Button variant="outline" onClick={() => setShowDialog(false)}>
+                  Cancelar
+                </Button>
+
+                <div className="flex items-center gap-3">
+                  {isEditing && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" disabled={isDeleting}>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir regulamentação</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Essa ação não pode ser desfeita. A regulamentação será removida.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+
+                  <Button onClick={handleSave}>
+                    <Save className="w-4 h-4 mr-2" />
+                    Salvar
+                  </Button>
+                </div>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
