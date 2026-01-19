@@ -160,7 +160,7 @@ export default function Cadastro() {
                   Sua conta foi criada com sucesso.
                 </div>
                 <div className="rounded-xl border border-muted bg-white px-4 py-3 text-sm text-muted-foreground">
-                  Agora você já pode entrar com seu CPF/CNPJ e senha.
+                  Em breve o Administrador irá aprovar seu cadastro e você receberá um WhatsApp de confirmação.
                 </div>
                 <div className="flex flex-col gap-3 pt-2">
                   <Button
