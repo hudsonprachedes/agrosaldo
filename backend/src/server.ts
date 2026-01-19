@@ -15,13 +15,18 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 export async function createApp(
   expressInstance?: Express,
 ): Promise<INestApplication> {
+  const isProduction =
+    process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
   const app = expressInstance
     ? await NestFactory.create(
         AppModule,
         new ExpressAdapter(expressInstance),
-        { bodyParser: false },
+        { bodyParser: false, logger: isProduction ? false : undefined },
       )
-    : await NestFactory.create(AppModule);
+    : await NestFactory.create(AppModule, {
+        logger: isProduction ? false : undefined,
+      });
 
   app.setGlobalPrefix('api');
 
@@ -49,7 +54,9 @@ export async function createApp(
   );
 
   app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  if (!isProduction) {
+    app.useGlobalInterceptors(new LoggingInterceptor());
+  }
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('AgroSaldo API')

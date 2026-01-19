@@ -32,6 +32,9 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(private configService: ConfigService) {
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
     // Obter DATABASE_URL (suporta PRISMA_DATABASE_URL como fallback para compatibilidade)
     const databaseUrl = configService.get<string>('DATABASE_URL') || 
                         configService.get<string>('PRISMA_DATABASE_URL');
@@ -49,7 +52,7 @@ export class PrismaService
     if (isCloud) {
       prismaConfig = {
         accelerateUrl: databaseUrl,
-        log: ['error', 'warn'],
+        log: isProduction ? undefined : ['error', 'warn'],
       };
     } else {
       // Para conexão direta PostgreSQL (desenvolvimento local)
@@ -67,13 +70,13 @@ export class PrismaService
       const pool = new Pool(poolConfig);
       prismaConfig = {
         adapter: new PrismaPg(pool),
-        log: ['error'],
+        log: isProduction ? undefined : ['error'],
       };
     }
 
     // Chamada única a super com a configuração preparada
     super(prismaConfig);
-    if (isCloud) {
+    if (!isProduction && isCloud) {
       this.logger.log(
         '☁️  Detectado: Conexão na nuvem (Prisma Accelerate). Aplicando configurações otimizadas...',
       );
@@ -81,11 +84,18 @@ export class PrismaService
   }
 
   async onModuleInit() {
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
     try {
       await this.$connect();
-      this.logger.log('✅ Conexão com banco de dados estabelecida com sucesso');
+      if (!isProduction) {
+        this.logger.log('✅ Conexão com banco de dados estabelecida com sucesso');
+      }
     } catch (error) {
-      this.logger.error('❌ Falha ao conectar com o banco de dados:', error);
+      if (!isProduction) {
+        this.logger.error('❌ Falha ao conectar com o banco de dados:', error);
+      }
       // Em serverless, não abortar - deixar lazy connection
       if (process.env.VERCEL !== '1' && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
         throw error;

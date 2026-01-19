@@ -60,10 +60,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       ? exceptionMessage
       : 'Internal server error';
 
-    if (exception instanceof Error) {
-      this.logger.error(exception.message, exception.stack);
-    } else {
-      this.logger.error(String(exception));
+    if (!isProduction) {
+      if (exception instanceof Error) {
+        this.logger.error(exception.message, exception.stack);
+      } else {
+        this.logger.error(String(exception));
+      }
     }
 
     response.status(status).json({

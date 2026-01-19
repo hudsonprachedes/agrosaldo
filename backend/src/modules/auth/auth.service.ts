@@ -236,7 +236,6 @@ export class AuthService {
         return createdUser;
       });
     } catch (error: any) {
-      console.error('Erro ao registrar usuário:', error);
       if (error?.code === 'P2002') {
         throw new ConflictException(
           'Já existe um cadastro com este CPF/CNPJ, email ou nome de propriedade',
