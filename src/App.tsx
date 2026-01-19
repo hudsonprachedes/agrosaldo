@@ -88,7 +88,16 @@ function ProtectedRoute({
   }
 
   // Verificar onboarding
-  if (requireOnboarding && requireProperty && !user.onboardingCompletedAt) {
+  const onboardingSkippedThisSession =
+    typeof window !== 'undefined' &&
+    window.sessionStorage.getItem('agrosaldo_skip_onboarding_once') === 'true';
+
+  if (
+    requireOnboarding &&
+    requireProperty &&
+    !user.onboardingCompletedAt &&
+    !onboardingSkippedThisSession
+  ) {
     return <Navigate to="/onboarding" replace />;
   }
   

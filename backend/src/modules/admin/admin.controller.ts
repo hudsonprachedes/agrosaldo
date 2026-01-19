@@ -120,6 +120,12 @@ export class AdminController {
     );
   }
 
+  @Roles('super_admin')
+  @Post('usuarios/:id/reset-onboarding')
+  resetUserOnboarding(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.resetUserOnboarding(id, dto);
+  }
+
   // --- Regulations ---
 
   @Roles('super_admin')
@@ -235,6 +241,12 @@ export class AdminController {
   @Get('indicacao/indicadores')
   listReferrers() {
     return this.adminService.listReferrers();
+  }
+
+  @Roles('super_admin')
+  @Get('indicacao/usos')
+  listCouponUsages() {
+    return this.adminService.listCouponUsages();
   }
 
   @Roles('super_admin')

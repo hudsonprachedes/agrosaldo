@@ -12,6 +12,7 @@ import axios, {
 import { ApiResponse, ValidationError } from '@/types';
 import { validateApiResponse, ContractSchemas } from './contract-schemas';
 import { z } from 'zod';
+import { APP_VERSION } from '@/version';
 
 // Configuração base
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -55,6 +56,8 @@ class ApiClient {
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    config.headers['X-App-Version'] = APP_VERSION;
 
     // Adicionar ID da propriedade selecionada se disponível
     const url = config.url ?? '';

@@ -18,6 +18,13 @@ import { notifyFirstFormError } from '@/lib/form-errors';
 
 type SpeciesType = 'bovino' | 'bubalino';
 
+type InitialStockBalanceItem = {
+  species: SpeciesType;
+  sex: 'male' | 'female';
+  ageGroupId: string;
+  quantity: number;
+};
+
 // ============================================================================
 // SCHEMAS DE VALIDAÇÃO
 // ============================================================================
@@ -161,8 +168,8 @@ function SpeciesTable({ species, control, errors, speciesLabel }: SpeciesTablePr
 // ============================================================================
 
 const Onboarding: React.FC = () => {
-  const { selectedProperty, user, refreshMe } = useAuth();
   const navigate = useNavigate();
+  const { user, selectedProperty, refreshMe } = useAuth();
   const [step, setStep] = useState(1);
   const [selectedSpecies, setSelectedSpecies] = useState<{ bovino: boolean; bubalino: boolean }>({
     bovino: true,
@@ -228,6 +235,11 @@ const Onboarding: React.FC = () => {
     setStep(2);
   };
 
+  const handleSkipForNextLogin = () => {
+    window.sessionStorage.setItem('agrosaldo_skip_onboarding_once', 'true');
+    navigate('/dashboard');
+  };
+
   const onSpeciesInvalid = () => {
     const { toastMessage } = notifyFirstFormError(speciesForm.formState.errors as any, {
       setFocus: speciesForm.setFocus,
@@ -253,7 +265,13 @@ const Onboarding: React.FC = () => {
     setIsLoading(true);
     try {
       // Salvar cada entrada de estoque inicial
-      const entries = [];
+      const entries: Array<{
+        propertyId: string;
+        species: SpeciesType;
+        sex: 'male' | 'female';
+        ageGroupId: string;
+        quantity: number;
+      }> = [];
 
       for (const [key, value] of Object.entries(data)) {
         if (typeof value !== 'number' || value === 0) continue;
@@ -262,21 +280,32 @@ const Onboarding: React.FC = () => {
 
         if (!selectedSpecies[species as SpeciesType]) continue;
 
-        const entry = await saveInitialStockEntry({
+        const payload = {
           propertyId: selectedProperty.id,
           species: species as SpeciesType,
           sex: sex as 'male' | 'female',
           ageGroupId,
           quantity: value,
-        });
+        };
 
-        entries.push(entry);
+        await saveInitialStockEntry(payload);
+        entries.push(payload);
       }
 
       // Marcar onboarding como completo
       await completeOnboarding(selectedProperty.id, selectedSpecies);
 
-      await apiClient.post('/auth/onboarding/complete');
+      const balances: InitialStockBalanceItem[] = entries.map((e) => ({
+        species: e.species,
+        sex: e.sex,
+        ageGroupId: e.ageGroupId,
+        quantity: e.quantity,
+      }));
+
+      await apiClient.post('/auth/onboarding/complete', {
+        propertyId: selectedProperty.id,
+        balances,
+      });
       await refreshMe();
 
       toast.success('Onboarding concluído com sucesso! 🎉');
@@ -335,6 +364,16 @@ const Onboarding: React.FC = () => {
 
               <Button onClick={handleStep1Next} size="lg" className="w-full bg-green-600 hover:bg-green-700">
                 Próximo →
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={handleSkipForNextLogin}
+              >
+                Preencher depois
               </Button>
             </CardContent>
           </Card>

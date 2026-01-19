@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -12,8 +12,11 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(
+    @Body() dto: LoginDto,
+    @Headers('x-app-version') appVersion?: string,
+  ) {
+    return this.authService.login(dto, appVersion);
   }
 
   @Post('register')
@@ -31,7 +34,19 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post('onboarding/complete')
-  completeOnboarding(@CurrentUser() user: { id: string }) {
-    return this.authService.completeOnboarding(user.id);
+  completeOnboarding(
+    @CurrentUser() user: { id: string },
+    @Body()
+    body: {
+      propertyId: string;
+      balances: Array<{
+        species: 'bovino' | 'bubalino';
+        sex: 'male' | 'female';
+        ageGroupId: string;
+        quantity: number;
+      }>;
+    },
+  ) {
+    return this.authService.completeOnboarding(user.id, body);
   }
 }

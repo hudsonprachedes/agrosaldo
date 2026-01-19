@@ -12,6 +12,7 @@ import {
   UserCheck,
   CreditCard,
   RefreshCw,
+  RotateCcw,
   AlertTriangle,
   History,
   Save,
@@ -90,6 +91,7 @@ export default function AdminClientes() {
   const [historyDialog, setHistoryDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [detailsDialog, setDetailsDialog] = useState(false);
+  const [resetOnboardingDialog, setResetOnboardingDialog] = useState(false);
 
   // Form state
   const [newPlan, setNewPlan] = useState('');
@@ -98,6 +100,7 @@ export default function AdminClientes() {
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
+  const [resetOnboardingPropertyId, setResetOnboardingPropertyId] = useState<string>('');
 
   useEffect(() => {
     const loadTenants = async () => {
@@ -267,6 +270,43 @@ export default function AdminClientes() {
   const openDetailsDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setDetailsDialog(true);
+  };
+
+  const openResetOnboardingDialog = (tenant: User) => {
+    setSelectedTenant(tenant);
+    const firstPropertyId =
+      typeof tenant.properties?.[0]?.id === 'string' ? tenant.properties[0].id : '';
+    setResetOnboardingPropertyId(firstPropertyId);
+    setResetOnboardingDialog(true);
+  };
+
+  const handleResetOnboarding = () => {
+    if (!selectedTenant) return;
+
+    const propertyId = resetOnboardingPropertyId;
+    if (!propertyId) {
+      toast.error('Selecione a propriedade');
+      return;
+    }
+
+    void (async () => {
+      try {
+        await adminService.resetOnboarding(selectedTenant.id, propertyId);
+        setTenantsData(
+          tenantsData.map((t) =>
+            t.id === selectedTenant.id
+              ? { ...t, onboardingCompletedAt: null }
+              : t,
+          ),
+        );
+        toast.success('Onboarding liberado para refazer');
+        setResetOnboardingDialog(false);
+        setSelectedTenant(null);
+      } catch (error) {
+        console.error('Erro ao resetar onboarding:', error);
+        toast.error('Erro ao resetar onboarding');
+      }
+    })();
   };
 
   const handleSaveEdit = () => {
@@ -478,6 +518,10 @@ export default function AdminClientes() {
                           <History className="w-4 h-4 mr-2" />
                           Histórico de Ações
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openResetOnboardingDialog(tenant)}>
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Refazer onboarding
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={() => openBlockDialog(tenant)}
@@ -552,6 +596,51 @@ export default function AdminClientes() {
             <Button onClick={handleChangePlan}>
               <Save className="w-4 h-4 mr-2" />
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Onboarding Dialog */}
+      <Dialog open={resetOnboardingDialog} onOpenChange={setResetOnboardingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refazer onboarding</DialogTitle>
+            <DialogDescription>
+              Isso vai desconsiderar o onboarding atual e zerar o saldo oficial da propriedade para que o cliente preencha novamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Cliente</Label>
+              <Input value={selectedTenant?.name ?? ''} disabled />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Propriedade</Label>
+              <Select value={resetOnboardingPropertyId} onValueChange={setResetOnboardingPropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a propriedade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(selectedTenant?.properties ?? []).map((p: any) => (
+                    <SelectItem key={String(p.id)} value={String(p.id)}>
+                      {String(p.nome ?? p.name ?? 'Propriedade')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOnboardingDialog(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleResetOnboarding}>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Resetar
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -17,6 +18,29 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
+
+  private readonly CANONICAL_AGE_GROUPS = ['0-4m', '5-12m', '13-24m', '25-36m', '36+m'] as const;
+
+  private normalizeAgeGroupId(raw: unknown): string {
+    if (typeof raw !== 'string' || !raw) return 'unknown';
+    const value = raw.trim();
+    if (value.endsWith('m')) return value;
+    const directMap: Record<string, string> = {
+      '0-4': '0-4m',
+      '5-12': '5-12m',
+      '12-24': '13-24m',
+      '13-24': '13-24m',
+      '24-36': '25-36m',
+      '25-36': '25-36m',
+      '36+': '36+m',
+      '36+m': '36+m',
+    };
+    return directMap[value] ?? value;
+  }
+
+  private mapSexoFromFrontend(sex: 'male' | 'female' | string): 'macho' | 'femea' {
+    return sex === 'female' ? 'femea' : 'macho';
+  }
 
   private formatCpfCnpj(digits: string): string | null {
     if (digits.length === 11) {
@@ -69,7 +93,7 @@ export class AuthService {
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, appVersionHeader?: string) {
     const cpfCnpj = dto.cpfCnpj.replace(/\D/g, '');
     const cpfCnpjFormatted = this.formatCpfCnpj(cpfCnpj);
 
@@ -96,6 +120,19 @@ export class AuthService {
 
     const payload = { sub: user.id, role: user.papel, cpfCnpj: user.cpfCnpj };
     const token = await this.jwtService.signAsync(payload);
+
+    const appVersion =
+      typeof appVersionHeader === 'string' && appVersionHeader.trim().length > 0
+        ? appVersionHeader.trim()
+        : null;
+
+    await this.prisma.usuario.update({
+      where: { id: user.id },
+      data: {
+        ultimoLogin: new Date(),
+        ...(appVersion ? { versaoApp: appVersion } : {}),
+      } as any,
+    });
 
     const onboardingConcluidoEm = (user as any).onboardingConcluidoEm as
       | Date
@@ -321,10 +358,90 @@ export class AuthService {
     };
   }
 
-  async completeOnboarding(userId: string) {
-    const updated = await this.prisma.usuario.update({
-      where: { id: userId },
-      data: { onboardingConcluidoEm: new Date() } as any,
+  async completeOnboarding(
+    userId: string,
+    payload: {
+      propertyId: string;
+      balances: Array<{
+        species: 'bovino' | 'bubalino';
+        sex: 'male' | 'female';
+        ageGroupId: string;
+        quantity: number;
+      }>;
+    },
+  ) {
+    const propertyId = payload?.propertyId;
+    const balances = Array.isArray(payload?.balances) ? payload.balances : [];
+
+    if (!propertyId || typeof propertyId !== 'string') {
+      throw new BadRequestException('propertyId é obrigatório');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const rel = await tx.usuarioPropriedade.findUnique({
+        where: {
+          usuarioId_propriedadeId: {
+            usuarioId: userId,
+            propriedadeId: propertyId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!rel) {
+        throw new ForbiddenException('Usuário não possui acesso à propriedade');
+      }
+
+      const canonicalSet = new Set(this.CANONICAL_AGE_GROUPS as unknown as string[]);
+
+      const normalized = balances
+        .map((b) => {
+          const qty = Number((b as any).quantity ?? 0);
+          const species = String((b as any).species ?? '').trim();
+          const ageGroupId = this.normalizeAgeGroupId((b as any).ageGroupId);
+          const sex = this.mapSexoFromFrontend(String((b as any).sex ?? 'male'));
+          return {
+            species,
+            ageGroupId: canonicalSet.has(ageGroupId) ? ageGroupId : 'unknown',
+            sex,
+            quantity: Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0,
+          };
+        })
+        .filter((b) => (b.species === 'bovino' || b.species === 'bubalino') && b.quantity > 0);
+
+      // Zerar estoque existente dessas espécies antes de aplicar o saldo inicial.
+      await tx.rebanho.deleteMany({
+        where: {
+          propriedadeId: propertyId,
+          especie: { in: ['bovino', 'bubalino'] },
+        },
+      });
+
+      if (normalized.length > 0) {
+        await tx.rebanho.createMany({
+          data: normalized.map((b) => ({
+            propriedadeId: propertyId,
+            especie: b.species,
+            faixaEtaria: b.ageGroupId,
+            sexo: b.sex as any,
+            cabecas: b.quantity,
+          })),
+        });
+      }
+
+      const totalCattle = normalized
+        .filter((b) => b.species === 'bovino')
+        .reduce((sum, b) => sum + b.quantity, 0);
+
+      await tx.propriedade.update({
+        where: { id: propertyId },
+        data: { quantidadeGado: totalCattle },
+      });
+
+      return tx.usuario.update({
+        where: { id: userId },
+        data: { onboardingConcluidoEm: new Date() } as any,
+      });
     });
 
     const onboardingConcluidoEm = (updated as any).onboardingConcluidoEm as

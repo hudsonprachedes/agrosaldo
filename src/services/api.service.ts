@@ -464,6 +464,14 @@ export interface AdminReferrer {
   status: string;
 }
 
+export interface AdminCouponUsage {
+  cpfCnpj: string;
+  coupon: string;
+  paidAt: string;
+  plan?: string;
+  amount?: number;
+}
+
 export interface AdminCommunication {
   id: string;
   tipo?: string;
@@ -634,6 +642,16 @@ export const adminService = {
 
   async impersonateUser(userId: string): Promise<{ token: string }> {
     return apiClient.post<{ token: string }>(API_ROUTES.ADMIN.IMPERSONATE_USER.replace(':id', userId), {});
+  },
+
+  async resetOnboarding(userId: string, propertyId: string): Promise<{ success: true } | { success: boolean }> {
+    return apiClient.post(API_ROUTES.ADMIN.RESET_ONBOARDING.replace(':id', userId), {
+      propertyId,
+    });
+  },
+
+  async listCouponUsages(): Promise<AdminCouponUsage[]> {
+    return apiClient.get<AdminCouponUsage[]>(API_ROUTES.ADMIN.COUPON_USAGES);
   },
 
   async getRegulations(): Promise<StateRegulation[]> {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -336,6 +336,58 @@ export class AdminService {
     );
 
     return updated;
+  }
+
+  async resetUserOnboarding(userId: string, dto: any) {
+    const propertyId = String(dto?.propertyId ?? '').trim();
+    if (!propertyId) {
+      throw new BadRequestException('propertyId é obrigatório');
+    }
+
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      include: { propriedades: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    const hasRelation = (user.propriedades ?? []).some(
+      (p: any) => p?.propriedadeId === propertyId,
+    );
+    if (!hasRelation) {
+      throw new NotFoundException('Propriedade não vinculada ao usuário');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.rebanho.deleteMany({
+        where: {
+          propriedadeId: propertyId,
+          especie: { in: ['bovino', 'bubalino'] },
+        },
+      });
+
+      await tx.propriedade.update({
+        where: { id: propertyId },
+        data: { quantidadeGado: 0 },
+      });
+
+      await tx.usuario.update({
+        where: { id: userId },
+        data: { onboardingConcluidoEm: null } as any,
+      });
+    });
+
+    await this.createAuditLog(
+      'SYSTEM',
+      'Admin',
+      'ONBOARDING_RESET',
+      `Onboarding resetado para usuário ${user.email} na propriedade ${propertyId}`,
+      '127.0.0.1',
+    );
+
+    return { success: true };
   }
 
   async liberarAcessoPosPagamento(userId: string) {
@@ -942,6 +994,74 @@ export class AdminService {
     return (this.prisma as any).indicadorParceiro.findMany({
       orderBy: { criadoEm: 'desc' },
     });
+  }
+
+  async listCouponUsages() {
+    const [paidPayments, requests] = await Promise.all([
+      (this.prisma as any).pagamentoFinanceiro.findMany({
+        where: {
+          status: 'paid',
+          pagoEm: { not: null },
+        },
+        select: {
+          tenantId: true,
+          pagoEm: true,
+          plano: true,
+          valor: true,
+        },
+        orderBy: { pagoEm: 'desc' },
+        take: 500,
+      }),
+      this.prisma.solicitacaoPendente.findMany({
+        where: { tipo: 'signup' },
+        select: {
+          cpfCnpj: true,
+          observacoes: true,
+        },
+        orderBy: { enviadoEm: 'desc' },
+        take: 1000,
+      }),
+    ]);
+
+    const couponByCpfCnpj = new Map<string, string>();
+    for (const r of requests ?? []) {
+      const cpfCnpj = String(r.cpfCnpj ?? '').trim();
+      if (!cpfCnpj) continue;
+
+      let referralCoupon: string | undefined;
+      if (r.observacoes) {
+        try {
+          const parsed = JSON.parse(r.observacoes) as any;
+          referralCoupon =
+            typeof parsed?.referralCoupon === 'string'
+              ? parsed.referralCoupon
+              : undefined;
+        } catch {
+          // ignore
+        }
+      }
+      if (referralCoupon && String(referralCoupon).trim()) {
+        couponByCpfCnpj.set(cpfCnpj, String(referralCoupon).trim().toUpperCase());
+      }
+    }
+
+    const usages = (paidPayments ?? [])
+      .map((p: any) => {
+        const cpfCnpj = String(p.tenantId ?? '').trim();
+        const coupon = cpfCnpj ? couponByCpfCnpj.get(cpfCnpj) : undefined;
+        if (!coupon) return null;
+
+        return {
+          cpfCnpj,
+          coupon,
+          paidAt: p.pagoEm,
+          plan: p.plano,
+          amount: p.valor,
+        };
+      })
+      .filter(Boolean);
+
+    return usages;
   }
 
   // --- Comunicação (Admin) ---

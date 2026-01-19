@@ -32,7 +32,7 @@ import {
 import PageSkeleton from '@/components/PageSkeleton';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { adminService, AdminCoupon, AdminReferrer } from '@/services/api.service';
+import { adminService, AdminCoupon, AdminCouponUsage, AdminReferrer } from '@/services/api.service';
 
 export default function AdminIndicacao() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +40,7 @@ export default function AdminIndicacao() {
 
   const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
   const [referrers, setReferrers] = useState<AdminReferrer[]>([]);
+  const [usages, setUsages] = useState<AdminCouponUsage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [newCode, setNewCode] = useState('');
@@ -51,17 +52,20 @@ export default function AdminIndicacao() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, r] = await Promise.all([
+        const [c, r, u] = await Promise.all([
           adminService.listCoupons(),
           adminService.listReferrers(),
+          adminService.listCouponUsages(),
         ]);
         setCoupons(c);
         setReferrers(r);
+        setUsages(u);
       } catch (error) {
         console.error('Erro ao carregar indicação:', error);
         toast.error('Erro ao carregar indicação');
         setCoupons([]);
         setReferrers([]);
+        setUsages([]);
       } finally {
         setIsLoading(false);
       }
@@ -125,7 +129,7 @@ export default function AdminIndicacao() {
     },
     {
       title: 'Total Indicações',
-      value: referrers.reduce((s, r) => s + (r.referrals ?? r.indicacoes ?? 0), 0),
+      value: usages.length,
       icon: TrendingUp,
       color: 'text-chart-3',
     },
@@ -134,6 +138,13 @@ export default function AdminIndicacao() {
   if (isLoading) {
     return <PageSkeleton cards={4} lines={12} />;
   }
+
+  const usageCountByCoupon = usages.reduce<Record<string, number>>((acc, u) => {
+    const code = String(u.coupon ?? '').trim().toUpperCase();
+    if (!code) return acc;
+    acc[code] = (acc[code] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
@@ -258,7 +269,7 @@ export default function AdminIndicacao() {
                   </TableCell>
                   <TableCell>{coupon.value ?? coupon.valor}%</TableCell>
                   <TableCell>
-                    {(coupon.usageCount ?? coupon.quantidadeUso ?? 0)}/{coupon.maxUsage ?? coupon.maxUso ?? '∞'}
+                    {(coupon.usageCount ?? coupon.quantidadeUso ?? usageCountByCoupon[String(coupon.code ?? coupon.codigo ?? '').toUpperCase()] ?? 0)}/{coupon.maxUsage ?? coupon.maxUso ?? '∞'}
                   </TableCell>
                   <TableCell>
                     {(coupon.commission ?? coupon.comissao ?? 0) > 0 ? `${coupon.commission ?? coupon.comissao}%` : '-'}
@@ -313,6 +324,35 @@ export default function AdminIndicacao() {
                   </TableCell>
                   <TableCell>
                     <Badge className="bg-success/10 text-success">Ativo</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Coupon Usages */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Usos de Cupons</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cupom</TableHead>
+                <TableHead>CPF/CNPJ</TableHead>
+                <TableHead>Data do Pagamento</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {usages.map((u, idx) => (
+                <TableRow key={`${u.coupon}-${u.cpfCnpj}-${idx}`}>
+                  <TableCell className="font-mono font-bold">{u.coupon}</TableCell>
+                  <TableCell className="font-mono">{u.cpfCnpj}</TableCell>
+                  <TableCell>
+                    {u.paidAt ? new Date(u.paidAt).toLocaleDateString('pt-BR') : '-'}
                   </TableCell>
                 </TableRow>
               ))}

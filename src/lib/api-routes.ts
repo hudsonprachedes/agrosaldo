@@ -286,6 +286,9 @@ export const API_ROUTES = {
     REFERRERS: '/admin/indicacao/indicadores',
     // GET /admin/indicacao/indicadores
 
+    COUPON_USAGES: '/admin/indicacao/usos',
+    // GET /admin/indicacao/usos
+
     COMMUNICATION: '/admin/comunicacao',
     // GET|POST /admin/comunicacao
 
@@ -315,6 +318,9 @@ export const API_ROUTES = {
 
     UPDATE_USER_PLAN: '/admin/usuarios/:id/plano',
     // PATCH /admin/usuarios/:id/plano
+
+    RESET_ONBOARDING: '/admin/usuarios/:id/reset-onboarding',
+    // POST /admin/usuarios/:id/reset-onboarding
 
     IMPERSONATE_USER: '/admin/usuarios/:id/impersonate',
     // POST /admin/usuarios/:id/impersonate

@@ -64,16 +64,17 @@ export default function AdminCadastros() {
         const signupsOnly = rows.filter((r) => String(r.type ?? '').toLowerCase() === 'signup');
 
         const mapped: PendingSignup[] = signupsOnly.map((r) => {
-          let city = '';
+          const city = '';
           let state = '';
           let cattleCount = 0;
+          let referralCoupon: string | undefined;
 
           if (r.notes) {
             try {
               const parsed = JSON.parse(r.notes) as any;
-              city = typeof parsed?.city === 'string' ? parsed.city : '';
               state = typeof parsed?.state === 'string' ? parsed.state : '';
               cattleCount = typeof parsed?.cattleCount === 'number' ? parsed.cattleCount : 0;
+              referralCoupon = typeof parsed?.referralCoupon === 'string' ? parsed.referralCoupon : undefined;
             } catch {
               // ignore
             }
@@ -91,7 +92,7 @@ export default function AdminCadastros() {
             uf: state,
             requestDate: r.submittedAt ?? new Date().toISOString(),
             status: r.status,
-            cupomIndicacao: undefined,
+            cupomIndicacao: referralCoupon,
           };
         });
 
@@ -270,8 +271,8 @@ export default function AdminCadastros() {
                     <TableHead>Email</TableHead>
                     <TableHead>Celular</TableHead>
                     <TableHead>Cabeças</TableHead>
-                    <TableHead>Município</TableHead>
                     <TableHead>UF</TableHead>
+                    <TableHead>Cupom</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -285,8 +286,8 @@ export default function AdminCadastros() {
                       <TableCell>{signup.email}</TableCell>
                       <TableCell>{signup.celular}</TableCell>
                       <TableCell>{signup.numeroCabecas}</TableCell>
-                      <TableCell>{signup.municipio}</TableCell>
-                      <TableCell>{signup.uf}</TableCell>
+                      <TableCell>{signup.uf || '-'}</TableCell>
+                      <TableCell>{signup.cupomIndicacao ? 'Sim' : 'Não'}</TableCell>
                       <TableCell>
                         {new Date(signup.requestDate).toLocaleDateString('pt-BR')}
                       </TableCell>
@@ -418,11 +419,9 @@ export default function AdminCadastros() {
                     <p><strong>Nome:</strong> {selectedSignup.nome}</p>
                     <p><strong>Email:</strong> {selectedSignup.email}</p>
                     <p><strong>Celular:</strong> {selectedSignup.celular}</p>
-                    <p><strong>Localização:</strong> {selectedSignup.municipio}/{selectedSignup.uf}</p>
+                    <p><strong>Localização:</strong> {selectedSignup.uf || '-'}</p>
                     <p><strong>Cabeças:</strong> {selectedSignup.numeroCabecas}</p>
-                    {selectedSignup.cupomIndicacao && (
-                      <p><strong>Cupom:</strong> {selectedSignup.cupomIndicacao}</p>
-                    )}
+                    <p><strong>Cupom de indicação:</strong> {selectedSignup.cupomIndicacao || 'Não'}</p>
                   </div>
                 </div>
               )}
@@ -476,10 +475,6 @@ export default function AdminCadastros() {
                   <div>
                     <p className="text-xs text-muted-foreground">Celular</p>
                     <p className="font-medium">{selectedSignup.celular || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Município</p>
-                    <p className="font-medium">{selectedSignup.municipio || '-'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">UF</p>
@@ -545,8 +540,9 @@ export default function AdminCadastros() {
                   <p><strong>CPF/CNPJ:</strong> {selectedSignup.cpfCnpj}</p>
                   <p><strong>Email:</strong> {selectedSignup.email}</p>
                   <p><strong>Celular:</strong> {selectedSignup.celular}</p>
-                  <p><strong>Localização:</strong> {selectedSignup.municipio}/{selectedSignup.uf}</p>
+                  <p><strong>Localização:</strong> {selectedSignup.uf || '-'}</p>
                   <p><strong>Cabeças:</strong> {selectedSignup.numeroCabecas}</p>
+                  <p><strong>Cupom de indicação:</strong> {selectedSignup.cupomIndicacao || 'Não'}</p>
                 </div>
               </div>
             )}
