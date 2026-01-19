@@ -1,4 +1,4 @@
-export const APP_VERSION = (globalThis as any).__APP_VERSION__ as string;
+export const APP_VERSION = __APP_VERSION__;
 
 export function getAppVersionLabel() {
   return `Versão ${APP_VERSION}`;

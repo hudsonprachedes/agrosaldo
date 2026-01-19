@@ -9,6 +9,9 @@ import { seedMovements } from './movements.seed';
 import { seedEpidemiologySurveys } from './epidemiology.seed';
 import { seedAdmin } from './admin.seed';
 
+const TEST_USER_CPF_CNPJ = '52998224725';
+const SUPER_ADMIN_CPF_CNPJ = '04252011000110';
+
 // Configurar PrismaClient baseado no tipo de conexão
 const databaseUrl = process.env.DATABASE_URL || process.env.PRISMA_DATABASE_URL || '';
 const isAccelerate = databaseUrl.startsWith('prisma://') || 
@@ -37,6 +40,41 @@ async function main() {
   console.log('🌱 Iniciando seed do banco de dados...\n');
 
   try {
+    const testUser = await (prisma as any).usuario.findUnique({
+      where: { cpfCnpj: TEST_USER_CPF_CNPJ },
+      select: { id: true, cpfCnpj: true, papel: true },
+    });
+
+    if (testUser && testUser.cpfCnpj !== SUPER_ADMIN_CPF_CNPJ && testUser.papel !== 'super_admin') {
+      const testUserProperties = await (prisma as any).usuarioPropriedade.findMany({
+        where: { usuarioId: testUser.id },
+        select: { propriedadeId: true },
+      });
+
+      const testPropertyIds = testUserProperties.map((p: any) => p.propriedadeId);
+
+      await prisma.$transaction([
+        (prisma as any).notificacaoUsuario.deleteMany({ where: { usuarioId: testUser.id } }),
+        (prisma as any).assinatura.deleteMany({ where: { usuarioId: testUser.id } }),
+        (prisma as any).preferenciasUsuario.deleteMany({ where: { usuarioId: testUser.id } }),
+        (prisma as any).usuarioPropriedade.deleteMany({ where: { usuarioId: testUser.id } }),
+        ...(testPropertyIds.length > 0
+          ? [
+              (prisma as any).questionarioEpidemiologico.deleteMany({
+                where: { propriedadeId: { in: testPropertyIds } },
+              }),
+              (prisma as any).movimento.deleteMany({
+                where: { propriedadeId: { in: testPropertyIds } },
+              }),
+              (prisma as any).rebanho.deleteMany({
+                where: { propriedadeId: { in: testPropertyIds } },
+              }),
+            ]
+          : []),
+        (prisma as any).usuario.delete({ where: { id: testUser.id } }),
+      ]);
+    }
+
     console.log('👤 Criando usuários...');
     await seedUsers(prisma);
     console.log('✅ Usuários criados com sucesso\n');
