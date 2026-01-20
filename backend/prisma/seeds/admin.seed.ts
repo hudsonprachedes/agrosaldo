@@ -54,8 +54,8 @@ export async function seedAdmin(prisma: PrismaClient) {
     const paidAt = new Date(now.getFullYear(), now.getMonth() - i, 12);
 
     paymentSeed.push({
-      tenantId: 'seed-tenant-1',
-      tenantName: 'Fazenda Santa Rita',
+      tenantId: '52998224725',
+      tenantName: 'João Silva',
       plano: 'porteira',
       valor: 49.9,
       metodoPagamento: 'pix',
@@ -66,8 +66,8 @@ export async function seedAdmin(prisma: PrismaClient) {
     });
 
     paymentSeed.push({
-      tenantId: 'seed-tenant-2',
-      tenantName: 'Fazenda Ouro Verde',
+      tenantId: '12345678901',
+      tenantName: 'Carlos Andrade',
       plano: 'barao',
       valor: 499.9,
       metodoPagamento: 'pix',
