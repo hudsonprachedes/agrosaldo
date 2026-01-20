@@ -8,6 +8,7 @@ describe('Users (e2e)', () => {
   let app: INestApplication;
   let prismaService: PrismaService;
   let authToken: string;
+  let adminToken: string;
   let userId: string;
 
   const mockUser = {
@@ -106,6 +107,15 @@ describe('Users (e2e)', () => {
       });
 
     authToken = loginResponse.body.token;
+
+    const adminLoginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        cpfCnpj: '98765432100',
+        password: 'password123',
+      });
+
+    adminToken = adminLoginResponse.body.token;
   });
 
   afterAll(async () => {
@@ -117,10 +127,17 @@ describe('Users (e2e)', () => {
       await request(app.getHttpServer()).get('/usuarios').expect(401);
     });
 
-    it('should return list of users with authentication', async () => {
-      const response = await request(app.getHttpServer())
+    it('should return 403 for non-admin user', async () => {
+      await request(app.getHttpServer())
         .get('/usuarios')
         .set('Authorization', `Bearer ${authToken}`)
+        .expect(403);
+    });
+
+    it('should return list of users for super_admin', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/usuarios')
+        .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
       expect(response.body).toBeInstanceOf(Array);

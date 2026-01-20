@@ -25,6 +25,7 @@ const LaunchForm = lazy(() => import("./pages/LaunchForm"));
 const Analytics = lazy(() => import("./pages/Analytics"));
 const Financeiro = lazy(() => import("./pages/Financeiro"));
 const MinhaFazenda = lazy(() => import("./pages/MinhaFazenda"));
+const Calculadoras = lazy(() => import("./pages/Calculadoras"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Contact = lazy(() => import("./pages/Contact"));
 const PublicValidarDocumento = lazy(() => import("./pages/PublicValidarDocumento"));
@@ -172,6 +173,9 @@ const App = () => (
               } />
               <Route path="/analises" element={
                 <ProtectedRoute><LayoutRoute><Analytics /></LayoutRoute></ProtectedRoute>
+              } />
+              <Route path="/calculadoras" element={
+                <ProtectedRoute><LayoutRoute><Calculadoras /></LayoutRoute></ProtectedRoute>
               } />
               <Route path="/minha-fazenda" element={
                 <ProtectedRoute><LayoutRoute><MinhaFazenda /></LayoutRoute></ProtectedRoute>

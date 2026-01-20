@@ -10,12 +10,13 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
 import { CreateQuestionarioEpidemiologicoDto } from './dto/create-questionario-epidemiologico.dto';
 import { QuestionarioEpidemiologicoService } from './questionario-epidemiologico.service';
 
 @ApiTags('questionario-epidemiologico')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PropertyAccessGuard)
 @Controller('questionario-epidemiologico')
 export class QuestionarioEpidemiologicoController {
   constructor(private readonly service: QuestionarioEpidemiologicoService) {}

@@ -30,11 +30,13 @@ export class UsersController {
   }
 
   @Get()
+  @Roles('super_admin')
   findAll() {
     return this.usersService.findAll();
   }
 
   @Get(':id')
+  @Roles('super_admin')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }

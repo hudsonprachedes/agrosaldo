@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, UnauthorizedException, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 
 describe('Properties (e2e)', () => {
   let app: INestApplication;
@@ -49,7 +50,24 @@ describe('Properties (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({
+        canActivate: (context: any) => {
+          const req = context.switchToHttp().getRequest();
+          const authHeader = req.headers?.authorization as string | undefined;
+          if (!authHeader) {
+            throw new UnauthorizedException();
+          }
+          req.user = {
+            id: mockUser.id,
+            role: mockUser.papel,
+            cpfCnpj: mockUser.cpfCnpj,
+          };
+          return true;
+        },
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
@@ -112,7 +130,15 @@ describe('Properties (e2e)', () => {
           usuarioId: mockUser.id,
           propriedadeId: mockProperty.id,
           criadoEm: new Date(),
+          propriedade: mockProperty,
         },
+      ]),
+    };
+
+    (prismaService as any).rebanho = {
+      ...(prismaService as any).rebanho,
+      groupBy: jest.fn().mockResolvedValue([
+        { propriedadeId: mockProperty.id, _sum: { cabecas: 500 } },
       ]),
     };
 
@@ -132,17 +158,11 @@ describe('Properties (e2e)', () => {
   });
 
   describe('GET /propriedades', () => {
-    it('should return list of properties for authenticated user', async () => {
-      const response = await request(app.getHttpServer())
+    it('should return 403 for non-admin user', async () => {
+      await request(app.getHttpServer())
         .get('/propriedades')
         .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-
-      expect(response.body).toBeInstanceOf(Array);
-      expect(response.body.length).toBeGreaterThan(0);
-      expect(response.body[0]).toHaveProperty('id');
-      expect(response.body[0]).toHaveProperty('nome');
-      expect(response.body[0]).toHaveProperty('cidade');
+        .expect(403);
     });
 
     it('should return 401 without authentication', async () => {
@@ -150,17 +170,23 @@ describe('Properties (e2e)', () => {
     });
   });
 
-  describe('GET /propriedades/:id', () => {
-    it('should return a specific property', async () => {
+  describe('GET /propriedades/minhas', () => {
+    it('should return list of properties for authenticated user', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/propriedades/${mockProperty.id}`)
+        .get('/propriedades/minhas')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body).toHaveProperty('id', mockProperty.id);
-      expect(response.body).toHaveProperty('nome', mockProperty.nome);
-      expect(response.body).toHaveProperty('cidade', mockProperty.cidade);
-      expect(response.body).toHaveProperty('estado', mockProperty.estado);
+      expect(response.body).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('GET /propriedades/:id', () => {
+    it('should return 403 for non-admin user', async () => {
+      await request(app.getHttpServer())
+        .get(`/propriedades/${mockProperty.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(403);
     });
 
     it('should return 404 for non-existent property', async () => {
@@ -171,7 +197,7 @@ describe('Properties (e2e)', () => {
       await request(app.getHttpServer())
         .get('/propriedades/non-existent-id')
         .set('Authorization', `Bearer ${authToken}`)
-        .expect(404);
+        .expect(403);
     });
   });
 

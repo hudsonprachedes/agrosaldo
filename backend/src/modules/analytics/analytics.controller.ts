@@ -10,11 +10,12 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
 import { AnalyticsService } from './analytics.service';
 
 @ApiTags('analytics')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PropertyAccessGuard)
 @Controller('analytics')
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
@@ -42,12 +43,9 @@ export class AnalyticsController {
 
   @Get('resumo')
   getSummary(
-    @Headers('x-property-id') propertyId?: string,
+    @Headers('x-property-id') propertyId: string,
     @Query('period') period?: 'month' | 'quarter' | 'year',
   ) {
-    if (!propertyId) {
-      throw new ForbiddenException('Property header required');
-    }
     return this.analyticsService.getSummary(propertyId, period ?? 'year');
   }
 

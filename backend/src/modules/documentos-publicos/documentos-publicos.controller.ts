@@ -9,6 +9,7 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
 import { DocumentosPublicosService } from './documentos-publicos.service';
 
 @ApiTags('documentos-publicos')
@@ -17,7 +18,7 @@ export class DocumentosPublicosController {
   constructor(private readonly service: DocumentosPublicosService) {}
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PropertyAccessGuard)
   @Post('espelho-oficial/emitir')
   emitirEspelhoOficial(
     @Headers('x-property-id') propertyId: string,

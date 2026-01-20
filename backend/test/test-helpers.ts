@@ -221,6 +221,14 @@ export const createMockPrismaService = () => {
           criadoEm: new Date(),
         },
       ]),
+      findFirst: jest.fn().mockImplementation(async (args: any) => {
+        const userId = args?.where?.usuarioId;
+        const propertyId = args?.where?.propriedadeId;
+        if (userId === 'user-1' && propertyId === 'prop-1') {
+          return { id: 'up-1' };
+        }
+        return null;
+      }),
       create: jest.fn().mockResolvedValue({
         usuarioId: 'user-1',
         propriedadeId: 'prop-1',

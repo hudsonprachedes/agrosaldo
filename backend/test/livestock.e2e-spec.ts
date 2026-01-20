@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, UnauthorizedException, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { JwtAuthGuard } from '../src/common/guards/jwt-auth.guard';
 
 describe('Livestock (e2e)', () => {
   let app: INestApplication;
@@ -69,7 +70,24 @@ describe('Livestock (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({
+        canActivate: (context: any) => {
+          const req = context.switchToHttp().getRequest();
+          const authHeader = req.headers?.authorization as string | undefined;
+          if (!authHeader) {
+            throw new UnauthorizedException();
+          }
+          req.user = {
+            id: mockUser.id,
+            role: mockUser.papel,
+            cpfCnpj: mockUser.cpfCnpj,
+          };
+          return true;
+        },
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(
@@ -79,9 +97,25 @@ describe('Livestock (e2e)', () => {
 
     prismaService = app.get<PrismaService>(PrismaService);
 
+    (prismaService as any).usuarioPropriedade = {
+      findFirst: jest.fn().mockResolvedValue({ id: 'up-1' } as any),
+    };
+
+    if ((prismaService.usuario as any).findFirst) {
+      jest
+        .spyOn(prismaService.usuario as any, 'findFirst')
+        .mockResolvedValue(mockUser as any);
+    }
+
     jest
       .spyOn(prismaService.usuario, 'findUnique')
       .mockResolvedValue(mockUser as any);
+
+    if ((prismaService as any).usuarioPropriedade?.findFirst) {
+      jest
+        .spyOn((prismaService as any).usuarioPropriedade, 'findFirst')
+        .mockResolvedValue({ id: 'up-1' } as any);
+    }
     jest
       .spyOn(prismaService.rebanho, 'findMany')
       .mockResolvedValue(mockLivestock as any);

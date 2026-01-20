@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateLivestockDto } from './dto/create-livestock.dto';
 import { UpdateLivestockDto } from './dto/update-livestock.dto';
@@ -500,14 +500,30 @@ export class LivestockService {
     });
   }
 
-  update(id: string, dto: UpdateLivestockDto) {
+  async update(propertyId: string, id: string, dto: UpdateLivestockDto) {
+    const existing = await this.prisma.rebanho.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Registro de rebanho não encontrado');
+    }
+    if ((existing as any).propriedadeId !== propertyId) {
+      throw new ForbiddenException('Property mismatch');
+    }
+
     return this.prisma.rebanho.update({
       where: { id },
       data: dto as any,
     });
   }
 
-  remove(id: string) {
+  async remove(propertyId: string, id: string) {
+    const existing = await this.prisma.rebanho.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Registro de rebanho não encontrado');
+    }
+    if ((existing as any).propriedadeId !== propertyId) {
+      throw new ForbiddenException('Property mismatch');
+    }
+
     return this.prisma.rebanho.delete({ where: { id } });
   }
 }

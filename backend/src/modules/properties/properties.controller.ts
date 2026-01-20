@@ -58,11 +58,13 @@ export class PropertiesController {
   }
 
   @Get()
+  @Roles('super_admin')
   findAll() {
     return this.propertiesService.findAll();
   }
 
   @Get(':id')
+  @Roles('super_admin')
   findOne(@Param('id') id: string) {
     return this.propertiesService.findOne(id);
   }

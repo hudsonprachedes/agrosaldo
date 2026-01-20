@@ -53,14 +53,86 @@ export class UsersService {
 
   findAll() {
     return this.prisma.usuario.findMany({
-      include: { propriedades: { include: { propriedade: true } } },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        cpfCnpj: true,
+        telefone: true,
+        papel: true,
+        status: true,
+        ultimoLogin: true,
+        versaoApp: true,
+        statusFinanceiro: true,
+        criadoEm: true,
+        atualizadoEm: true,
+        propriedades: {
+          select: {
+            id: true,
+            usuarioId: true,
+            propriedadeId: true,
+            propriedade: {
+              select: {
+                id: true,
+                nome: true,
+                cidade: true,
+                estado: true,
+                areaTotal: true,
+                areaCultivada: true,
+                areaNatural: true,
+                quantidadeGado: true,
+                status: true,
+                plano: true,
+                criadoEm: true,
+                atualizadoEm: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
   findOne(id: string) {
     return this.prisma.usuario.findUnique({
       where: { id },
-      include: { propriedades: { include: { propriedade: true } } },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        cpfCnpj: true,
+        telefone: true,
+        papel: true,
+        status: true,
+        ultimoLogin: true,
+        versaoApp: true,
+        statusFinanceiro: true,
+        criadoEm: true,
+        atualizadoEm: true,
+        propriedades: {
+          select: {
+            id: true,
+            usuarioId: true,
+            propriedadeId: true,
+            propriedade: {
+              select: {
+                id: true,
+                nome: true,
+                cidade: true,
+                estado: true,
+                areaTotal: true,
+                areaCultivada: true,
+                areaNatural: true,
+                quantidadeGado: true,
+                status: true,
+                plano: true,
+                criadoEm: true,
+                atualizadoEm: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 

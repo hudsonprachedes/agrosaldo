@@ -12,6 +12,7 @@ import {
   ChevronDown,
   LogOut,
   BarChart3,
+  Calculator,
   Wallet,
   Settings,
   X,
@@ -56,6 +57,7 @@ const bottomNavItems = [
 
 const menuItems = [
   { path: '/analises', label: 'Análises', icon: BarChart3 },
+  { path: '/calculadoras', label: 'Calculadoras', icon: Calculator },
   { path: '/questionario-epidemiologico', label: 'Questionário', icon: ClipboardList },
   { path: '/minha-fazenda', label: 'Minha Fazenda', icon: Settings },
   { path: '/financeiro', label: 'Financeiro', icon: Wallet },

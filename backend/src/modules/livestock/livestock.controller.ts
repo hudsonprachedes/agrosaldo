@@ -15,13 +15,14 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
 import { CreateLivestockDto } from './dto/create-livestock.dto';
 import { UpdateLivestockDto } from './dto/update-livestock.dto';
 import { LivestockService } from './livestock.service';
 
 @ApiTags('livestock')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PropertyAccessGuard)
 @Controller('rebanho')
 export class LivestockController {
   constructor(private readonly livestockService: LivestockService) {}
@@ -39,8 +40,8 @@ export class LivestockController {
   }
 
   @Get()
-  findAll(@Headers('x-property-id') propertyId?: string) {
-    return this.livestockService.findAll(propertyId ?? '');
+  findAll(@Headers('x-property-id') propertyId: string) {
+    return this.livestockService.findAll(propertyId);
   }
 
   @Get(':propertyId')
@@ -119,12 +120,16 @@ export class LivestockController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateLivestockDto) {
-    return this.livestockService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: UpdateLivestockDto,
+  ) {
+    return this.livestockService.update(propertyId, id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.livestockService.remove(id);
+  remove(@Param('id') id: string, @Headers('x-property-id') propertyId: string) {
+    return this.livestockService.remove(propertyId, id);
   }
 }

@@ -514,18 +514,32 @@ export class MovementsService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.movimento.findUnique({
+  async findOne(propertyId: string, id: string) {
+    const row = await this.prisma.movimento.findUnique({
       where: { id },
       select: this.selectPublicMovement() as any,
     });
+
+    if (!row) {
+      throw new NotFoundException('Movimento não encontrado');
+    }
+
+    if ((row as any).propriedadeId !== propertyId) {
+      throw new ForbiddenException('Property mismatch');
+    }
+
+    return row;
   }
 
-  async update(id: string, dto: UpdateMovementDto) {
+  async update(propertyId: string, id: string, dto: UpdateMovementDto) {
     return this.prisma.$transaction(async (tx) => {
       const before = await tx.movimento.findUnique({ where: { id } });
       if (!before) {
         throw new NotFoundException('Movimento não encontrado');
+      }
+
+      if ((before as any).propriedadeId !== propertyId) {
+        throw new ForbiddenException('Property mismatch');
       }
 
       await this.ensureAgeGroupEvolution(
@@ -600,11 +614,15 @@ export class MovementsService {
     });
   }
 
-  async remove(id: string) {
+  async remove(propertyId: string, id: string) {
     return this.prisma.$transaction(async (tx) => {
       const before = await tx.movimento.findUnique({ where: { id } });
       if (!before) {
         throw new NotFoundException('Movimento não encontrado');
+      }
+
+      if ((before as any).propriedadeId !== propertyId) {
+        throw new ForbiddenException('Property mismatch');
       }
 
       await this.ensureAgeGroupEvolution(

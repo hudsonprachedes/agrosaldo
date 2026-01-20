@@ -17,6 +17,7 @@ import {
   Plus,
   Wallet,
   Settings,
+  Calculator,
   ChevronDown,
   LogOut,
 } from 'lucide-react';
@@ -42,6 +43,7 @@ const navItems = [
   { path: '/extrato', label: 'Extrato', icon: FileText },
   { path: '/financeiro', label: 'Financeiro', icon: Wallet },
   { path: '/analises', label: 'Análises', icon: BarChart3 },
+  { path: '/calculadoras', label: 'Calculadoras', icon: Calculator },
   { path: '/questionario-epidemiologico', label: 'Questionário', icon: ClipboardList },
   { path: '/configuracoes', label: 'Minha Fazenda', icon: Settings },
 ];

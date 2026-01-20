@@ -18,6 +18,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { OtherSpeciesAdjustmentDto } from './dto/other-species-adjustment.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
@@ -27,7 +28,7 @@ import type { Response } from 'express';
 
 @ApiTags('movements')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PropertyAccessGuard)
 @Controller('lancamentos')
 export class MovementsController {
   constructor(private readonly movementsService: MovementsService) {}
@@ -47,6 +48,12 @@ export class MovementsController {
     if (!file?.buffer) {
       throw new BadRequestException('Arquivo não enviado');
     }
+
+    const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const mimeType = typeof file.mimetype === 'string' ? file.mimetype : '';
+    if (!allowedMimeTypes.has(mimeType)) {
+      throw new BadRequestException('Tipo de arquivo não permitido');
+    }
     return this.movementsService.attachPhoto(propertyId, id, {
       buffer: file.buffer,
       mimetype: file.mimetype,
@@ -60,25 +67,30 @@ export class MovementsController {
     @Res() res: Response,
   ) {
     const photo = await this.movementsService.getPhoto(propertyId, id);
-    res.setHeader('Content-Type', photo.mimeType);
+    const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const mimeType =
+      typeof photo.mimeType === 'string' && allowedMimeTypes.has(photo.mimeType)
+        ? photo.mimeType
+        : 'application/octet-stream';
+    res.setHeader('Content-Type', mimeType);
     return res.send(photo.data);
   }
 
   @Get('resumo')
-  getSummary(@Headers('x-property-id') propertyId?: string) {
-    return this.movementsService.getSummary(propertyId ?? '');
+  getSummary(@Headers('x-property-id') propertyId: string) {
+    return this.movementsService.getSummary(propertyId);
   }
 
   @Get('extrato')
   getExtract(
-    @Headers('x-property-id') propertyId?: string,
+    @Headers('x-property-id') propertyId: string,
     @Query('type') type?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.movementsService.getExtract(propertyId ?? '', {
+    return this.movementsService.getExtract(propertyId, {
       type,
       dateFrom,
       dateTo,
@@ -89,11 +101,11 @@ export class MovementsController {
 
   @Post('fotos/limpeza')
   cleanupPhotos(
-    @Headers('x-property-id') propertyId?: string,
+    @Headers('x-property-id') propertyId: string,
     @Query('days') days?: string,
   ) {
     return this.movementsService.cleanupOldPhotos(
-      propertyId ?? '',
+      propertyId,
       days ? Number(days) : 180,
     );
   }
@@ -158,33 +170,37 @@ export class MovementsController {
   }
 
   @Get()
-  findAll(@Headers('x-property-id') propertyId?: string) {
-    return this.movementsService.findAll(propertyId ?? '');
+  findAll(@Headers('x-property-id') propertyId: string) {
+    return this.movementsService.findAll(propertyId);
   }
 
   @Get('historico')
   findHistory(
-    @Headers('x-property-id') propertyId?: string,
+    @Headers('x-property-id') propertyId: string,
     @Query('months') months?: string,
   ) {
     return this.movementsService.findHistory(
-      propertyId ?? '',
+      propertyId,
       months ? Number(months) : 6,
     );
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.movementsService.findOne(id);
+  findOne(@Param('id') id: string, @Headers('x-property-id') propertyId: string) {
+    return this.movementsService.findOne(propertyId, id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateMovementDto) {
-    return this.movementsService.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Headers('x-property-id') propertyId: string,
+    @Body() dto: UpdateMovementDto,
+  ) {
+    return this.movementsService.update(propertyId, id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.movementsService.remove(id);
+  remove(@Param('id') id: string, @Headers('x-property-id') propertyId: string) {
+    return this.movementsService.remove(propertyId, id);
   }
 }
