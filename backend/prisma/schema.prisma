@@ -135,6 +135,11 @@ model Propriedade {
   quantidadeGado  Int                @map("cattleCount")
   status          StatusPropriedade  @default(ativa) @map("status")
   plano           TipoPlano          @default(porteira) @map("plan")
+  inscricaoEstadual String?          @map("inscricaoEstadual")
+  codigoPropriedade String?          @map("codigoPropriedade")
+  pastoNaturalHa   Float?            @map("pastoNaturalHa")
+  pastoCultivadoHa Float?            @map("pastoCultivadoHa")
+  areaTotalHa      Float?            @map("areaTotalHa")
   criadoEm        DateTime           @default(now()) @map("createdAt")
   atualizadoEm    DateTime           @updatedAt @map("updatedAt")
   usuarios        UsuarioPropriedade[]
@@ -357,6 +362,20 @@ model ConfiguracaoPix {
   atualizadoEm  DateTime @updatedAt @map("updatedAt")
 
   @@map("PixConfig")
+}
+
+model ConfiguracaoEmpresa {
+  id                 String   @id @default(uuid()) @map("id")
+  nome               String   @map("name")
+  cnpj               String   @map("cnpj")
+  telefone           String?  @map("phone")
+  email              String?  @map("email")
+  endereco           String?  @map("address")
+  site               String?  @map("website")
+  criadoEm           DateTime @default(now()) @map("createdAt")
+  atualizadoEm       DateTime @updatedAt @map("updatedAt")
+
+  @@map("CompanySettings")
 }
 
 model PlanoSaas {

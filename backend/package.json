@@ -1,12 +1,12 @@
 {
   "name": "backend",
-  "version": "0.0.1",
+  "version": "0.0.6.0",
   "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
   "engines": {
-    "node": "24"
+    "node": "25"
   },
   "scripts": {
     "build": "nest build",

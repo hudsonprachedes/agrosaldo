@@ -69,4 +69,8 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsString()
   plan?: string;
+
+  @IsOptional()
+  @IsString()
+  inscricaoEstadual?: string;
 }

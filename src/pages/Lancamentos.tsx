@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { apiClient } from '@/lib/api-client';
+import { useLaunchSummary } from '@/hooks/queries/useLaunchSummary';
 import { 
   Beef,
   Skull,
@@ -75,22 +75,14 @@ const launchTypes = [
   },
 ];
 
-interface LaunchSummaryDTO {
-  propertyId: string;
-  today: number;
-  week: number;
-  month: number;
-  lastUpdatedAt: string | null;
-  serverTime: string;
-}
-
 export default function Lancamentos() {
   const { selectedProperty } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  const [summary, setSummary] = useState<LaunchSummaryDTO | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: summary, isPending: isLoading } = useLaunchSummary(selectedProperty?.id);
+
+  const lastUpdatedAt = summary?.lastUpdatedAt ?? null;
 
   useEffect(() => {
     if (!selectedProperty) {
@@ -98,30 +90,9 @@ export default function Lancamentos() {
     }
   }, [navigate, selectedProperty]);
 
-  useEffect(() => {
-    if (!selectedProperty?.id) {
-      return;
-    }
-
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        const data = await apiClient.get<LaunchSummaryDTO>('/lancamentos/resumo');
-        setSummary(data);
-      } catch (error) {
-        console.error('Erro ao carregar resumo de lançamentos:', error);
-        setSummary(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void load();
-  }, [selectedProperty?.id]);
-
   const lastUpdatedLabel = useMemo(() => {
-    if (!summary?.lastUpdatedAt) return '—';
-    const d = new Date(summary.lastUpdatedAt);
+    if (!lastUpdatedAt) return '—';
+    const d = new Date(lastUpdatedAt);
     return d.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -129,7 +100,7 @@ export default function Lancamentos() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  }, [summary?.lastUpdatedAt]);
+  }, [lastUpdatedAt]);
 
   const content = (
     <div className="p-4 md:p-6 lg:p-8 space-y-6">

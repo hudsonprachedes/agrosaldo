@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,8 +28,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Edit, Save, Shield, Trash2, Plus, X } from 'lucide-react';
-import { adminService, StateRegulation } from '@/services/api.service';
+import type { StateRegulation } from '@/services/api.service';
 import { toast } from 'sonner';
+import { useAdminRegulations } from '@/hooks/queries/admin/useAdminRegulations';
+import { useAdminCreateRegulation, useAdminDeleteRegulation, useAdminUpdateRegulation } from '@/hooks/mutations/admin/useAdminRegulationsMutations';
 
 const UF_NAMES: Record<string, string> = {
   AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia',
@@ -49,12 +51,20 @@ type DeclarationPeriod = {
 };
 
 export default function AdminRegulamentacoes() {
-  const [regulations, setRegulations] = useState<StateRegulation[]>([]);
   const [selectedReg, setSelectedReg] = useState<StateRegulation | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const regulationsQuery = useAdminRegulations();
+  const createReg = useAdminCreateRegulation();
+  const updateReg = useAdminUpdateRegulation();
+  const deleteReg = useAdminDeleteRegulation();
+
+  const regulations = useMemo(
+    () => (regulationsQuery.data ?? []) as StateRegulation[],
+    [regulationsQuery.data],
+  );
   
   const [formData, setFormData] = useState<Partial<StateRegulation>>({
     uf: '',
@@ -69,22 +79,6 @@ export default function AdminRegulamentacoes() {
     gtaRequired: true,
     observations: '',
   });
-
-  useEffect(() => {
-    const loadRegulations = async () => {
-      try {
-        const data = await adminService.getRegulations();
-        setRegulations(data);
-      } catch (error) {
-        console.error('Erro ao carregar regulamentações:', error);
-        toast.error('Erro ao carregar regulamentações');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void loadRegulations();
-  }, []);
 
   const getDeclarationPeriodsArray = (value: Partial<StateRegulation>['declarationPeriods']): DeclarationPeriod[] => {
     const periods = (value as any)?.periods;
@@ -157,7 +151,9 @@ export default function AdminRegulamentacoes() {
 
     try {
       if (isEditing) {
-        const updated = await adminService.updateRegulation(selectedReg!.id, {
+        await updateReg.mutateAsync({
+          id: selectedReg!.id,
+          data: {
           uf: formData.uf!,
           stateName: formData.stateName!,
           reportingDeadline: Number.isFinite(formData.reportingDeadline) ? (formData.reportingDeadline as number) : 15,
@@ -169,11 +165,11 @@ export default function AdminRegulamentacoes() {
           notificationLeadDays: formData.notificationLeadDays || [30, 15, 7, 3, 0],
           gtaRequired: formData.gtaRequired ?? true,
           observations: formData.observations || '',
+          },
         });
-        setRegulations(regulations.map(r => r.id === selectedReg!.id ? updated : r));
         toast.success('Regulamentação atualizada');
       } else {
-        const created = await adminService.createRegulation({
+        await createReg.mutateAsync({
           uf: formData.uf!,
           stateName: formData.stateName!,
           reportingDeadline: Number.isFinite(formData.reportingDeadline) ? (formData.reportingDeadline as number) : 15,
@@ -186,7 +182,6 @@ export default function AdminRegulamentacoes() {
           gtaRequired: formData.gtaRequired ?? true,
           observations: formData.observations || '',
         });
-        setRegulations([...regulations, created]);
         toast.success('Regulamentação criada');
       }
 
@@ -201,8 +196,7 @@ export default function AdminRegulamentacoes() {
     if (!selectedReg?.id) return;
     try {
       setIsDeleting(true);
-      await adminService.deleteRegulation(selectedReg.id);
-      setRegulations(regulations.filter((r) => r.id !== selectedReg.id));
+      await deleteReg.mutateAsync(selectedReg.id);
       setShowDialog(false);
       toast.success('Regulamentação excluída');
     } catch (error) {
@@ -221,7 +215,7 @@ export default function AdminRegulamentacoes() {
     return p.map((x: any) => x?.label || x?.code).filter(Boolean).join(' / ');
   };
 
-  if (isLoading) {
+  if (regulationsQuery.isPending) {
     return <div className="flex items-center justify-center h-screen">Carregando regulamentações...</div>;
   }
 

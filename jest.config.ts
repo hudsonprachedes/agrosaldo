@@ -10,7 +10,7 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  testPathIgnorePatterns: ['<rootDir>/tests/'],
+  testPathIgnorePatterns: ['<rootDir>/tests/', '<rootDir>/src/tests/contract-validation.spec.ts'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { PreferencesDTO, useAuth } from '@/contexts/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -55,6 +55,14 @@ import { toast } from 'sonner';
 import { fetchViaCepWithCache } from '@/lib/cep';
 import { apiClient } from '@/lib/api-client';
 import { PropertyDTO } from '@/types';
+import { usePropertiesMine } from '@/hooks/queries/usePropertiesMine';
+import { usePlansCatalog } from '@/hooks/queries/usePlansCatalog';
+import { useUpdateProperty } from '@/hooks/mutations/useUpdateProperty';
+import { useSubscriptionMine } from '@/hooks/queries/useSubscriptionMine';
+import { useSubscriptionPaymentsMine } from '@/hooks/queries/useSubscriptionPaymentsMine';
+import { useUpsertPropertyMine } from '@/hooks/mutations/useUpsertPropertyMine';
+import { useDeletePropertyMine } from '@/hooks/mutations/useDeletePropertyMine';
+import { useUpdateSubscriptionMine } from '@/hooks/mutations/useUpdateSubscriptionMine';
 
 type PropertyForm = {
   name: string;
@@ -119,7 +127,14 @@ export default function MinhaFazenda() {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('propriedade');
 
-  const [properties, setProperties] = useState<PropertyDTO[]>([]);
+  const propertiesQuery = usePropertiesMine(Boolean(user?.id));
+  const plansCatalogQuery = usePlansCatalog(Boolean(user?.id));
+  const subscriptionQuery = useSubscriptionMine(Boolean(user?.id));
+  const paymentHistoryQuery = useSubscriptionPaymentsMine(Boolean(user?.id));
+
+  const properties = propertiesQuery.data ?? [];
+  const plansCatalog = (plansCatalogQuery.data ?? []) as PlanCatalogItem[];
+  const subscription = (subscriptionQuery.data ?? null) as SubscriptionDTO;
 
   const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<PropertyDTO | null>(null);
@@ -131,6 +146,7 @@ export default function MinhaFazenda() {
   const [produtorForm, setProdutorForm] = useState({
     name: user?.name || '',
     cpfCnpj: user?.cpfCnpj || '',
+    inscricaoEstadual: '',
     celular: '(44) 99114-7084',
     email: user?.email || '',
     cep: '',
@@ -150,105 +166,54 @@ export default function MinhaFazenda() {
     notificacaoVacina: true,
   });
 
-  const [plansCatalog, setPlansCatalog] = useState<PlanCatalogItem[]>([]);
-  const [subscription, setSubscription] = useState<SubscriptionDTO>(null);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const paymentHistory: PaymentHistoryItem[] = useMemo(() => {
+    const data = (paymentHistoryQuery.data ?? []) as PaymentHistoryApiItem[];
 
-  useEffect(() => {
-    const loadProperties = async () => {
-      try {
-        const data = await apiClient.get<PropertyDTO[]>('/propriedades/minhas');
-        setProperties(data);
-      } catch (error) {
-        console.error('Erro ao carregar propriedades:', error);
-        setProperties([]);
-      }
-    };
+    return (data ?? [])
+      .map((item) => {
+        const planIdLower = String(item.planId ?? '').toLowerCase() as PlanId;
+        const methodLower = String(item.method ?? '').toLowerCase() as PaymentMethod;
 
-    if (user?.id) {
-      void loadProperties();
-    }
-  }, [user?.id]);
+        const planId: PlanId =
+          planIdLower === 'porteira' ||
+          planIdLower === 'piquete' ||
+          planIdLower === 'retiro' ||
+          planIdLower === 'estancia' ||
+          planIdLower === 'barao'
+            ? planIdLower
+            : 'porteira';
 
-  useEffect(() => {
-    const loadPlansAndSubscription = async () => {
-      try {
-        const [catalog, sub] = await Promise.all([
-          apiClient.get<PlanCatalogItem[]>('/planos'),
-          apiClient.get<SubscriptionDTO>('/assinaturas/minha'),
-        ]);
-        setPlansCatalog(catalog);
-        setSubscription(sub);
-      } catch (error) {
-        console.error('Erro ao carregar planos/assinatura:', error);
-        setPlansCatalog([]);
-        setSubscription(null);
-      }
-    };
+        const method: PaymentMethod =
+          methodLower === 'pix' ||
+          methodLower === 'cartao' ||
+          methodLower === 'boleto' ||
+          methodLower === 'transferencia' ||
+          methodLower === 'outros'
+            ? methodLower
+            : 'outros';
 
-    if (user?.id) {
-      void loadPlansAndSubscription();
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    const loadPaymentHistory = async () => {
-      try {
-        const data = await apiClient.get<PaymentHistoryApiItem[]>(
-          '/assinaturas/pagamentos/minha',
-        );
-
-        const mapped: PaymentHistoryItem[] = (data ?? [])
-          .map((item) => {
-            const planIdLower = String(item.planId ?? '').toLowerCase() as PlanId;
-            const methodLower = String(item.method ?? '').toLowerCase() as PaymentMethod;
-
-            const planId: PlanId =
-              planIdLower === 'porteira' ||
-              planIdLower === 'piquete' ||
-              planIdLower === 'retiro' ||
-              planIdLower === 'estancia' ||
-              planIdLower === 'barao'
-                ? planIdLower
-                : 'porteira';
-
-            const method: PaymentMethod =
-              methodLower === 'pix' ||
-              methodLower === 'cartao' ||
-              methodLower === 'boleto' ||
-              methodLower === 'transferencia' ||
-              methodLower === 'outros'
-                ? methodLower
-                : 'outros';
-
-            return {
-              id: item.id,
-              paidAt: item.paidAt,
-              amount: item.amount,
-              method,
-              planId,
-              cattleCountAtPayment: item.cattleCountAtPayment ?? 0,
-            };
-          })
-          .filter((x) => Boolean(x.id) && Boolean(x.paidAt));
-
-        setPaymentHistory(mapped);
-      } catch (error) {
-        console.error('Erro ao carregar histórico de pagamentos:', error);
-        setPaymentHistory([]);
-      }
-    };
-
-    if (user?.id) {
-      void loadPaymentHistory();
-    }
-  }, [user?.id]);
+        return {
+          id: item.id,
+          paidAt: item.paidAt,
+          amount: item.amount,
+          method,
+          planId,
+          cattleCountAtPayment: item.cattleCountAtPayment ?? 0,
+        };
+      })
+      .filter((x) => Boolean(x.id) && Boolean(x.paidAt));
+  }, [paymentHistoryQuery.data]);
 
   useEffect(() => {
     if (preferences) {
       setSettings(preferences);
     }
   }, [preferences]);
+
+  const upsertProperty = useUpsertPropertyMine();
+  const deleteProperty = useDeletePropertyMine();
+  const updateSubscription = useUpdateSubscriptionMine();
+  const updatePropertyMutation = useUpdateProperty();
 
   // Password form (local-only mock)
   const [passwordForm, setPasswordForm] = useState({
@@ -374,10 +339,7 @@ export default function MinhaFazenda() {
 
   const handleSubscribeOrUpgrade = async (planId: PlanId) => {
     try {
-      const updated = await apiClient.post<SubscriptionDTO>('/assinaturas/minha', {
-        planId,
-      });
-      setSubscription(updated);
+      await updateSubscription.mutateAsync(planId);
       toast.success('Plano atualizado com sucesso');
     } catch (error: unknown) {
       const maybe = error as Record<string, unknown>;
@@ -436,10 +398,8 @@ export default function MinhaFazenda() {
     }
 
     try {
-      await apiClient.delete(`/propriedades/minhas/${propertyId}`);
+      await deleteProperty.mutateAsync(propertyId);
       await refreshMe();
-      const data = await apiClient.get<PropertyDTO[]>('/propriedades/minhas');
-      setProperties(data);
       toast.success('Propriedade removida com sucesso');
     } catch (error) {
       console.error('Erro ao remover propriedade:', error);
@@ -470,18 +430,11 @@ export default function MinhaFazenda() {
     };
 
     try {
-      if (editingProperty?.id) {
-        await apiClient.patch(`/propriedades/minhas/${editingProperty.id}`, payload);
-        toast.success('Propriedade atualizada com sucesso');
-      } else {
-        await apiClient.post('/propriedades/minhas', payload);
-        toast.success('Propriedade cadastrada com sucesso');
-      }
+      await upsertProperty.mutateAsync({ id: editingProperty?.id, payload });
+      toast.success(editingProperty?.id ? 'Propriedade atualizada com sucesso' : 'Propriedade cadastrada com sucesso');
 
       setIsPropertyDialogOpen(false);
       await refreshMe();
-      const data = await apiClient.get<PropertyDTO[]>('/propriedades/minhas');
-      setProperties(data);
     } catch (error) {
       console.error('Erro ao salvar propriedade:', error);
       toast.error('Erro ao salvar propriedade');
@@ -525,9 +478,26 @@ export default function MinhaFazenda() {
     }
   };
 
-  const handleSaveProdutor = () => {
-    setIsEditingProdutor(false);
-    toast.success('Dados do produtor atualizados');
+  const handleSaveProdutor = async () => {
+    if (!selectedProperty?.id) {
+      toast.error('Propriedade não selecionada');
+      return;
+    }
+
+    try {
+      await updatePropertyMutation.mutateAsync({
+        id: selectedProperty.id,
+        data: {
+          inscricaoEstadual: produtorForm.inscricaoEstadual || null,
+        },
+      });
+      
+      setIsEditingProdutor(false);
+      toast.success('Dados do produtor atualizados');
+    } catch (error) {
+      console.error('Erro ao salvar dados do produtor:', error);
+      toast.error('Erro ao salvar dados do produtor');
+    }
   };
 
   const handleSavePreferences = async () => {
@@ -689,7 +659,7 @@ export default function MinhaFazenda() {
 
           {/* Property Dialog */}
           <Dialog open={isPropertyDialogOpen} onOpenChange={setIsPropertyDialogOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl p-0 overflow-hidden">
               <DialogHeader>
                 <DialogTitle>
                   {editingProperty ? 'Editar Propriedade' : 'Nova Propriedade'}
@@ -699,9 +669,10 @@ export default function MinhaFazenda() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-6">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2 sm:col-span-2">
+              <div className="max-h-[85vh] overflow-y-auto px-6 pb-6 pt-2">
+                <div className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2 sm:col-span-2">
                     <Label htmlFor="name">Nome da Propriedade *</Label>
                     <Input
                       id="name"
@@ -854,54 +825,16 @@ export default function MinhaFazenda() {
                       id="areaTotal"
                       type="number"
                       value={propertyForm.areaTotal || ''}
+
                       onChange={(e) => setPropertyForm({ ...propertyForm, areaTotal: Number(e.target.value) })}
                       placeholder="0"
                     />
                   </div>
                 </div>
               </div>
-
-              <div className="pt-4 border-t">
-                <h4 className="font-medium mb-4 flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary" />
-                  Alterar Senha
-                </h4>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Senha Atual</Label>
-                    <Input
-                      type="password"
-                      value={passwordForm.current}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
-                      placeholder="••••••••"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nova Senha</Label>
-                    <Input
-                      type="password"
-                      value={passwordForm.next}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
-                      placeholder="Mín. 6 caracteres"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Confirmar Nova Senha</Label>
-                    <Input
-                      type="password"
-                      value={passwordForm.confirm}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                      placeholder="Repita a nova senha"
-                    />
-                  </div>
-                </div>
-                <Button className="w-full mt-4" onClick={handleChangePassword}>
-                  <Save className="w-4 h-4 mr-2" />
-                  Atualizar Senha
-                </Button>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="px-6 py-4 border-t bg-background">
                 <Button variant="outline" onClick={() => setIsPropertyDialogOpen(false)}>
                   Cancelar
                 </Button>
@@ -970,6 +903,16 @@ export default function MinhaFazenda() {
                     value={produtorForm.cpfCnpj}
                     onChange={(e) => setProdutorForm({ ...produtorForm, cpfCnpj: e.target.value })}
                     disabled={!isEditingProdutor}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Inscrição Estadual</Label>
+                  <Input
+                    value={produtorForm.inscricaoEstadual}
+                    onChange={(e) => setProdutorForm({ ...produtorForm, inscricaoEstadual: e.target.value })}
+                    disabled={!isEditingProdutor}
+                    placeholder="Opcional"
                   />
                 </div>
 
@@ -1339,6 +1282,46 @@ export default function MinhaFazenda() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <h4 className="font-medium mb-4 flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-primary" />
+                  Alterar Senha
+                </h4>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label>Senha Atual</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.current}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, current: e.target.value })}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.next}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                      placeholder="Mín. 6 caracteres"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmar Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.confirm}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                      placeholder="Repita a nova senha"
+                    />
+                  </div>
+                </div>
+                <Button className="w-full mt-4" onClick={handleChangePassword}>
+                  <Save className="w-4 h-4 mr-2" />
+                  Atualizar Senha
+                </Button>
               </div>
 
               <div className="pt-4 border-t">

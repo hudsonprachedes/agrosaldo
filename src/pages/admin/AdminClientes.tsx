@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { adminService, AuditLog, User } from '@/services/api.service';
+import React, { useMemo, useState } from 'react';
+import type { User } from '@/services/api.service';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,6 +67,16 @@ import {
 } from '@/components/ui/select';
 import { validateCpfCnpj } from '@/lib/document-validation';
 import PageSkeleton from '@/components/PageSkeleton';
+import { useAdminTenants } from '@/hooks/queries/admin/useAdminTenants';
+import { useAdminAuditLogs } from '@/hooks/queries/admin/useAdminAuditLogs';
+import {
+  useAdminImpersonateUser,
+  useAdminResetOnboarding,
+  useAdminResetUserPassword,
+  useAdminUpdateUser,
+  useAdminUpdateUserPlan,
+  useAdminUpdateUserStatus,
+} from '@/hooks/mutations/admin/useAdminTenantsMutations';
 
 interface ActionLog {
   timestamp: Date;
@@ -79,9 +89,15 @@ export default function AdminClientes() {
   const navigate = useNavigate();
   const { startImpersonation } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const [tenantsData, setTenantsData] = useState<User[]>([]);
   const [selectedTenant, setSelectedTenant] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const tenantsQuery = useAdminTenants();
+  const resetPasswordMutation = useAdminResetUserPassword();
+  const updateStatusMutation = useAdminUpdateUserStatus();
+  const impersonateMutation = useAdminImpersonateUser();
+  const updatePlanMutation = useAdminUpdateUserPlan();
+  const updateUserMutation = useAdminUpdateUser();
+  const resetOnboardingMutation = useAdminResetOnboarding();
 
   // Dialogs state
   const [changePlanDialog, setChangePlanDialog] = useState(false);
@@ -99,50 +115,56 @@ export default function AdminClientes() {
   const [editCpfCnpj, setEditCpfCnpj] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [actionLogs, setActionLogs] = useState<ActionLog[]>([]);
   const [resetOnboardingPropertyId, setResetOnboardingPropertyId] = useState<string>('');
 
-  useEffect(() => {
-    const loadTenants = async () => {
-      try {
-        const tenants = await adminService.getTenants();
-        setTenantsData(tenants);
-      } catch (error) {
-        console.error('Erro ao carregar tenants:', error);
-        toast.error('Erro ao carregar clientes');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const tenantsData = useMemo(() => (tenantsQuery.data ?? []) as User[], [tenantsQuery.data]);
 
-    void loadTenants();
-  }, []);
+  const auditLogsQuery = useAdminAuditLogs({
+    userId: selectedTenant?.id,
+    limit: 100,
+    offset: 0,
+    enabled: historyDialog && Boolean(selectedTenant?.id),
+  });
 
-  if (isLoading) {
-    return <PageSkeleton cards={0} lines={16} />;
-  }
-  
-  const filteredTenants = tenantsData.filter((tenant) => {
+  const actionLogs = useMemo<ActionLog[]>(() => {
+    const items = auditLogsQuery.data?.items ?? [];
+
+    return items.map((l) => ({
+      timestamp: new Date(l.timestamp),
+      action: l.action,
+      adminUser: l.userName,
+      details: l.details,
+    }));
+  }, [auditLogsQuery.data]);
+
+  const filteredTenants = useMemo(() => {
     const term = searchTerm.trim();
-    if (!term) return true;
+    if (!term) return tenantsData;
 
     const termLower = term.toLowerCase();
     const termDigits = term.replace(/\D/g, '');
-    const tenantDigits = tenant.cpfCnpj.replace(/\D/g, '');
 
-    return (
-      tenant.name.toLowerCase().includes(termLower) ||
-      tenant.cpfCnpj.toLowerCase().includes(termLower) ||
-      (termDigits.length > 0 && tenantDigits.includes(termDigits))
-    );
-  });
+    return tenantsData.filter((tenant) => {
+      const tenantDigits = tenant.cpfCnpj.replace(/\D/g, '');
+
+      return (
+        tenant.name.toLowerCase().includes(termLower) ||
+        tenant.cpfCnpj.toLowerCase().includes(termLower) ||
+        (termDigits.length > 0 && tenantDigits.includes(termDigits))
+      );
+    });
+  }, [searchTerm, tenantsData]);
+
+  if (tenantsQuery.isPending) {
+    return <PageSkeleton cards={0} lines={16} />;
+  }
 
   const handleResetPassword = () => {
     if (!selectedTenant) return;
 
     void (async () => {
       try {
-        const result = await adminService.resetUserPassword(selectedTenant.id);
+        const result = await resetPasswordMutation.mutateAsync(selectedTenant.id);
         toast.success(`Senha resetada para ${selectedTenant.name}. Nova senha: ${result.tempPassword}`);
         setResetPasswordDialog(false);
         setSelectedTenant(null);
@@ -164,8 +186,11 @@ export default function AdminClientes() {
 
     void (async () => {
       try {
-        const updated = await adminService.updateUserStatus(selectedTenant.id, nextStatus, blockReason.trim());
-        setTenantsData(tenantsData.map(t => (t.id === selectedTenant.id ? { ...t, status: updated.status } : t)));
+        await updateStatusMutation.mutateAsync({
+          userId: selectedTenant.id,
+          status: nextStatus,
+          reason: blockReason.trim(),
+        });
         toast.success(isBlocking ? 'Cliente bloqueado' : 'Cliente desbloqueado');
         setBlockDialog(false);
         setBlockReason('');
@@ -183,7 +208,7 @@ export default function AdminClientes() {
     void (async () => {
       try {
         toast.info(`Acessando como ${selectedTenant.name}...`);
-        const result = await adminService.impersonateUser(selectedTenant.id);
+        const result = await impersonateMutation.mutateAsync(selectedTenant.id);
         await startImpersonation(result.token);
         setImpersonateDialog(false);
         setSelectedTenant(null);
@@ -204,7 +229,7 @@ export default function AdminClientes() {
 
     void (async () => {
       try {
-        await adminService.updateUserPlan(selectedTenant.id, newPlan);
+        await updatePlanMutation.mutateAsync({ userId: selectedTenant.id, plan: newPlan });
         toast.success(`Plano de ${selectedTenant.name} alterado para ${newPlan}`);
         setChangePlanDialog(false);
         setNewPlan('');
@@ -241,22 +266,6 @@ export default function AdminClientes() {
   const openHistoryDialog = (tenant: User) => {
     setSelectedTenant(tenant);
     setHistoryDialog(true);
-    void (async () => {
-      try {
-        const resp = await adminService.getAuditLogs({ userId: tenant.id, limit: 100, offset: 0 });
-        const mapped: ActionLog[] = resp.items.map((l: AuditLog) => ({
-          timestamp: new Date(l.timestamp),
-          action: l.action,
-          adminUser: l.userName,
-          details: l.details,
-        }));
-        setActionLogs(mapped);
-      } catch (error) {
-        console.error('Erro ao carregar histórico:', error);
-        toast.error('Erro ao carregar histórico');
-        setActionLogs([]);
-      }
-    })();
   };
 
   const openEditDialog = (tenant: User) => {
@@ -291,14 +300,7 @@ export default function AdminClientes() {
 
     void (async () => {
       try {
-        await adminService.resetOnboarding(selectedTenant.id, propertyId);
-        setTenantsData(
-          tenantsData.map((t) =>
-            t.id === selectedTenant.id
-              ? { ...t, onboardingCompletedAt: null }
-              : t,
-          ),
-        );
+        await resetOnboardingMutation.mutateAsync({ userId: selectedTenant.id, propertyId });
         toast.success('Onboarding liberado para refazer');
         setResetOnboardingDialog(false);
         setSelectedTenant(null);
@@ -325,17 +327,12 @@ export default function AdminClientes() {
 
     void (async () => {
       try {
-        const updated = await adminService.updateUser(selectedTenant.id, {
+        await updateUserMutation.mutateAsync({
+          userId: selectedTenant.id,
           cpfCnpj: editCpfCnpj,
           phone: editPhone,
           email: editEmail,
         });
-
-        setTenantsData(tenantsData.map((t) => (
-          t.id === selectedTenant.id
-            ? { ...t, cpfCnpj: updated.cpfCnpj, phone: updated.phone, email: updated.email }
-            : t
-        )));
 
         toast.success('Dados do cliente atualizados');
         setEditDialog(false);

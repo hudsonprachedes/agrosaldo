@@ -348,16 +348,18 @@ export default function PropertySelection() {
 
       {/* Dialog de cadastro de propriedade */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent className="max-w-2xl max-h-96 overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl">Cadastrar Nova Propriedade</DialogTitle>
-            <DialogDescription>
-              Preencha os dados da sua fazenda para começar
-            </DialogDescription>
-          </DialogHeader>
-
+        <DialogContent className="max-w-2xl p-0 overflow-hidden">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex max-h-[85vh] flex-col">
+              <DialogHeader className="px-6 pb-2 pt-6">
+                <DialogTitle className="font-display text-xl">Cadastrar Nova Propriedade</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados da sua fazenda para começar
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex-1 overflow-y-auto px-6 pb-4 pt-2">
+                <div className="grid gap-4 sm:grid-cols-2">
               {/* Nome */}
               <FormField
                 control={form.control}
@@ -516,7 +518,7 @@ export default function PropertySelection() {
               />
 
               {/* Espécies habilitadas */}
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+              <div className="space-y-3 rounded-xl bg-muted/50 p-4 sm:col-span-2">
                 <p className="font-medium text-sm">Espécies (selecione pelo menos uma):</p>
                 
                 <FormField
@@ -556,25 +558,30 @@ export default function PropertySelection() {
                 />
               </div>
 
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setOpenDialog(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="flex-1" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Cadastrando...
-                    </>
-                  ) : (
-                    'Cadastrar Propriedade'
-                  )}
-                </Button>
+                </div>
+              </div>
+
+              <div className="border-t bg-background px-6 py-4">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpenDialog(false)}
+                    className="sm:min-w-32"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting} className="sm:min-w-56">
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Cadastrando...
+                      </>
+                    ) : (
+                      'Cadastrar Propriedade'
+                    )}
+                  </Button>
+                </div>
               </div>
             </form>
           </Form>

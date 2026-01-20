@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { adminService, AuditLog, ActivityLog } from '@/services/api.service';
+import React, { useMemo, useState } from 'react';
+import type { AuditLog, ActivityLog } from '@/services/api.service';
 import { toast } from 'sonner';
 import {
   Shield,
@@ -32,6 +32,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import { useAdminTenants } from '@/hooks/queries/admin/useAdminTenants';
+import { useAdminAuditLogs } from '@/hooks/queries/admin/useAdminAuditLogs';
+import { useAdminActivityLogs } from '@/hooks/queries/admin/useAdminActivityLogs';
+import {
+  useAdminArchiveActivityLogs,
+  useAdminDeleteActivityLogs,
+  useAdminUnarchiveActivityLogs,
+} from '@/hooks/mutations/admin/useAdminActivityLogsMutations';
 
 const actionColors: Record<string, string> = {
   'login': 'bg-success/10 text-success',
@@ -64,20 +72,11 @@ const ALL_VALUE = '__all__';
 export default function AdminAuditoria() {
   const [tab, setTab] = useState<'auditoria' | 'atividade'>('auditoria');
   const [searchTerm, setSearchTerm] = useState('');
-  const [tenants, setTenants] = useState<Array<{ id: string; name: string }>>([]);
 
-  const [audit, setAudit] = useState<{ items: AuditLog[]; total: number; limit: number; offset: number }>({
-    items: [],
-    total: 0,
-    limit: 50,
-    offset: 0,
-  });
-  const [activity, setActivity] = useState<{ items: ActivityLog[]; total: number; limit: number; offset: number }>({
-    items: [],
-    total: 0,
-    limit: 50,
-    offset: 0,
-  });
+  const [auditLimit] = useState(50);
+  const [auditOffset, setAuditOffset] = useState(0);
+  const [activityLimit] = useState(50);
+  const [activityOffset, setActivityOffset] = useState(0);
 
   const [tenantId, setTenantId] = useState<string>(ALL_VALUE);
   const [startDate, setStartDate] = useState<string>('');
@@ -89,79 +88,63 @@ export default function AdminAuditoria() {
 
   const [selectedActivityIds, setSelectedActivityIds] = useState<Record<string, boolean>>({});
 
-  const [isLoading, setIsLoading] = useState(true);
+  const tenantsQuery = useAdminTenants();
+  const tenantOptions = useMemo(
+    () => ((tenantsQuery.data ?? []) as any[]).map((t) => ({ id: String(t.id), name: String(t.name) })),
+    [tenantsQuery.data],
+  );
 
-  useEffect(() => {
-    const loadLogs = async () => {
-      try {
-        const [tenantsResp, auditResp, activityResp] = await Promise.all([
-          adminService.getTenants(),
-          adminService.getAuditLogs({ limit: 50, offset: 0 }),
-          adminService.getActivityLogs({ limit: 50, offset: 0 }),
-        ]);
+  const tenantIdFilter = tenantId === ALL_VALUE ? undefined : tenantId;
+  const statusFilter = activityStatus === ALL_VALUE ? undefined : activityStatus;
 
-        setTenants(tenantsResp.map((t) => ({ id: t.id, name: t.name })));
-        setAudit(auditResp);
-        setActivity(activityResp);
-      } catch (error) {
-        console.error('Erro ao carregar auditoria:', error);
-        toast.error('Erro ao carregar logs de auditoria');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const auditLogsQuery = useAdminAuditLogs({
+    userId: tenantIdFilter,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    limit: auditLimit,
+    offset: auditOffset,
+    enabled: tab === 'auditoria',
+  });
 
-    void loadLogs();
-  }, []);
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const tenantIdFilter = tenantId === ALL_VALUE ? undefined : tenantId;
-        const statusFilter = activityStatus === ALL_VALUE ? undefined : activityStatus;
-        if (tab === 'auditoria') {
-          const resp = await adminService.getAuditLogs({
-            userId: tenantIdFilter,
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
-            limit: audit.limit,
-            offset: audit.offset,
-          });
-          setAudit(resp);
-          return;
-        }
-
-        const resp = await adminService.getActivityLogs({
-          tenantId: tenantIdFilter,
-          event: activityEvent || undefined,
-          status: statusFilter,
-          startDate: startDate || undefined,
-          endDate: endDate || undefined,
-          includeArchived,
-          limit: activity.limit,
-          offset: activity.offset,
-        });
-        setActivity(resp);
-      } catch (error) {
-        console.error('Erro ao aplicar filtros:', error);
-        toast.error('Erro ao aplicar filtros');
-      }
-    })();
-  }, [
-    tab,
-    tenantId,
-    startDate,
-    endDate,
-    activityEvent,
-    activityStatus,
+  const activityLogsQuery = useAdminActivityLogs({
+    tenantId: tenantIdFilter,
+    event: activityEvent || undefined,
+    status: statusFilter,
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
     includeArchived,
-    audit.limit,
-    audit.offset,
-    activity.limit,
-    activity.offset,
-  ]);
+    limit: activityLimit,
+    offset: activityOffset,
+    enabled: tab === 'atividade',
+  });
+
+  const archiveMutation = useAdminArchiveActivityLogs();
+  const unarchiveMutation = useAdminUnarchiveActivityLogs();
+  const deleteMutation = useAdminDeleteActivityLogs();
 
   const normalizedSearchTerm = searchTerm.toLowerCase();
+
+  const audit = useMemo(
+    () =>
+      (auditLogsQuery.data ?? {
+        items: [],
+        total: 0,
+        limit: auditLimit,
+        offset: auditOffset,
+      }) as { items: AuditLog[]; total: number; limit: number; offset: number },
+    [auditLimit, auditLogsQuery.data, auditOffset],
+  );
+
+  const activity = useMemo(
+    () =>
+      (activityLogsQuery.data ?? {
+        items: [],
+        total: 0,
+        limit: activityLimit,
+        offset: activityOffset,
+      }) as { items: ActivityLog[]; total: number; limit: number; offset: number },
+    [activityLimit, activityLogsQuery.data, activityOffset],
+  );
 
   const filteredAudit = audit.items.filter((log) => {
     const userName = log.userName?.toLowerCase?.() ?? '';
@@ -211,21 +194,8 @@ export default function AdminAuditoria() {
   const doArchive = async () => {
     if (selectedIds.length === 0) return;
     try {
-      await adminService.archiveActivityLogs(selectedIds);
+      await archiveMutation.mutateAsync(selectedIds);
       setSelectedActivityIds({});
-      const tenantIdFilter = tenantId === ALL_VALUE ? undefined : tenantId;
-      const statusFilter = activityStatus === ALL_VALUE ? undefined : activityStatus;
-      const resp = await adminService.getActivityLogs({
-        tenantId: tenantIdFilter,
-        event: activityEvent || undefined,
-        status: statusFilter,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        includeArchived,
-        limit: activity.limit,
-        offset: activity.offset,
-      });
-      setActivity(resp);
       toast.success('Logs arquivados');
     } catch (error) {
       console.error('Erro ao arquivar logs:', error);
@@ -236,21 +206,8 @@ export default function AdminAuditoria() {
   const doUnarchive = async () => {
     if (selectedIds.length === 0) return;
     try {
-      await adminService.unarchiveActivityLogs(selectedIds);
+      await unarchiveMutation.mutateAsync(selectedIds);
       setSelectedActivityIds({});
-      const tenantIdFilter = tenantId === ALL_VALUE ? undefined : tenantId;
-      const statusFilter = activityStatus === ALL_VALUE ? undefined : activityStatus;
-      const resp = await adminService.getActivityLogs({
-        tenantId: tenantIdFilter,
-        event: activityEvent || undefined,
-        status: statusFilter,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        includeArchived,
-        limit: activity.limit,
-        offset: activity.offset,
-      });
-      setActivity(resp);
       toast.success('Logs desarquivados');
     } catch (error) {
       console.error('Erro ao desarquivar logs:', error);
@@ -262,21 +219,8 @@ export default function AdminAuditoria() {
     if (selectedIds.length === 0) return;
     if (!window.confirm('Tem certeza que deseja deletar os logs selecionados?')) return;
     try {
-      await adminService.deleteActivityLogs(selectedIds);
+      await deleteMutation.mutateAsync(selectedIds);
       setSelectedActivityIds({});
-      const tenantIdFilter = tenantId === ALL_VALUE ? undefined : tenantId;
-      const statusFilter = activityStatus === ALL_VALUE ? undefined : activityStatus;
-      const resp = await adminService.getActivityLogs({
-        tenantId: tenantIdFilter,
-        event: activityEvent || undefined,
-        status: statusFilter,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        includeArchived,
-        limit: activity.limit,
-        offset: activity.offset,
-      });
-      setActivity(resp);
       toast.success('Logs deletados');
     } catch (error) {
       console.error('Erro ao deletar logs:', error);
@@ -289,6 +233,12 @@ export default function AdminAuditoria() {
 
   const activityPage = Math.floor(activity.offset / activity.limit) + 1;
   const activityTotalPages = Math.max(1, Math.ceil(activity.total / activity.limit));
+
+  const isLoading = tenantsQuery.isPending || auditLogsQuery.isPending || activityLogsQuery.isPending;
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Carregando logs...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -391,7 +341,7 @@ export default function AdminAuditoria() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_VALUE}>Todos</SelectItem>
-                    {tenants.map((t) => (
+                    {tenantOptions.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>
@@ -518,7 +468,7 @@ export default function AdminAuditoria() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          setAudit((prev) => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }));
+                          setAuditOffset((prev) => Math.max(0, prev - auditLimit));
                         }}
                       />
                     </PaginationItem>
@@ -532,9 +482,9 @@ export default function AdminAuditoria() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          setAudit((prev) => {
-                            const nextOffset = prev.offset + prev.limit;
-                            return { ...prev, offset: nextOffset >= prev.total ? prev.offset : nextOffset };
+                          setAuditOffset((prev) => {
+                            const nextOffset = prev + auditLimit;
+                            return nextOffset >= audit.total ? prev : nextOffset;
                           });
                         }}
                       />
@@ -635,7 +585,7 @@ export default function AdminAuditoria() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          setActivity((prev) => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }));
+                          setActivityOffset((prev) => Math.max(0, prev - activityLimit));
                         }}
                       />
                     </PaginationItem>
@@ -649,9 +599,9 @@ export default function AdminAuditoria() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          setActivity((prev) => {
-                            const nextOffset = prev.offset + prev.limit;
-                            return { ...prev, offset: nextOffset >= prev.total ? prev.offset : nextOffset };
+                          setActivityOffset((prev) => {
+                            const nextOffset = prev + activityLimit;
+                            return nextOffset >= activity.total ? prev : nextOffset;
                           });
                         }}
                       />

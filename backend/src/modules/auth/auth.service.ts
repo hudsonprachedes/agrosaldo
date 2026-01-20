@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { HerdEvolutionService } from '../../common/herd-evolution.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -366,6 +367,30 @@ export class AuthService {
         ),
       ),
     };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, senha: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuário não encontrado');
+    }
+
+    const ok = await bcrypt.compare(dto.currentPassword, user.senha);
+    if (!ok) {
+      throw new UnauthorizedException('Senha atual inválida');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.usuario.update({
+      where: { id: userId },
+      data: { senha: passwordHash },
+    });
+
+    return { success: true };
   }
 
   async completeOnboarding(

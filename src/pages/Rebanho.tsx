@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { apiClient } from '@/lib/api-client';
 import { EpidemiologySurveyDTO, LivestockMirrorDTO, OtherSpeciesMirrorDTO } from '@/types';
+import { useLivestockMirror } from '@/hooks/queries/useLivestockMirror';
+import { useOtherSpeciesMirror } from '@/hooks/queries/useOtherSpeciesMirror';
 import ReactApexChart from 'react-apexcharts';
 import {
   Beef,
@@ -13,6 +15,7 @@ import {
   Share2,
   Printer,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,35 +63,9 @@ export default function Rebanho() {
     }
   };
 
-  const [mirror, setMirror] = useState<LivestockMirrorDTO | null>(null);
-  const [otherMirror, setOtherMirror] = useState<OtherSpeciesMirrorDTO | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!selectedProperty?.id) {
-      return;
-    }
-
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        const [bovinos, outras] = await Promise.all([
-          apiClient.get<LivestockMirrorDTO>(`/rebanho/${selectedProperty.id}/espelho?months=1`),
-          apiClient.get<OtherSpeciesMirrorDTO>(`/rebanho/${selectedProperty.id}/outras-especies?months=1`),
-        ]);
-        setMirror(bovinos);
-        setOtherMirror(outras);
-      } catch (error) {
-        console.error('Erro ao carregar rebanho:', error);
-        setMirror(null);
-        setOtherMirror(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void load();
-  }, [selectedProperty?.id]);
+  const { data: mirror, isPending: isLoadingMirror } = useLivestockMirror(selectedProperty?.id, 1);
+  const { data: otherMirror, isPending: isLoadingOther } = useOtherSpeciesMirror(selectedProperty?.id, 1);
+  const isLoading = isLoadingMirror || isLoadingOther;
 
   const ageGroups = useMemo(
     () =>
@@ -208,6 +185,22 @@ export default function Rebanho() {
           validationUrl = undefined;
         }
 
+        let qrCodeDataUrl: string | undefined;
+        if (validationUrl) {
+          try {
+            qrCodeDataUrl = await QRCode.toDataURL(validationUrl, {
+              margin: 1,
+              width: 240,
+              color: {
+                dark: '#111827',
+                light: '#ffffff',
+              },
+            });
+          } catch (e) {
+            qrCodeDataUrl = undefined;
+          }
+        }
+
         let latestSurvey: EpidemiologySurveyDTO | null = null;
         try {
           const surveys = await apiClient.get<EpidemiologySurveyDTO[]>('/questionario-epidemiologico');
@@ -223,6 +216,7 @@ export default function Rebanho() {
           includeSurvey,
           documentNumber,
           qrCodePayload: validationUrl,
+          qrCodeDataUrl,
           latestSurvey: latestSurvey
             ? {
                 submittedAt: latestSurvey.submittedAt,

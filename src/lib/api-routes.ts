@@ -346,6 +346,9 @@ export const API_ROUTES = {
     PIX_CONFIG: '/admin/financeiro/pix-config',
     // GET|POST /admin/financeiro/pix-config
 
+    COMPANY_SETTINGS: '/admin/configuracoes-gerais',
+    // GET|PUT /admin/configuracoes-gerais
+
     AUDIT_LOGS: '/admin/auditoria',
     // GET /admin/auditoria
 

@@ -158,6 +158,7 @@ export class PropertiesService {
         quantidadeGado: dto.cattleCount,
         status: dto.status as any,
         plano: plan,
+        inscricaoEstadual: dto.inscricaoEstadual ?? null,
       } as any,
     });
   }
@@ -197,6 +198,7 @@ export class PropertiesService {
         quantidadeGado: dto.cattleCount,
         status: dto.status as any,
         plano: plan,
+        inscricaoEstadual: dto.inscricaoEstadual,
       } as any,
     });
   }

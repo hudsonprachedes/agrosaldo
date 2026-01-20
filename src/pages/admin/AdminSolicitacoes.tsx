@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { adminService } from '@/services/api.service';
+import React, { useMemo, useState } from 'react';
 import {
   Bell,
   Clock,
@@ -21,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { useAdminSolicitations } from '@/hooks/queries/admin/useAdminSolicitations';
+import { useAdminApproveSolicitation, useAdminRejectSolicitation } from '@/hooks/mutations/admin/useAdminApproveRejectSolicitation';
 import {
   Dialog,
   DialogContent,
@@ -56,28 +57,21 @@ interface PendingRequest {
 }
 
 export default function AdminSolicitacoes() {
-  const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const downgradeRequests = requests.filter((r) => r.type === 'plan_downgrade');
+  const solicitationsQuery = useAdminSolicitations();
+  const approveMutation = useAdminApproveSolicitation();
+  const rejectMutation = useAdminRejectSolicitation();
 
-  useEffect(() => {
-    const loadRequests = async () => {
-      try {
-        const data = await adminService.getRequests();
-        const next = (data as unknown as PendingRequest[]).filter((r) => r.type === 'plan_downgrade');
-        setRequests(next);
-      } catch (error) {
-        console.error('Erro ao carregar solicitações:', error);
-        toast.error('Erro ao carregar solicitações');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const requests = useMemo(
+    () => (solicitationsQuery.data ?? []) as unknown as PendingRequest[],
+    [solicitationsQuery.data],
+  );
 
-    void loadRequests();
-  }, []);
+  const downgradeRequests = useMemo(
+    () => (requests ?? []).filter((r) => r.type === 'plan_downgrade'),
+    [requests],
+  );
   const [rejectDialog, setRejectDialog] = useState(false);
   const [approveDialog, setApproveDialog] = useState(false);
   const [viewDialog, setViewDialog] = useState(false);
@@ -87,8 +81,7 @@ export default function AdminSolicitacoes() {
     if (!selectedRequest) return;
 
     try {
-      await adminService.approveRequest(selectedRequest.id);
-      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      await approveMutation.mutateAsync({ id: selectedRequest.id });
       toast.success(`Solicitação de ${selectedRequest.name} aprovada com sucesso!`);
       setApproveDialog(false);
       setSelectedRequest(null);
@@ -105,8 +98,7 @@ export default function AdminSolicitacoes() {
     }
 
     try {
-      await adminService.rejectRequest(selectedRequest.id, rejectionReason.trim());
-      setRequests(requests.filter(r => r.id !== selectedRequest.id));
+      await rejectMutation.mutateAsync({ id: selectedRequest.id, reason: rejectionReason.trim() });
       toast.success(`Solicitação de ${selectedRequest.name} rejeitada.`);
       setRejectDialog(false);
       setRejectionReason('');
@@ -151,7 +143,7 @@ export default function AdminSolicitacoes() {
     return downgradeRequests.filter(r => r.status === 'pending').length;
   };
 
-  if (isLoading) {
+  if (solicitationsQuery.isPending) {
     return <div className="flex items-center justify-center h-screen">Carregando solicitações...</div>;
   }
 

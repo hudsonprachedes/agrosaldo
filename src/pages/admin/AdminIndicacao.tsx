@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Ticket,
   Users,
@@ -33,16 +33,33 @@ import {
 import PageSkeleton from '@/components/PageSkeleton';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { adminService, AdminCoupon, AdminCouponUsage, AdminReferrer } from '@/services/api.service';
+import type { AdminCoupon, AdminCouponUsage, AdminReferrer } from '@/services/api.service';
+import { useAdminCoupons, useAdminCouponUsages, useAdminReferrers } from '@/hooks/queries/admin/useAdminReferral';
+import { useAdminCreateCoupon, useAdminUpdateCoupon } from '@/hooks/mutations/admin/useAdminReferralMutations';
 
 export default function AdminIndicacao() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
-  const [referrers, setReferrers] = useState<AdminReferrer[]>([]);
-  const [usages, setUsages] = useState<AdminCouponUsage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const couponsQuery = useAdminCoupons();
+  const referrersQuery = useAdminReferrers();
+  const usagesQuery = useAdminCouponUsages();
+
+  const createCoupon = useAdminCreateCoupon();
+  const updateCoupon = useAdminUpdateCoupon();
+
+  const coupons = useMemo(
+    () => (couponsQuery.data ?? []) as AdminCoupon[],
+    [couponsQuery.data],
+  );
+  const referrers = useMemo(
+    () => (referrersQuery.data ?? []) as AdminReferrer[],
+    [referrersQuery.data],
+  );
+  const usages = useMemo(
+    () => (usagesQuery.data ?? []) as AdminCouponUsage[],
+    [usagesQuery.data],
+  );
 
   const [newCode, setNewCode] = useState('');
   const [newType, setNewType] = useState<'discount' | 'referral'>('discount');
@@ -52,31 +69,6 @@ export default function AdminIndicacao() {
   const [newReferrerName, setNewReferrerName] = useState('');
   const [newReferrerCpfCnpj, setNewReferrerCpfCnpj] = useState('');
   const [newReferrerPhone, setNewReferrerPhone] = useState('');
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [c, r, u] = await Promise.all([
-          adminService.listCoupons(),
-          adminService.listReferrers(),
-          adminService.listCouponUsages(),
-        ]);
-        setCoupons(c);
-        setReferrers(r);
-        setUsages(u);
-      } catch (error) {
-        console.error('Erro ao carregar indicação:', error);
-        toast.error('Erro ao carregar indicação');
-        setCoupons([]);
-        setReferrers([]);
-        setUsages([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void load();
-  }, []);
 
   const copyToClipboard = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -105,7 +97,7 @@ export default function AdminIndicacao() {
     }
 
     try {
-      const created = await adminService.createCoupon({
+      await createCoupon.mutateAsync({
         code: newCode.trim().toUpperCase(),
         type: newType,
         value: Number(newValue),
@@ -120,7 +112,6 @@ export default function AdminIndicacao() {
             }
           : {}),
       });
-      setCoupons([created, ...coupons]);
       toast.success('Cupom criado com sucesso!');
       setDialogOpen(false);
       setNewCode('');
@@ -141,8 +132,7 @@ export default function AdminIndicacao() {
     const current = String(coupon.status ?? 'active').toLowerCase();
     const nextStatus = current === 'active' ? 'inactive' : 'active';
     try {
-      const updated = await adminService.updateCoupon(coupon.id, { status: nextStatus });
-      setCoupons((prev) => prev.map((c) => (c.id === coupon.id ? { ...c, ...updated } : c)));
+      await updateCoupon.mutateAsync({ id: coupon.id, data: { status: nextStatus } });
       toast.success(nextStatus === 'active' ? 'Cupom ativado' : 'Cupom desativado');
     } catch (error) {
       console.error('Erro ao atualizar cupom:', error);
@@ -150,50 +140,59 @@ export default function AdminIndicacao() {
     }
   };
 
-  const kpis = [
-    {
-      title: 'Cupons Ativos',
-      value: coupons.filter(c => (c.status ?? '').toLowerCase() === 'active').length,
-      icon: Ticket,
-      color: 'text-primary',
-    },
-    {
-      title: 'Indicadores Ativos',
-      value: referrers.length,
-      icon: Users,
-      color: 'text-success',
-    },
-    {
-      title: 'Comissões Pendentes',
-      value: `R$ ${referrers.reduce((s, r) => s + (r.pendingCommission ?? r.comissaoPendente ?? 0), 0).toLocaleString('pt-BR')}`,
-      icon: DollarSign,
-      color: 'text-warning',
-    },
-    {
-      title: 'Total Indicações',
-      value: usages.length,
-      icon: TrendingUp,
-      color: 'text-chart-3',
-    },
-  ];
+  const kpis = useMemo(
+    () => [
+      {
+        title: 'Cupons Ativos',
+        value: coupons.filter((c) => String(c.status ?? '').toLowerCase() === 'active').length,
+        icon: Ticket,
+        color: 'text-primary',
+      },
+      {
+        title: 'Indicadores Ativos',
+        value: referrers.length,
+        icon: Users,
+        color: 'text-success',
+      },
+      {
+        title: 'Comissões Pendentes',
+        value: `R$ ${referrers
+          .reduce((s, r) => s + (r.pendingCommission ?? (r as any).comissaoPendente ?? 0), 0)
+          .toLocaleString('pt-BR')}`,
+        icon: DollarSign,
+        color: 'text-warning',
+      },
+      {
+        title: 'Total Indicações',
+        value: usages.length,
+        icon: TrendingUp,
+        color: 'text-chart-3',
+      },
+    ],
+    [coupons, referrers, usages.length],
+  );
 
-  if (isLoading) {
+  const usageCountByCoupon = useMemo(() => {
+    return usages.reduce<Record<string, number>>((acc, u) => {
+      const code = String((u as any).coupon ?? '').trim().toUpperCase();
+      if (!code) return acc;
+      acc[code] = (acc[code] ?? 0) + 1;
+      return acc;
+    }, {});
+  }, [usages]);
+
+  const referrerByCode = useMemo(() => {
+    return referrers.reduce<Record<string, AdminReferrer>>((acc, r) => {
+      const code = String((r as any).code ?? (r as any).codigo ?? '').trim().toUpperCase();
+      if (!code) return acc;
+      acc[code] = r;
+      return acc;
+    }, {});
+  }, [referrers]);
+
+  if (couponsQuery.isPending || referrersQuery.isPending || usagesQuery.isPending) {
     return <PageSkeleton cards={4} lines={12} />;
   }
-
-  const usageCountByCoupon = usages.reduce<Record<string, number>>((acc, u) => {
-    const code = String(u.coupon ?? '').trim().toUpperCase();
-    if (!code) return acc;
-    acc[code] = (acc[code] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const referrerByCode = referrers.reduce<Record<string, AdminReferrer>>((acc, r) => {
-    const code = String(r.code ?? r.codigo ?? '').trim().toUpperCase();
-    if (!code) return acc;
-    acc[code] = r;
-    return acc;
-  }, {});
 
   return (
     <div className="space-y-6">

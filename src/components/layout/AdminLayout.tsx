@@ -10,6 +10,7 @@ import {
   DollarSign,
   Megaphone,
   Shield,
+  Settings,
   LogOut,
   UserPlus,
   BarChart3,
@@ -37,6 +38,7 @@ const navItems = [
   { path: '/admin/financeiro', label: 'Financeiro', icon: DollarSign },
   { path: '/admin/regulamentacoes', label: 'Regulamentações', icon: FileText },
   { path: '/admin/comunicacao', label: 'Comunicação', icon: Megaphone },
+  { path: '/admin/configuracoes', label: 'Configurações', icon: Settings },
   { path: '/admin/auditoria', label: 'Auditoria', icon: Shield },
 ];
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,45 +27,37 @@ import {
   Upload,
   Settings,
 } from 'lucide-react';
-import { adminService, FinancialPayment, PixConfig } from '@/services/api.service';
 import { toast } from 'sonner';
+import type { FinancialPayment, PixConfig } from '@/services/api.service';
+import { useAdminPayments, useAdminPixConfig } from '@/hooks/queries/admin/useAdminFinance';
+import { useAdminUpdatePayment, useAdminUpdatePixConfig } from '@/hooks/mutations/admin/useAdminFinanceMutations';
 
 export default function AdminFinanceiro() {
-  const [payments, setPayments] = useState<FinancialPayment[]>([]);
-  const [pixConfig, setPixConfig] = useState<PixConfig | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<FinancialPayment | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showPixConfigDialog, setShowPixConfigDialog] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  const [pixKey, setPixKey] = useState('');
-  const [pixKeyType, setPixKeyType] = useState('cpf');
-  const [qrCodeImage, setQrCodeImage] = useState<string | undefined>();
+
+  const paymentsQuery = useAdminPayments();
+  const pixConfigQuery = useAdminPixConfig();
+  const updatePayment = useAdminUpdatePayment();
+  const updatePixConfig = useAdminUpdatePixConfig();
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [paymentsData, pixConfigData] = await Promise.all([
-          adminService.getPayments(),
-          adminService.getPixConfig(),
-        ]);
-        setPayments(paymentsData);
-        setPixConfig(pixConfigData);
-        if (pixConfigData) {
-          setPixKey(pixConfigData.pixKey);
-          setPixKeyType(pixConfigData.pixKeyType);
-          setQrCodeImage(pixConfigData.qrCodeImage);
-        }
-      } catch (error) {
-        console.error('Erro ao carregar dados financeiros:', error);
-        toast.error('Erro ao carregar dados financeiros');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (paymentsQuery.isError || pixConfigQuery.isError) {
+      toast.error('Erro ao carregar dados financeiros');
+    }
+  }, [paymentsQuery.isError, pixConfigQuery.isError]);
 
-    void loadData();
-  }, []);
+  const payments = (paymentsQuery.data ?? []) as FinancialPayment[];
+  const pixConfig = (pixConfigQuery.data ?? null) as PixConfig | null;
+
+  const [pixKeyDraft, setPixKeyDraft] = useState<string | null>(null);
+  const [pixKeyTypeDraft, setPixKeyTypeDraft] = useState<string | null>(null);
+  const [qrCodeImageDraft, setQrCodeImageDraft] = useState<string | undefined | null>(null);
+
+  const pixKey = pixKeyDraft ?? pixConfig?.pixKey ?? '';
+  const pixKeyType = pixKeyTypeDraft ?? pixConfig?.pixKeyType ?? 'cpf';
+  const qrCodeImage = (qrCodeImageDraft ?? pixConfig?.qrCodeImage ?? undefined) as string | undefined;
 
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card' | 'debit_card' | 'bank_slip' | 'cash'>('pix');
 
@@ -98,12 +90,14 @@ export default function AdminFinanceiro() {
 
     void (async () => {
       try {
-        const updatedPayment = await adminService.updatePayment(paymentId, {
-          ...current,
-          status: 'pending',
-          paidAt: null,
+        await updatePayment.mutateAsync({
+          id: paymentId,
+          data: {
+            ...current,
+            status: 'pending',
+            paidAt: null,
+          },
         });
-        setPayments(payments.map((p) => (p.id === paymentId ? updatedPayment : p)));
         toast.success('Pagamento revertido para pendente');
       } catch (error) {
         console.error('Erro ao reverter pagamento:', error);
@@ -117,13 +111,15 @@ export default function AdminFinanceiro() {
 
     try {
       const paidAt = new Date().toISOString();
-      const updatedPayment = await adminService.updatePayment(selectedPayment.id, {
-        ...selectedPayment,
-        status: 'paid',
-        paidAt,
+      await updatePayment.mutateAsync({
+        id: selectedPayment.id,
+        data: {
+          ...selectedPayment,
+          status: 'paid',
+          paidAt,
+        },
       });
 
-      setPayments(payments.map((p) => (p.id === selectedPayment.id ? updatedPayment : p)));
       setShowPaymentDialog(false);
       toast.success(`Recebimento de ${selectedPayment.tenantName} registrado com sucesso`);
     } catch (error) {
@@ -134,13 +130,17 @@ export default function AdminFinanceiro() {
 
   const handlePixConfigSave = async () => {
     try {
-      await adminService.updatePixConfig({
+      await updatePixConfig.mutateAsync({
         pixKey,
         pixKeyType: pixKeyType as 'cpf' | 'cnpj' | 'email' | 'phone' | 'random',
         qrCodeImage,
-      });
+        active: pixConfig?.active ?? true,
+      } as Partial<PixConfig>);
 
       setShowPixConfigDialog(false);
+      setPixKeyDraft(null);
+      setPixKeyTypeDraft(null);
+      setQrCodeImageDraft(null);
       toast.success('Configuração do PIX atualizada com sucesso');
     } catch (error) {
       console.error('Erro ao salvar configuração PIX:', error);
@@ -153,7 +153,7 @@ export default function AdminFinanceiro() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setQrCodeImage(reader.result as string);
+        setQrCodeImageDraft(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -191,7 +191,7 @@ export default function AdminFinanceiro() {
     return labels[freq] || freq;
   };
 
-  if (isLoading) {
+  if (paymentsQuery.isPending || pixConfigQuery.isPending) {
     return <div className="flex items-center justify-center h-screen">Carregando dados financeiros...</div>;
   }
 
@@ -604,7 +604,12 @@ export default function AdminFinanceiro() {
             <div className="space-y-4 py-4">
               <div>
                 <Label htmlFor="pixKeyType">Tipo de Chave</Label>
-                <Select value={pixKeyType} onValueChange={(value: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random') => setPixKeyType(value)}>
+                <Select
+                  value={pixKeyType}
+                  onValueChange={(value: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random') =>
+                    setPixKeyTypeDraft(value)
+                  }
+                >
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
@@ -623,7 +628,7 @@ export default function AdminFinanceiro() {
                 <Input
                   id="pixKey"
                   value={pixKey}
-                  onChange={(e) => setPixKey(e.target.value)}
+                  onChange={(e) => setPixKeyDraft(e.target.value)}
                   className="mt-2"
                   placeholder="Digite a chave PIX"
                 />

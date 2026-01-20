@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Baby,
   Skull,
@@ -50,6 +51,8 @@ import {
 import { compressImage } from '@/lib/image-compression';
 import { apiClient } from '@/lib/api-client';
 import { LivestockMirrorDTO } from '@/types';
+import { queryKeys } from '@/lib/react-query/queryKeys';
+import { useUpdateOtherSpeciesBalances } from '@/hooks/mutations/useUpdateOtherSpeciesBalances';
 
 import CameraCapture from '@/components/CameraCapture';
 interface LaunchFormProps {
@@ -127,10 +130,6 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const [availableMatrizes, setAvailableMatrizes] = useState(0);
-  const [availableByAgeTotal, setAvailableByAgeTotal] = useState<Record<string, number>>({});
-  const [availableByAgeSex, setAvailableByAgeSex] = useState<Record<string, { male: number; female: number }>>({});
-
   // Common fields
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -171,9 +170,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   const [laboratory, setLaboratory] = useState('');
 
   // Other species
-  const [speciesCounts, setSpeciesCounts] = useState<Record<string, number>>(
-    Object.fromEntries(otherSpecies.map((s) => [s.id, 0]))
-  );
+  const [speciesCountsDraft, setSpeciesCountsDraft] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
     if (!selectedProperty) {
@@ -181,108 +178,47 @@ export default function LaunchForm({ type }: LaunchFormProps) {
     }
   }, [selectedProperty, navigate]);
 
-  useEffect(() => {
-    if (type !== 'outras') return;
-    if (!selectedProperty?.id) return;
-
-    let cancelled = false;
-
-    const load = async () => {
-      try {
-        const mirror = await apiClient.get<any>(
-          `/rebanho/${selectedProperty.id}/outras-especies?months=1`,
-        );
-
-        const next: Record<string, number> = Object.fromEntries(
-          otherSpecies.map((s) => [s.id, 0]),
-        );
-
-        for (const row of mirror?.balances ?? []) {
-          const key = String(row.speciesId ?? '').toLowerCase();
-          if (!key) continue;
-          next[key] = Number(row.currentBalance ?? 0);
-        }
-
-        if (cancelled) return;
-        setSpeciesCounts(next);
-      } catch (error) {
-        if (cancelled) return;
-      }
-    };
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProperty?.id, type]);
-
-  useEffect(() => {
-    const loadMatrizes = async () => {
+  const availabilityQuery = useQuery({
+    queryKey: selectedProperty?.id
+      ? ['livestock', 'availability', selectedProperty.id]
+      : ['livestock', 'availability', 'no-property'],
+    enabled: Boolean(selectedProperty?.id),
+    staleTime: 30 * 1000,
+    queryFn: async () => {
       if (!selectedProperty?.id) {
-        setAvailableMatrizes(0);
-        setAvailableByAgeTotal({});
-        setAvailableByAgeSex({});
-        return;
+        return {
+          availableMatrizes: 0,
+          totalByAge: {} as Record<string, number>,
+          byAgeSex: {} as Record<string, { male: number; female: number }>,
+        };
       }
 
-      try {
-        // Preferir saldo do servidor quando disponível (evita ficar zerado com IndexedDB vazio)
-        try {
-          const mirror = await apiClient.get<LivestockMirrorDTO>(
-            `/rebanho/${selectedProperty.id}/espelho?months=1`,
-          );
+      const ageGroupIds: AgeGroupId[] = ageGroups.map((g) => g.id);
+      const totalByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
+      const maleByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
+      const femaleByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
 
-          const ageGroupIds: AgeGroupId[] = ageGroups.map((g) => g.id);
-          const totalByAge: Record<string, number> = Object.fromEntries(
-            ageGroupIds.map((id) => [id, 0]),
-          );
-          const maleByAge: Record<string, number> = Object.fromEntries(
-            ageGroupIds.map((id) => [id, 0]),
-          );
-          const femaleByAge: Record<string, number> = Object.fromEntries(
-            ageGroupIds.map((id) => [id, 0]),
-          );
+      const fillFromMirror = (mirror: LivestockMirrorDTO) => {
+        for (const row of mirror?.balances ?? []) {
+          const ageId = normalizeAgeGroupId((row as any).ageGroupId);
+          if (!ageId) continue;
 
-          for (const row of mirror?.balances ?? []) {
-            const ageId = normalizeAgeGroupId(row.ageGroupId);
-            if (!ageId) continue;
-
-            maleByAge[ageId] = Number(row.male?.currentBalance ?? 0);
-            femaleByAge[ageId] = Number(row.female?.currentBalance ?? 0);
-            totalByAge[ageId] =
-              (maleByAge[ageId] ?? 0) + (femaleByAge[ageId] ?? 0);
-          }
-
-          const total = (femaleByAge['25-36m'] ?? 0) + (femaleByAge['36+m'] ?? 0);
-          setAvailableMatrizes(total);
-          setAvailableByAgeTotal(totalByAge);
-          setAvailableByAgeSex(
-            Object.fromEntries(
-              ageGroupIds.map((id) => [
-                id,
-                {
-                  male: Math.min(maleByAge[id] ?? 0, totalByAge[id] ?? 0),
-                  female: Math.min(femaleByAge[id] ?? 0, totalByAge[id] ?? 0),
-                },
-              ]),
-            ),
-          );
-          return;
-        } catch (e) {
-          // fallback para IndexedDB
+          maleByAge[ageId] = Number((row as any).male?.currentBalance ?? 0);
+          femaleByAge[ageId] = Number((row as any).female?.currentBalance ?? 0);
+          totalByAge[ageId] = (maleByAge[ageId] ?? 0) + (femaleByAge[ageId] ?? 0);
         }
+      };
 
+      try {
+        const mirror = await apiClient.get<LivestockMirrorDTO>(`/rebanho/${selectedProperty.id}/espelho?months=1`);
+        fillFromMirror(mirror);
+      } catch (e) {
         const [initialStock, movements] = await Promise.all([
           getInitialStock(selectedProperty.id),
           getMovementsByProperty(selectedProperty.id),
         ]);
 
-        const ageGroupIds: AgeGroupId[] = ageGroups.map((g) => g.id);
         const ageGroupIdSet = new Set<AgeGroupId>(ageGroupIds);
-        const totalByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
-        const maleByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
-        const femaleByAge: Record<string, number> = Object.fromEntries(ageGroupIds.map((id) => [id, 0]));
 
         for (const entry of initialStock) {
           if (entry.species !== 'bovino') continue;
@@ -312,7 +248,6 @@ export default function LaunchForm({ type }: LaunchFormProps) {
 
           const applyDelta = (delta: number) => {
             totalByAge[ageId] = Math.max(0, totalByAge[ageId] + delta);
-
             if (sex === 'male') {
               maleByAge[ageId] = Math.max(0, maleByAge[ageId] + delta);
             } else if (sex === 'female') {
@@ -328,32 +263,54 @@ export default function LaunchForm({ type }: LaunchFormProps) {
             applyDelta(qty);
           }
         }
-
-        const total = (femaleByAge['25-36m'] ?? 0) + (femaleByAge['36+m'] ?? 0);
-        setAvailableMatrizes(total);
-
-        setAvailableByAgeTotal(totalByAge);
-        setAvailableByAgeSex(
-          Object.fromEntries(
-            ageGroupIds.map((id) => [
-              id,
-              {
-                male: Math.min(maleByAge[id] ?? 0, totalByAge[id] ?? 0),
-                female: Math.min(femaleByAge[id] ?? 0, totalByAge[id] ?? 0),
-              },
-            ])
-          )
-        );
-      } catch (error) {
-        console.error('Erro ao calcular matrizes disponíveis:', error);
-        setAvailableMatrizes(0);
-        setAvailableByAgeTotal({});
-        setAvailableByAgeSex({});
       }
-    };
 
-    void loadMatrizes();
-  }, [selectedProperty?.id]);
+      const availableMatrizes = (femaleByAge['25-36m'] ?? 0) + (femaleByAge['36+m'] ?? 0);
+      const byAgeSex = Object.fromEntries(
+        ageGroupIds.map((id) => [
+          id,
+          {
+            male: Math.min(maleByAge[id] ?? 0, totalByAge[id] ?? 0),
+            female: Math.min(femaleByAge[id] ?? 0, totalByAge[id] ?? 0),
+          },
+        ]),
+      );
+
+      return { availableMatrizes, totalByAge, byAgeSex };
+    },
+  });
+
+  const availableMatrizes = availabilityQuery.data?.availableMatrizes ?? 0;
+  const availableByAgeTotal = availabilityQuery.data?.totalByAge ?? {};
+  const availableByAgeSex = availabilityQuery.data?.byAgeSex ?? {};
+
+  const otherSpeciesMirrorQuery = useQuery({
+    queryKey: selectedProperty?.id
+      ? queryKeys.livestock.otherSpecies(selectedProperty.id, 1)
+      : ['livestock', 'other-species', 'no-property'],
+    enabled: Boolean(selectedProperty?.id && type === 'outras'),
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      if (!selectedProperty?.id) {
+        return { balances: [] as any[] };
+      }
+      return apiClient.get<any>(`/rebanho/${selectedProperty.id}/outras-especies?months=1`);
+    },
+  });
+
+  const serverSpeciesCounts = useMemo(() => {
+    const base: Record<string, number> = Object.fromEntries(otherSpecies.map((s) => [s.id, 0]));
+    const mirror = otherSpeciesMirrorQuery.data;
+    for (const row of mirror?.balances ?? []) {
+      const key = String(row.speciesId ?? '').toLowerCase();
+      if (!key) continue;
+      base[key] = Number(row.currentBalance ?? 0);
+    }
+    return base;
+  }, [otherSpeciesMirrorQuery.data]);
+
+  const speciesCounts = speciesCountsDraft ?? serverSpeciesCounts;
+  const updateOtherSpeciesBalances = useUpdateOtherSpeciesBalances(selectedProperty?.id);
 
   const getAvailableForAgeGroup = (ageGroupId: string) => {
     const total = availableByAgeTotal[ageGroupId] ?? 0;
@@ -594,7 +551,7 @@ export default function LaunchForm({ type }: LaunchFormProps) {
           })),
         };
 
-        await apiClient.post('/lancamentos/outras-especies', payload);
+        await updateOtherSpeciesBalances.mutateAsync(payload);
 
         toast.success('Saldo de outras espécies atualizado', { icon: '🐾' });
       }
@@ -684,10 +641,13 @@ export default function LaunchForm({ type }: LaunchFormProps) {
   };
 
   const updateSpeciesCount = (speciesId: string, delta: number) => {
-    setSpeciesCounts(prev => ({
-      ...prev,
-      [speciesId]: Math.max(0, (prev[speciesId] || 0) + delta)
-    }));
+    setSpeciesCountsDraft((prev) => {
+      const current = prev ?? serverSpeciesCounts;
+      return {
+        ...current,
+        [speciesId]: Math.max(0, (current[speciesId] || 0) + delta),
+      };
+    });
   };
 
   const formContent = (

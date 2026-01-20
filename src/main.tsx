@@ -5,11 +5,36 @@ import "./index.css";
 import { Buffer } from "buffer";
 
 if (import.meta.env.PROD) {
-	console.log = () => {};
-	console.debug = () => {};
-	console.info = () => {};
-	console.warn = () => {};
-	console.error = () => {};
+	const noop = () => {};
+	console.log = noop;
+	console.debug = noop;
+	console.info = noop;
+	console.warn = noop;
+	console.error = noop;
+
+	window.onerror = () => true;
+	window.onunhandledrejection = (event) => {
+		event?.preventDefault?.();
+		return true;
+	};
+
+	window.addEventListener(
+		"error",
+		(event) => {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+		},
+		true
+	);
+
+	window.addEventListener(
+		"unhandledrejection",
+		(event) => {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+		},
+		true
+	);
 }
 
 if (typeof globalThis !== 'undefined' && !(globalThis as any).Buffer) {

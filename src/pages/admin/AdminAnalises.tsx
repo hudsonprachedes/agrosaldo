@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ReactApexChart from 'react-apexcharts';
 import { TrendingUp, Users, DollarSign, Activity, Calendar } from 'lucide-react';
-import { adminService, AdminAnalyticsResponse } from '@/services/api.service';
 import { toast } from 'sonner';
+import { useAdminAnalytics } from '@/hooks/queries/admin/useAdminAnalytics';
 
 export default function AdminAnalises() {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
-  const [isLoading, setIsLoading] = useState(true);
-  const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
+
+  const analyticsQuery = useAdminAnalytics(period);
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const data = await adminService.getAnalytics(period);
-        setAnalytics(data);
-      } catch (error) {
-        console.error('Erro ao carregar análises:', error);
-        toast.error('Erro ao carregar dados de análise');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (analyticsQuery.isError) {
+      toast.error('Erro ao carregar dados de análise');
+    }
+  }, [analyticsQuery.isError]);
 
-    void loadStats();
-  }, [period]);
+  const analytics = analyticsQuery.data ?? null;
+
+  if (analyticsQuery.isPending) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Carregando análises...
+      </div>
+    );
+  }
 
   // Dados agregados
   const totalTenants = analytics?.kpis.totalTenants || 0;
@@ -255,37 +255,43 @@ export default function AdminAnalises() {
   };
 
   const conversionSeries = [
-    { name: 'Aprovados', data: analytics?.conversion.approved ?? [] },
-    { name: 'Pendentes', data: analytics?.conversion.pending ?? [] },
-    { name: 'Rejeitados', data: analytics?.conversion.rejected ?? [] },
+    {
+      name: 'Aprovados',
+      data: analytics?.conversion.approved ?? [],
+    },
+    {
+      name: 'Pendentes',
+      data: analytics?.conversion.pending ?? [],
+    },
+    {
+      name: 'Rejeitados',
+      data: analytics?.conversion.rejected ?? [],
+    },
   ];
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Carregando análises...</div>;
-  }
 
   return (
     <div className="space-y-6 p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Análises e Indicadores</h1>
-            <p className="text-gray-600">
-              Acompanhe métricas e crescimento da plataforma
-            </p>
-          </div>
-
-          <Select value={period} onValueChange={(value: '7d' | '30d' | '90d' | '1y') => setPeriod(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Últimos 7 dias</SelectItem>
-              <SelectItem value="30d">Últimos 30 dias</SelectItem>
-              <SelectItem value="90d">Últimos 90 dias</SelectItem>
-              <SelectItem value="1y">Último ano</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Análises e Indicadores</h1>
+          <p className="text-gray-600">Acompanhe métricas e crescimento da plataforma</p>
         </div>
+
+        <Select
+          value={period}
+          onValueChange={(value: '7d' | '30d' | '90d' | '1y') => setPeriod(value)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7d">Últimos 7 dias</SelectItem>
+            <SelectItem value="30d">Últimos 30 dias</SelectItem>
+            <SelectItem value="90d">Últimos 90 dias</SelectItem>
+            <SelectItem value="1y">Último ano</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

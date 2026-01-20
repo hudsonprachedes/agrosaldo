@@ -10,6 +10,7 @@ import { ApproveUserDto } from './dto/approve-user.dto';
 import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 import { UpdatePixConfigDto } from './dto/pix-config.dto';
+import { UpdateCompanySettingsDto } from './dto/company-settings.dto';
 
 @Injectable()
 export class AdminService {
@@ -924,6 +925,80 @@ export class AdminService {
         },
       });
     }
+  }
+
+  // --- Configurações Gerais (Empresa) ---
+
+  async getCompanySettings() {
+    const row = await (this.prisma as any).configuracaoEmpresa.findFirst({
+      orderBy: { criadoEm: 'desc' },
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      nome: row.nome,
+      cnpj: row.cnpj,
+      telefone: row.telefone ?? null,
+      email: row.email ?? null,
+      endereco: row.endereco ?? null,
+      site: row.site ?? null,
+      criadoEm: row.criadoEm,
+      atualizadoEm: row.atualizadoEm,
+    };
+  }
+
+  async updateCompanySettings(
+    dto: UpdateCompanySettingsDto,
+    ctx: { userId?: string; cpfCnpj?: string; ip?: string },
+  ) {
+    const current = await (this.prisma as any).configuracaoEmpresa.findFirst();
+
+    const saved = current
+      ? await (this.prisma as any).configuracaoEmpresa.update({
+          where: { id: current.id },
+          data: {
+            nome: dto.nome,
+            cnpj: dto.cnpj,
+            telefone: dto.telefone ?? null,
+            email: dto.email ?? null,
+            endereco: dto.endereco ?? null,
+            site: dto.site ?? null,
+          },
+        })
+      : await (this.prisma as any).configuracaoEmpresa.create({
+          data: {
+            nome: dto.nome,
+            cnpj: dto.cnpj,
+            telefone: dto.telefone ?? null,
+            email: dto.email ?? null,
+            endereco: dto.endereco ?? null,
+            site: dto.site ?? null,
+          },
+        });
+
+    await this.createAuditLog(
+      ctx.userId ?? 'SYSTEM',
+      ctx.cpfCnpj ?? 'SuperAdmin',
+      'COMPANY_SETTINGS_UPDATED',
+      `Configurações gerais atualizadas (CNPJ: ${dto.cnpj})`,
+      ctx.ip ?? '127.0.0.1',
+    );
+
+    return {
+      id: saved.id,
+      nome: saved.nome,
+      cnpj: saved.cnpj,
+      telefone: saved.telefone ?? null,
+      email: saved.email ?? null,
+      endereco: saved.endereco ?? null,
+      site: saved.site ?? null,
+      criadoEm: saved.criadoEm,
+      atualizadoEm: saved.atualizadoEm,
+    };
   }
 
   // --- Planos SaaS (Admin) ---

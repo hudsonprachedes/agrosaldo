@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { adminService, AdminPlan } from '@/services/api.service';
+import React, { useMemo, useState } from 'react';
+import type { AdminPlan } from '@/services/api.service';
 import { toast } from 'sonner';
 import {
   CreditCard,
@@ -39,6 +39,8 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { notifyFirstFormError } from '@/lib/form-errors';
+import { useAdminPlans } from '@/hooks/queries/admin/useAdminPlans';
+import { useAdminCreatePlan, useAdminDeletePlan, useAdminUpdatePlan } from '@/hooks/mutations/admin/useAdminPlansMutations';
 
 type Plan = {
   id: string;
@@ -65,11 +67,42 @@ const planSchema = z.object({
 type PlanFormData = z.infer<typeof planSchema>;
 
 export default function AdminPlanos() {
-  const [plansData, setPlansData] = useState<Plan[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [deletingPlan, setDeletingPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const plansQuery = useAdminPlans();
+  const createPlan = useAdminCreatePlan();
+  const updatePlan = useAdminUpdatePlan();
+  const deletePlan = useAdminDeletePlan();
+
+  const plansData: Plan[] = useMemo(() => {
+    const rows = (plansQuery.data ?? []) as AdminPlan[];
+
+    const mapped: Plan[] = rows.map((p: AdminPlan) => {
+      const name = p.name ?? (p as any).nome ?? '';
+      const price = p.price ?? (p as any).preco ?? 0;
+      const maxCattleRaw = (p as any).maxCattle ?? (p as any).maxCabecas;
+      const maxCattle = maxCattleRaw === null || maxCattleRaw === undefined ? Infinity : maxCattleRaw;
+      const additionalChargeEnabled = (p as any).additionalChargeEnabled ?? (p as any).cobrancaAdicionalAtiva ?? false;
+      const additionalChargePerHead = (p as any).additionalChargePerHead ?? (p as any).valorCobrancaAdicional ?? 0.1;
+      const features = (p as any).features ?? (p as any).recursos ?? [];
+      const active = (p as any).active ?? (p as any).ativo ?? true;
+      return {
+        id: p.id,
+        name,
+        price,
+        maxCattle,
+        additionalChargeEnabled,
+        additionalChargePerHead,
+        features,
+        active,
+      };
+    });
+
+    return mapped.sort((a, b) => a.price - b.price);
+  }, [plansQuery.data]);
 
   const {
     register,
@@ -99,32 +132,6 @@ export default function AdminPlanos() {
     });
     toast.error(toastMessage);
   };
-
-  useEffect(() => {
-    const loadPlans = async () => {
-      try {
-        const rows = await adminService.listAdminPlans();
-        const mapped: Plan[] = rows.map((p: AdminPlan) => {
-          const name = p.name ?? p.nome ?? '';
-          const price = p.price ?? p.preco ?? 0;
-          const maxCattleRaw = p.maxCattle ?? p.maxCabecas;
-          const maxCattle = maxCattleRaw === null || maxCattleRaw === undefined ? Infinity : maxCattleRaw;
-          const additionalChargeEnabled = p.additionalChargeEnabled ?? p.cobrancaAdicionalAtiva ?? false;
-          const additionalChargePerHead = p.additionalChargePerHead ?? p.valorCobrancaAdicional ?? 0.1;
-          const features = p.features ?? p.recursos ?? [];
-          const active = p.active ?? p.ativo ?? true;
-          return { id: p.id, name, price, maxCattle, additionalChargeEnabled, additionalChargePerHead, features, active };
-        });
-        setPlansData(mapped.sort((a, b) => a.price - b.price));
-      } catch (error) {
-        console.error('Erro ao carregar planos:', error);
-        toast.error('Erro ao carregar planos');
-        setPlansData([]);
-      }
-    };
-
-    void loadPlans();
-  }, []);
 
   const openCreateDialog = () => {
     setEditingPlan(null);
@@ -158,58 +165,29 @@ export default function AdminPlanos() {
     setLoading(true);
     try {
       if (editingPlan) {
-        const updated = await adminService.updateAdminPlan(editingPlan.id, {
-          name: data.name,
-          price: data.price,
-          maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
-          additionalChargeEnabled: data.additionalChargeEnabled,
-          additionalChargePerHead: data.additionalChargePerHead,
-          features: data.features.split('\n').map(f => f.trim()).filter(f => f),
-          active: data.active,
+        await updatePlan.mutateAsync({
+          id: editingPlan.id,
+          data: {
+            name: data.name,
+            price: data.price,
+            maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
+            additionalChargeEnabled: data.additionalChargeEnabled,
+            additionalChargePerHead: data.additionalChargePerHead,
+            features: data.features.split('\n').map((f) => f.trim()).filter((f) => f),
+            active: data.active,
+          },
         });
-
-        const normalized: Plan = {
-          id: updated.id,
-          name: updated.name ?? updated.nome ?? data.name,
-          price: updated.price ?? updated.preco ?? data.price,
-          maxCattle:
-            (updated.maxCattle ?? updated.maxCabecas) === null || (updated.maxCattle ?? updated.maxCabecas) === undefined
-              ? Infinity
-              : (updated.maxCattle ?? updated.maxCabecas) as number,
-          additionalChargeEnabled: updated.additionalChargeEnabled ?? updated.cobrancaAdicionalAtiva ?? data.additionalChargeEnabled,
-          additionalChargePerHead: updated.additionalChargePerHead ?? updated.valorCobrancaAdicional ?? data.additionalChargePerHead,
-          features: updated.features ?? updated.recursos ?? data.features.split('\n').map(f => f.trim()).filter(f => f),
-          active: updated.active ?? updated.ativo ?? data.active,
-        };
-
-        setPlansData(plansData.map(p => p.id === editingPlan.id ? normalized : p));
         toast.success('Plano atualizado com sucesso');
       } else {
-        const created = await adminService.createAdminPlan({
+        await createPlan.mutateAsync({
           name: data.name,
           price: data.price,
           maxCattle: data.maxCattle >= 999999 ? null : data.maxCattle,
           additionalChargeEnabled: data.additionalChargeEnabled,
           additionalChargePerHead: data.additionalChargePerHead,
-          features: data.features.split('\n').map(f => f.trim()).filter(f => f),
+          features: data.features.split('\n').map((f) => f.trim()).filter((f) => f),
           active: data.active,
         });
-
-        const normalized: Plan = {
-          id: created.id,
-          name: created.name ?? created.nome ?? data.name,
-          price: created.price ?? created.preco ?? data.price,
-          maxCattle:
-            (created.maxCattle ?? created.maxCabecas) === null || (created.maxCattle ?? created.maxCabecas) === undefined
-              ? Infinity
-              : (created.maxCattle ?? created.maxCabecas) as number,
-          additionalChargeEnabled: created.additionalChargeEnabled ?? created.cobrancaAdicionalAtiva ?? data.additionalChargeEnabled,
-          additionalChargePerHead: created.additionalChargePerHead ?? created.valorCobrancaAdicional ?? data.additionalChargePerHead,
-          features: created.features ?? created.recursos ?? data.features.split('\n').map(f => f.trim()).filter(f => f),
-          active: created.active ?? created.ativo ?? data.active,
-        };
-
-        setPlansData([...plansData, normalized].sort((a, b) => a.price - b.price));
         toast.success('Plano criado com sucesso');
       }
       setDialogOpen(false);
@@ -225,8 +203,7 @@ export default function AdminPlanos() {
   const handleDelete = async () => {
     if (!deletingPlan) return;
     try {
-      await adminService.deleteAdminPlan(deletingPlan.id);
-      setPlansData(plansData.filter(p => p.id !== deletingPlan.id));
+      await deletePlan.mutateAsync(deletingPlan.id);
       toast.success('Plano deletado com sucesso');
       setDeletingPlan(null);
     } catch (error) {
@@ -237,10 +214,9 @@ export default function AdminPlanos() {
 
   const togglePlanStatus = async (plan: Plan) => {
     try {
-      const updated = await adminService.updateAdminPlan(plan.id, { active: !(plan.active ?? true) });
-      const normalizedActive = updated.active ?? updated.ativo ?? !(plan.active ?? true);
-      setPlansData(plansData.map(p => p.id === plan.id ? { ...p, active: normalizedActive } : p));
-      toast.success(`Plano "${plan.name}" ${updated.active ? 'ativado' : 'desativado'}`);
+      const nextActive = !(plan.active ?? true);
+      await updatePlan.mutateAsync({ id: plan.id, data: { active: nextActive } });
+      toast.success(`Plano "${plan.name}" ${nextActive ? 'ativado' : 'desativado'}`);
     } catch (error) {
       console.error('Erro ao alterar status do plano:', error);
       toast.error('Erro ao alterar status do plano');

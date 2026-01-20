@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Put,
   Param,
   Patch,
   Post,
@@ -19,6 +20,7 @@ import { AdminService } from './admin.service';
 import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 import { UpdatePixConfigDto } from './dto/pix-config.dto';
+import { UpdateCompanySettingsDto } from './dto/company-settings.dto';
 
 function getClientIp(req: any): string {
   const xff = req?.headers?.['x-forwarded-for'];
@@ -208,6 +210,24 @@ export class AdminController {
   @Post('financeiro/pix-config')
   updatePixConfig(@Body() dto: UpdatePixConfigDto) {
     return this.adminService.updatePixConfig(dto);
+  }
+
+  // --- Configurações Gerais (Empresa) ---
+
+  @Roles('super_admin')
+  @Get('configuracoes-gerais')
+  getCompanySettings() {
+    return this.adminService.getCompanySettings();
+  }
+
+  @Roles('super_admin')
+  @Put('configuracoes-gerais')
+  updateCompanySettings(@Body() dto: UpdateCompanySettingsDto, @Req() req: any) {
+    return this.adminService.updateCompanySettings(dto, {
+      userId: req.user?.id,
+      cpfCnpj: req.user?.cpfCnpj,
+      ip: getClientIp(req),
+    });
   }
 
   @Roles('super_admin')

@@ -19,6 +19,7 @@ const __dirname = path.dirname(__filename);
 // Configurações
 const ROOT_DIR = path.join(__dirname, '..');
 const PACKAGE_JSON_PATH = path.join(ROOT_DIR, 'package.json');
+const BACKEND_PACKAGE_JSON_PATH = path.join(ROOT_DIR, 'backend', 'package.json');
 const VERSION_HISTORY_PATH = path.join(ROOT_DIR, 'version-history.json');
 
 /**
@@ -81,13 +82,22 @@ function incrementVersion(version, type = 'patch') {
 }
 
 /**
- * Atualiza package.json com nova versão
+ * Atualiza package.json com nova versão (frontend e backend)
  */
 function updatePackageVersion(newVersion) {
+  // Atualiza package.json do frontend
   const packageJson = JSON.parse(fs.readFileSync(PACKAGE_JSON_PATH, 'utf8'));
   packageJson.version = newVersion;
-  
   fs.writeFileSync(PACKAGE_JSON_PATH, JSON.stringify(packageJson, null, 2) + '\n');
+  
+  // Atualiza package.json do backend se existir
+  if (fs.existsSync(BACKEND_PACKAGE_JSON_PATH)) {
+    const backendPackageJson = JSON.parse(fs.readFileSync(BACKEND_PACKAGE_JSON_PATH, 'utf8'));
+    backendPackageJson.version = newVersion;
+    fs.writeFileSync(BACKEND_PACKAGE_JSON_PATH, JSON.stringify(backendPackageJson, null, 2) + '\n');
+    console.log('✅ Versão do backend atualizada');
+  }
+  
   return packageJson;
 }
 
@@ -261,13 +271,19 @@ function createGitTag(version) {
  * Função principal
  */
 function main() {
-  // Verifica se package.json existe
+  // Verifica se package.json do frontend existe
   if (!fs.existsSync(PACKAGE_JSON_PATH)) {
-    console.error('❌ package.json não encontrado');
+    console.error('❌ package.json do frontend não encontrado');
     process.exit(1);
   }
   
-  // Lê versão atual
+  // Verifica se package.json do backend existe
+  if (!fs.existsSync(BACKEND_PACKAGE_JSON_PATH)) {
+    console.error('❌ package.json do backend não encontrado');
+    process.exit(1);
+  }
+  
+  // Lê versão atual do frontend
   const packageJson = JSON.parse(fs.readFileSync(PACKAGE_JSON_PATH, 'utf8'));
   const currentVersion = packageJson.version;
   

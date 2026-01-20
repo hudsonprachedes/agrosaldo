@@ -67,4 +67,8 @@ export class CreatePropertyDto {
   @IsOptional()
   @IsString()
   plano?: string;
+
+  @IsOptional()
+  @IsString()
+  inscricaoEstadual?: string;
 }

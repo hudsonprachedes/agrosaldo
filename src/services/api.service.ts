@@ -55,6 +55,18 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface CompanySettings {
+  id: string;
+  nome: string;
+  cnpj: string;
+  telefone: string | null;
+  email: string | null;
+  endereco: string | null;
+  site: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 type UserBackendLike = Partial<User> & {
   nome?: string;
   telefone?: string | null;
@@ -275,6 +287,10 @@ export const authService = {
   async logout(): Promise<void> {
     await apiClient.post(API_ROUTES.AUTH.LOGOUT);
     apiClient.clearAuth();
+  },
+
+  async changePassword(data: { currentPassword: string; newPassword: string }): Promise<{ success: true } | { success: boolean }> {
+    return apiClient.post<{ success: true } | { success: boolean }>(API_ROUTES.AUTH.CHANGE_PASSWORD, data);
   },
 };
 
@@ -713,6 +729,21 @@ export const adminService = {
 
   async updatePixConfig(data: Partial<PixConfig>): Promise<PixConfig> {
     return apiClient.post<PixConfig>(API_ROUTES.ADMIN.PIX_CONFIG, data);
+  },
+
+  async getCompanySettings(): Promise<CompanySettings | null> {
+    return apiClient.get<CompanySettings | null>(API_ROUTES.ADMIN.COMPANY_SETTINGS);
+  },
+
+  async updateCompanySettings(data: {
+    nome: string;
+    cnpj: string;
+    telefone?: string;
+    email?: string;
+    endereco?: string;
+    site?: string;
+  }): Promise<CompanySettings> {
+    return apiClient.put<CompanySettings>(API_ROUTES.ADMIN.COMPANY_SETTINGS, data);
   },
 
   async getAuditLogs(params?: {

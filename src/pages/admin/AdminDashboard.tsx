@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { adminService, AdminDashboardActivityItem, AdminDashboardStats, AdminMrrSeriesPoint } from '@/services/api.service';
+import React from 'react';
 import { toast } from 'sonner';
+import { useAdminDashboardData } from '@/hooks/queries/admin/useAdminDashboard';
 import {
   Users,
   Beef,
@@ -17,37 +17,19 @@ import ReactApexChart from 'react-apexcharts';
 import PageSkeleton from '@/components/PageSkeleton';
 
 export default function AdminDashboard() {
-  const [kpis, setKpis] = useState<AdminDashboardStats | null>(null);
-  const [mrrSeries, setMrrSeries] = useState<AdminMrrSeriesPoint[]>([]);
-  const [activity, setActivity] = useState<AdminDashboardActivityItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { kpis, mrrSeries, activity, isPending, isError } = useAdminDashboardData();
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const [stats, series, recent] = await Promise.all([
-          adminService.getDashboardStats(),
-          adminService.getMrrSeries(12),
-          adminService.getDashboardActivity(8),
-        ]);
+  if (isError) {
+    toast.error('Erro ao carregar dados do dashboard');
+  }
 
-        setKpis(stats);
-        setMrrSeries(series);
-        setActivity(recent);
-      } catch (error) {
-        console.error('Erro ao carregar estatísticas:', error);
-        toast.error('Erro ao carregar dados do dashboard');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void loadStats();
-  }, []);
-
-  if (isLoading || !kpis) {
+  if (isPending || !kpis.data) {
     return <PageSkeleton cards={4} lines={12} />;
   }
+
+  const kpisData = kpis.data;
+  const mrrSeriesData = mrrSeries.data ?? [];
+  const activityData = activity.data ?? [];
 
   const mrrChartOptions: ApexCharts.ApexOptions = {
     chart: {
@@ -68,7 +50,7 @@ export default function AdminDashboard() {
       },
     },
     xaxis: {
-      categories: mrrSeries.map((p) => p.month),
+      categories: mrrSeriesData.map((p) => p.month),
       labels: {
         rotate: -45,
         style: { fontSize: '11px' },
@@ -90,14 +72,14 @@ export default function AdminDashboard() {
   const mrrChartSeries = [
     {
       name: 'MRR',
-      data: mrrSeries.map((p) => p.value),
+      data: mrrSeriesData.map((p) => p.value),
     },
   ];
 
   const kpiCards = [
     {
       title: 'Total de Clientes',
-      value: kpis.totalTenants,
+      value: kpisData.totalTenants,
       icon: Users,
       color: 'bg-primary',
       change: '+8%',
@@ -105,7 +87,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Clientes Ativos',
-      value: kpis.activeTenants,
+      value: kpisData.activeTenants,
       icon: CheckCircle,
       color: 'bg-success',
       change: '+12%',
@@ -113,7 +95,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Total de Cabeças',
-      value: kpis.totalCattle.toLocaleString('pt-BR'),
+      value: kpisData.totalCattle.toLocaleString('pt-BR'),
       icon: Beef,
       color: 'bg-earth',
       change: '+5.2%',
@@ -121,7 +103,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'MRR',
-      value: `R$ ${kpis.mrr.toLocaleString('pt-BR')}`,
+      value: `R$ ${kpisData.mrr.toLocaleString('pt-BR')}`,
       icon: DollarSign,
       color: 'bg-wheat',
       change: '+15%',
@@ -129,7 +111,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Solicitações Pendentes',
-      value: kpis.pendingRequests,
+      value: kpisData.pendingRequests,
       icon: Clock,
       color: 'bg-warning',
       change: '',
@@ -137,7 +119,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Inadimplentes',
-      value: kpis.overdueCount,
+      value: kpisData.overdueCount,
       icon: AlertCircle,
       color: 'bg-error',
       change: '-2',
@@ -201,7 +183,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">Evolução MRR</CardTitle>
           </CardHeader>
           <CardContent>
-            {mrrSeries.length === 0 ? (
+            {mrrSeriesData.length === 0 ? (
               <div className="h-48 flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
                 Sem dados de MRR para exibir
               </div>
@@ -217,12 +199,12 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">Atividade Recente</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {activity.length === 0 ? (
+            {activityData.length === 0 ? (
               <div className="h-48 flex items-center justify-center text-muted-foreground border-2 border-dashed border-border rounded-lg">
                 Sem atividades recentes
               </div>
             ) : (
-              activity.map((item) => {
+              activityData.map((item) => {
                 const icon =
                   item.action === 'USER_APPROVED' ? (
                     <CheckCircle className="w-5 h-5 text-success" />

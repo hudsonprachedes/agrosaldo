@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,8 +15,14 @@ import {
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserPlus, CheckCircle, XCircle, Eye, Calendar, Trash2 } from 'lucide-react';
-import { adminService } from '@/services/api.service';
 import { toast } from 'sonner';
+import { useAdminSolicitations } from '@/hooks/queries/admin/useAdminSolicitations';
+import { useAdminTenants } from '@/hooks/queries/admin/useAdminTenants';
+import {
+  useAdminApproveSolicitation,
+  useAdminDeleteSolicitation,
+  useAdminRejectSolicitation,
+} from '@/hooks/mutations/admin/useAdminApproveRejectSolicitation';
 
 interface PendingSignup {
   id: string;
@@ -48,65 +54,57 @@ type SignupRequestUi = {
 };
 
 export default function AdminCadastros() {
-  const [signups, setSignups] = useState<PendingSignup[]>([]);
   const [selectedSignup, setSelectedSignup] = useState<PendingSignup | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [trialDays, setTrialDays] = useState(30);
   const [trialPlan, setTrialPlan] = useState<'porteira' | 'piquete' | 'retiro' | 'estancia' | 'barao'>('porteira');
 
-  useEffect(() => {
-    const loadSignups = async () => {
-      try {
-        const rows = (await adminService.getRequests()) as unknown as SignupRequestUi[];
-        const signupsOnly = rows.filter((r) => String(r.type ?? '').toLowerCase() === 'signup');
+  const solicitationsQuery = useAdminSolicitations();
+  const tenantsQuery = useAdminTenants();
 
-        const mapped: PendingSignup[] = signupsOnly.map((r) => {
-          const city = '';
-          let state = '';
-          let cattleCount = 0;
-          let referralCoupon: string | undefined;
+  const approveMutation = useAdminApproveSolicitation();
+  const rejectMutation = useAdminRejectSolicitation();
+  const deleteMutation = useAdminDeleteSolicitation();
 
-          if (r.notes) {
-            try {
-              const parsed = JSON.parse(r.notes) as any;
-              state = typeof parsed?.state === 'string' ? parsed.state : '';
-              cattleCount = typeof parsed?.cattleCount === 'number' ? parsed.cattleCount : 0;
-              referralCoupon = typeof parsed?.referralCoupon === 'string' ? parsed.referralCoupon : undefined;
-            } catch {
-              // ignore
-            }
-          }
+  const signups = useMemo<PendingSignup[]>(() => {
+    const rows = (solicitationsQuery.data ?? []) as unknown as SignupRequestUi[];
+    const signupsOnly = rows.filter((r) => String(r.type ?? '').toLowerCase() === 'signup');
 
-          return {
-            id: r.cpfCnpj,
-            solicitacaoId: r.id,
-            nome: r.name,
-            cpfCnpj: r.cpfCnpj,
-            email: r.email,
-            celular: r.phone ?? '',
-            numeroCabecas: cattleCount,
-            municipio: city,
-            uf: state,
-            requestDate: r.submittedAt ?? new Date().toISOString(),
-            status: r.status,
-            cupomIndicacao: referralCoupon,
-          };
-        });
+    return signupsOnly.map((r) => {
+      const city = '';
+      let state = '';
+      let cattleCount = 0;
+      let referralCoupon: string | undefined;
 
-        setSignups(mapped);
-      } catch (error) {
-        console.error('Erro ao carregar cadastros:', error);
-        toast.error('Erro ao carregar cadastros');
-      } finally {
-        setIsLoading(false);
+      if (r.notes) {
+        try {
+          const parsed = JSON.parse(r.notes) as any;
+          state = typeof parsed?.state === 'string' ? parsed.state : '';
+          cattleCount = typeof parsed?.cattleCount === 'number' ? parsed.cattleCount : 0;
+          referralCoupon = typeof parsed?.referralCoupon === 'string' ? parsed.referralCoupon : undefined;
+        } catch {
+          // ignore
+        }
       }
-    };
 
-    void loadSignups();
-  }, []);
+      return {
+        id: r.cpfCnpj,
+        solicitacaoId: r.id,
+        nome: r.name,
+        cpfCnpj: r.cpfCnpj,
+        email: r.email,
+        celular: r.phone ?? '',
+        numeroCabecas: cattleCount,
+        municipio: city,
+        uf: state,
+        requestDate: r.submittedAt ?? new Date().toISOString(),
+        status: r.status,
+        cupomIndicacao: referralCoupon,
+      };
+    });
+  }, [solicitationsQuery.data]);
 
   const handleApprove = async () => {
     if (!selectedSignup) return;
@@ -116,16 +114,11 @@ export default function AdminCadastros() {
         toast.error('Solicitação inválida');
         return;
       }
-      await adminService.approveRequest(selectedSignup.solicitacaoId, {
-        trialDays,
-        trialPlan,
+
+      await approveMutation.mutateAsync({
+        id: selectedSignup.solicitacaoId,
+        data: { trialDays, trialPlan },
       });
-      const updated = signups.map(s =>
-        s.id === selectedSignup.id
-          ? { ...s, status: 'approved' as const }
-          : s
-      );
-      setSignups(updated);
       setShowApprovalDialog(false);
       setSelectedSignup(null);
       toast.success(`${selectedSignup.nome} foi aprovado`);
@@ -141,13 +134,8 @@ export default function AdminCadastros() {
         toast.error('Solicitação inválida');
         return;
       }
-      await adminService.rejectRequest(signup.solicitacaoId, 'Rejeitado pelo Super Admin');
-      const updated = signups.map(s =>
-        s.id === signup.id
-          ? { ...s, status: 'rejected' as const }
-          : s
-      );
-      setSignups(updated);
+
+      await rejectMutation.mutateAsync({ id: signup.solicitacaoId, reason: 'Rejeitado pelo Super Admin' });
       toast.success(`Cadastro de ${signup.nome} foi rejeitado`);
     } catch (error) {
       console.error('Erro ao rejeitar cadastro:', error);
@@ -165,8 +153,8 @@ export default function AdminCadastros() {
       }
 
       // Verificar se o CPF/CNPJ está associado a algum cliente
-      const tenants = await adminService.getTenants();
-      const isClient = tenants.some(tenant => tenant.cpfCnpj === selectedSignup.cpfCnpj);
+      const tenants = (tenantsQuery.data ?? []) as any[];
+      const isClient = tenants.some((tenant) => tenant.cpfCnpj === selectedSignup.cpfCnpj);
       
       if (isClient) {
         toast.error('Não é possível excluir este cadastro pois está associado a um cliente ativo');
@@ -175,9 +163,7 @@ export default function AdminCadastros() {
         return;
       }
 
-      await adminService.deleteRequest(selectedSignup.solicitacaoId);
-      const updated = signups.filter(s => s.id !== selectedSignup.id);
-      setSignups(updated);
+      await deleteMutation.mutateAsync(selectedSignup.solicitacaoId);
       setShowDeleteDialog(false);
       setSelectedSignup(null);
       toast.success(`Cadastro de ${selectedSignup.nome} foi excluído`);
@@ -201,7 +187,7 @@ export default function AdminCadastros() {
 
   const pendingCount = signups.filter(s => s.status === 'pending').length;
 
-  if (isLoading) {
+  if (solicitationsQuery.isPending || tenantsQuery.isPending) {
     return <div className="flex items-center justify-center h-screen">Carregando cadastros...</div>;
   }
 

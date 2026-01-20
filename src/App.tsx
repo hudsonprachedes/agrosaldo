@@ -2,7 +2,7 @@ import { ReactNode, Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import QueryProvider from "@/lib/react-query/QueryProvider";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -43,6 +43,7 @@ const AdminAuditoria = lazy(() => import("./pages/admin/AdminAuditoria"));
 const AdminCadastros = lazy(() => import("./pages/admin/AdminCadastros"));
 const AdminAnalises = lazy(() => import("./pages/admin/AdminAnalises"));
 const AdminRegulamentacoes = lazy(() => import("./pages/admin/AdminRegulamentacoes"));
+const AdminConfiguracoes = lazy(() => import("./pages/admin/AdminConfiguracoes"));
 
 // Other Pages
 const Cadastro = lazy(() => import("./pages/Cadastro"));
@@ -52,8 +53,6 @@ const Bloqueado = lazy(() => import("./pages/Bloqueado"));
 import AppLayout from "./components/layout/AppLayout";
 import MobileLayout from "./components/layout/MobileLayout";
 import AdminLayout from "./components/layout/AdminLayout";
-
-const queryClient = new QueryClient();
 
 function ProtectedRoute({ 
   children, 
@@ -121,7 +120,7 @@ function WebLayoutRoute({ children }: { children: ReactNode }) {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <QueryProvider>
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
@@ -244,6 +243,10 @@ const App = () => (
               <Route path="/admin/auditoria" element={
                 <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminAuditoria /></AdminLayout></ProtectedRoute>
               } />
+
+              <Route path="/admin/configuracoes" element={
+                <ProtectedRoute requireProperty={false} requireAdmin={true}><AdminLayout><AdminConfiguracoes /></AdminLayout></ProtectedRoute>
+              } />
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />
@@ -252,7 +255,7 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
-  </QueryClientProvider>
+  </QueryProvider>
 );
 
 export default App;

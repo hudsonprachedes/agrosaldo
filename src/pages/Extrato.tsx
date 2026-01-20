@@ -5,6 +5,8 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { apiClient } from '@/lib/api-client';
 import type { PaginatedResponse } from '@/types';
 import type { MovementDTO } from '@/types';
+import { useMovementsExtract } from '@/hooks/queries/useMovementsExtract';
+import { useDeleteMovement } from '@/hooks/mutations/useDeleteMovement';
 import {
   Baby,
   Skull,
@@ -127,48 +129,35 @@ export default function Extrato() {
   const [currentPage, setCurrentPage] = useState(1);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [movements, setMovements] = useState<MovementDTO[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 20;
 
-  useEffect(() => {
-    const load = async () => {
-      if (!selectedProperty) return;
-      try {
-        setIsLoading(true);
+  const extractParams = useMemo(
+    () => ({
+      type: filterType,
+      dateFrom: dateFrom ? dateFrom.toISOString().slice(0, 10) : undefined,
+      dateTo: dateTo ? dateTo.toISOString().slice(0, 10) : undefined,
+      page: currentPage,
+      limit: itemsPerPage,
+    }),
+    [filterType, dateFrom, dateTo, currentPage],
+  );
 
-        const response = await apiClient.get<PaginatedResponse<MovementDTO>>('/lancamentos/extrato', {
-          params: {
-            type: filterType,
-            dateFrom: dateFrom ? dateFrom.toISOString().slice(0, 10) : undefined,
-            dateTo: dateTo ? dateTo.toISOString().slice(0, 10) : undefined,
-            page: currentPage,
-            limit: itemsPerPage,
-          },
-        });
-
-        setMovements(response.data);
-        setTotalItems(response.pagination.total);
-      } catch (error) {
-        console.error('Erro ao carregar extrato:', error);
-        toast.error('Erro ao carregar extrato');
-        setMovements([]);
-        setTotalItems(0);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void load();
-  }, [selectedProperty, filterType, dateFrom, dateTo, currentPage]);
+  const {
+    data: extractResponse,
+    isPending: isLoading,
+    isError,
+  } = useMovementsExtract(selectedProperty?.id, extractParams);
 
   useEffect(() => {
-    if (!photoDialogOpen && selectedPhoto) {
-      URL.revokeObjectURL(selectedPhoto);
-      setSelectedPhoto(null);
+    if (isError) {
+      toast.error('Erro ao carregar extrato');
     }
-  }, [photoDialogOpen, selectedPhoto]);
+  }, [isError]);
+
+  const movements = useMemo(() => (extractResponse?.data ?? []) as MovementDTO[], [extractResponse?.data]);
+  const totalItems = extractResponse?.pagination?.total ?? 0;
+
+  const deleteMovement = useDeleteMovement(selectedProperty?.id);
 
   // Save filters to localStorage when they change
   useEffect(() => {
@@ -231,7 +220,14 @@ export default function Extrato() {
   };
 
   const handleDelete = (movement: MovementDTO) => {
-    toast.success(`Lançamento ${movement.id} excluído`);
+    deleteMovement.mutate(movement.id, {
+      onSuccess: () => {
+        toast.success(`Lançamento ${movement.id} excluído`);
+      },
+      onError: () => {
+        toast.error('Erro ao excluir lançamento');
+      },
+    });
   };
 
   const handlePrintExtract = () => {
@@ -307,6 +303,14 @@ export default function Extrato() {
       month: 'short',
       year: 'numeric',
     });
+  };
+
+  const handlePhotoDialogOpenChange = (open: boolean) => {
+    setPhotoDialogOpen(open);
+    if (!open && selectedPhoto) {
+      URL.revokeObjectURL(selectedPhoto);
+      setSelectedPhoto(null);
+    }
   };
 
   const content = (
@@ -691,16 +695,16 @@ export default function Extrato() {
       )}
 
       {/* Photo Dialog */}
-      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
-        <DialogContent className="max-w-3xl">
+      <Dialog open={photoDialogOpen} onOpenChange={handlePhotoDialogOpenChange}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Foto da Mortalidade</DialogTitle>
+            <DialogTitle>Foto da Ocorrência</DialogTitle>
           </DialogHeader>
           {selectedPhoto && (
             <div className="mt-4">
               <img 
                 src={selectedPhoto} 
-                alt="Foto da mortalidade" 
+                alt="Foto da ocorrência" 
                 className="w-full rounded-lg"
               />
             </div>
