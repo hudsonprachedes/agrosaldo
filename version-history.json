@@ -1,0 +1,14 @@
+[
+  {
+    "version": "0.0.1.0",
+    "date": "2026-01-20",
+    "changes": [
+      "🔧 Atualização de regras, logs de atividade e melhorias no painel administrativo",
+      "🔧 onboarding",
+      "🔧 versao",
+      "🔧 regulamentacoes",
+      "🔧 atualização de versão, regulamentações estaduais e declarações de rebanho"
+    ],
+    "type": "patch"
+  }
+]

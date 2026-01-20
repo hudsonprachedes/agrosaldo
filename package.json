@@ -1,7 +1,7 @@
 {
   "name": "agrosaldo",
   "private": true,
-  "version": "0.0.0.10",
+  "version": "0.0.1.0",
   "type": "module",
   "engines": {
     "node": "24"
@@ -22,7 +22,8 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "test:contracts": "playwright test --config playwright.config.ts",
-    "version:bump": "node scripts/bump-version.cjs"
+    "version:bump": "node scripts/bump-version.cjs",
+    "version:auto": "node scripts/auto-version.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
