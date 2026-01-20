@@ -166,7 +166,9 @@ export class FinanceService {
     const periods = this.getPeriods(now, period);
 
     const onboardingDate = await this.getOnboardingDate(propertyId);
-    const onboardingStart = onboardingDate ? this.startOfMonth(onboardingDate) : null;
+    const onboardingStart = onboardingDate
+      ? this.startOfMonth(onboardingDate)
+      : null;
 
     const rangeStart =
       periods[0]?.start ?? this.startOfMonth(this.addMonths(now, -5));

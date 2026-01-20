@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PapelUsuario, Prisma, StatusUsuario } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { HerdEvolutionService } from '../../common/herd-evolution.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import bcrypt from 'bcryptjs';
@@ -17,9 +18,18 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly herdEvolution: HerdEvolutionService,
   ) {}
 
-  private readonly CANONICAL_AGE_GROUPS = ['0-4m', '5-12m', '13-24m', '25-36m', '36+m'] as const;
+  private readonly HERD_SPECIES = ['bovino', 'bubalino'] as const;
+
+  private readonly CANONICAL_AGE_GROUPS = [
+    '0-4m',
+    '5-12m',
+    '13-24m',
+    '25-36m',
+    '36+m',
+  ] as const;
 
   private normalizeAgeGroupId(raw: unknown): string {
     if (typeof raw !== 'string' || !raw) return 'unknown';
@@ -38,7 +48,7 @@ export class AuthService {
     return directMap[value] ?? value;
   }
 
-  private mapSexoFromFrontend(sex: 'male' | 'female' | string): 'macho' | 'femea' {
+  private mapSexoFromFrontend(sex: string): 'macho' | 'femea' {
     return sex === 'female' ? 'femea' : 'macho';
   }
 
@@ -143,16 +153,16 @@ export class AuthService {
       .map((item: any) => item?.propriedade?.id)
       .filter(Boolean);
 
-    const cattleAgg = await this.prisma.rebanho.groupBy({
+    const herdAgg = await this.prisma.rebanho.groupBy({
       by: ['propriedadeId'],
       where: {
         propriedadeId: { in: propertyIds },
-        especie: 'bovino',
+        especie: { in: [...this.HERD_SPECIES] },
       },
       _sum: { cabecas: true },
     });
 
-    const cattleByPropertyId = (cattleAgg ?? []).reduce(
+    const herdByPropertyId = (herdAgg ?? []).reduce(
       (acc: Record<string, number>, row: any) => {
         const key = row.propriedadeId;
         acc[key] = row._sum?.cabecas ?? 0;
@@ -179,7 +189,7 @@ export class AuthService {
               this.mapPropertyToDto(
                 item.propriedade,
                 user.id,
-                cattleByPropertyId[item?.propriedade?.id] ?? 0,
+                herdByPropertyId[item?.propriedade?.id] ?? 0,
               ),
             )
           : [],
@@ -318,16 +328,16 @@ export class AuthService {
       .map((item: any) => item?.propriedade?.id)
       .filter(Boolean);
 
-    const cattleAgg = await this.prisma.rebanho.groupBy({
+    const herdAgg = await this.prisma.rebanho.groupBy({
       by: ['propriedadeId'],
       where: {
         propriedadeId: { in: propertyIds },
-        especie: 'bovino',
+        especie: { in: [...this.HERD_SPECIES] },
       },
       _sum: { cabecas: true },
     });
 
-    const cattleByPropertyId = (cattleAgg ?? []).reduce(
+    const herdByPropertyId = (herdAgg ?? []).reduce(
       (acc: Record<string, number>, row: any) => {
         const key = row.propriedadeId;
         acc[key] = row._sum?.cabecas ?? 0;
@@ -352,7 +362,7 @@ export class AuthService {
         this.mapPropertyToDto(
           item.propriedade,
           user.id,
-          cattleByPropertyId[item?.propriedade?.id] ?? 0,
+          herdByPropertyId[item?.propriedade?.id] ?? 0,
         ),
       ),
     };
@@ -394,14 +404,18 @@ export class AuthService {
         throw new ForbiddenException('Usuário não possui acesso à propriedade');
       }
 
-      const canonicalSet = new Set(this.CANONICAL_AGE_GROUPS as unknown as string[]);
+      const canonicalSet = new Set(
+        this.CANONICAL_AGE_GROUPS as unknown as string[],
+      );
 
       const normalized = balances
         .map((b) => {
           const qty = Number((b as any).quantity ?? 0);
           const species = String((b as any).species ?? '').trim();
           const ageGroupId = this.normalizeAgeGroupId((b as any).ageGroupId);
-          const sex = this.mapSexoFromFrontend(String((b as any).sex ?? 'male'));
+          const sex = this.mapSexoFromFrontend(
+            String((b as any).sex ?? 'male'),
+          );
           return {
             species,
             ageGroupId: canonicalSet.has(ageGroupId) ? ageGroupId : 'unknown',
@@ -409,7 +423,11 @@ export class AuthService {
             quantity: Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0,
           };
         })
-        .filter((b) => (b.species === 'bovino' || b.species === 'bubalino') && b.quantity > 0);
+        .filter(
+          (b) =>
+            (b.species === 'bovino' || b.species === 'bubalino') &&
+            b.quantity > 0,
+        );
 
       // Zerar estoque existente dessas espécies antes de aplicar o saldo inicial.
       await tx.rebanho.deleteMany({
@@ -419,16 +437,25 @@ export class AuthService {
         },
       });
 
+      await (tx as any).loteRebanho.deleteMany({
+        where: {
+          propriedadeId: propertyId,
+          especie: { in: ['bovino', 'bubalino'] },
+        },
+      });
+
       if (normalized.length > 0) {
-        await tx.rebanho.createMany({
-          data: normalized.map((b) => ({
-            propriedadeId: propertyId,
-            especie: b.species,
-            faixaEtaria: b.ageGroupId,
-            sexo: b.sex as any,
-            cabecas: b.quantity,
-          })),
-        });
+        for (const b of normalized) {
+          await this.herdEvolution.createBatchEntry(tx as any, {
+            propertyId,
+            species: b.species,
+            sex: b.sex as any,
+            initialAgeGroup: b.ageGroupId,
+            baseDate: onboardingDate,
+            quantity: b.quantity,
+            source: 'saldo_inicial',
+          });
+        }
 
         await tx.movimento.createMany({
           data: normalized.map((b) => ({
@@ -449,13 +476,11 @@ export class AuthService {
         });
       }
 
-      const totalCattle = normalized
-        .filter((b) => b.species === 'bovino')
-        .reduce((sum, b) => sum + b.quantity, 0);
+      const totalHerd = normalized.reduce((sum, b) => sum + b.quantity, 0);
 
       await tx.propriedade.update({
         where: { id: propertyId },
-        data: { quantidadeGado: totalCattle },
+        data: { quantidadeGado: totalHerd },
       });
 
       return tx.usuario.update({

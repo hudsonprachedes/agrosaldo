@@ -69,7 +69,9 @@ export class PropertiesService {
       orderBy: { id: 'asc' },
     });
 
-    const propertyIds = rows.map((r) => (r.propriedade as any).id).filter(Boolean);
+    const propertyIds = rows
+      .map((r) => (r.propriedade as any).id)
+      .filter(Boolean);
 
     const cattleAgg = await this.prisma.rebanho.groupBy({
       by: ['propriedadeId'],

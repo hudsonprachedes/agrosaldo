@@ -34,6 +34,15 @@ function compareMonthKey(a: string, b: string) {
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly HERD_SPECIES = ['bovino', 'bubalino'] as const;
+
+  private isHerdSpecies(species: unknown) {
+    return (
+      typeof species === 'string' &&
+      (this.HERD_SPECIES as unknown as string[]).includes(species)
+    );
+  }
+
   private async getOnboardingMonthKey(propertyId: string) {
     const onboarding = await this.prisma.movimento.findFirst({
       where: {
@@ -56,7 +65,10 @@ export class AnalyticsService {
 
     const [balance, movements] = await Promise.all([
       this.prisma.rebanho.findMany({
-        where: { propriedadeId: propertyId, especie: 'bovino' },
+        where: {
+          propriedadeId: propertyId,
+          especie: { in: [...this.HERD_SPECIES] },
+        },
       }),
       this.prisma.movimento.findMany({
         where: {
@@ -96,6 +108,8 @@ export class AnalyticsService {
     const deltaByMonth: Record<string, number> = {};
 
     for (const mv of movements as any[]) {
+      const mvSpecies = mv.especie;
+      if (!this.isHerdSpecies(mvSpecies)) continue;
       const key = monthKey(new Date(mv.data));
       if (mv.tipo === 'nascimento') {
         birthsByMonth[key] = (birthsByMonth[key] ?? 0) + (mv.quantidade ?? 0);

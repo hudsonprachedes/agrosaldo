@@ -129,7 +129,10 @@ export class LivestockController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Headers('x-property-id') propertyId: string) {
+  remove(
+    @Param('id') id: string,
+    @Headers('x-property-id') propertyId: string,
+  ) {
     return this.livestockService.remove(propertyId, id);
   }
 }

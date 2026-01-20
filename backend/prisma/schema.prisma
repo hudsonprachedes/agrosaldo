@@ -140,6 +140,8 @@ model Propriedade {
   usuarios        UsuarioPropriedade[]
   preferencias    PreferenciasUsuario[]
   rebanho         Rebanho[]
+  lotesRebanho    LoteRebanho[]
+  saldosOutrasEspecies SaldoOutrasEspecies[]
   movimentos      Movimento[]
   questionariosEpidemiologicos QuestionarioEpidemiologico[]
   declaracoesRebanho DeclaracaoRebanho[]
@@ -190,6 +192,40 @@ model Rebanho {
   propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
 
   @@map("Livestock")
+}
+
+model LoteRebanho {
+  id            String    @id @default(uuid()) @map("id")
+  propriedadeId String    @map("propertyId")
+  especie       String    @default("bovino") @map("species")
+  sexo          TipoSexo  @map("sex")
+  faixaInicial  String    @map("initialAgeGroup")
+  faixaAtual    String    @map("currentAgeGroup")
+  dataBase      DateTime  @map("baseDate")
+  quantidadeAtual Int     @map("currentQuantity")
+  origem        String    @map("source")
+  criadoEm      DateTime  @default(now()) @map("createdAt")
+  atualizadoEm  DateTime  @updatedAt @map("updatedAt")
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@index([propriedadeId, especie])
+  @@index([propriedadeId, especie, sexo, faixaAtual])
+  @@map("HerdBatch")
+}
+
+model SaldoOutrasEspecies {
+  id            String    @id @default(uuid()) @map("id")
+  propriedadeId String    @map("propertyId")
+  especie       String    @map("species")
+  cabecas       Int       @map("headcount")
+  snapshotEm    DateTime  @map("snapshotAt")
+  criadoEm      DateTime  @default(now()) @map("createdAt")
+  atualizadoEm  DateTime  @updatedAt @map("updatedAt")
+  propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+
+  @@unique([propriedadeId, especie])
+  @@index([propriedadeId])
+  @@map("OtherSpeciesBalance")
 }
 
 model Movimento {

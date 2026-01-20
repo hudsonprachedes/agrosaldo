@@ -10,6 +10,10 @@ export class CreateMovementDto {
   @IsString()
   type: string;
 
+  @IsOptional()
+  @IsString()
+  species?: string;
+
   @IsDateString()
   date: string;
 

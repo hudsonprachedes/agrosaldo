@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
@@ -34,6 +35,9 @@ export class MovementsController {
   constructor(private readonly movementsService: MovementsService) {}
 
   @Post(':id/foto')
+  @Throttle({
+    default: { ttl: 60, limit: 30 },
+  })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -100,6 +104,9 @@ export class MovementsController {
   }
 
   @Post('fotos/limpeza')
+  @Throttle({
+    default: { ttl: 3600, limit: 20 },
+  })
   cleanupPhotos(
     @Headers('x-property-id') propertyId: string,
     @Query('days') days?: string,
@@ -186,7 +193,10 @@ export class MovementsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Headers('x-property-id') propertyId: string) {
+  findOne(
+    @Param('id') id: string,
+    @Headers('x-property-id') propertyId: string,
+  ) {
     return this.movementsService.findOne(propertyId, id);
   }
 
@@ -200,7 +210,10 @@ export class MovementsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Headers('x-property-id') propertyId: string) {
+  remove(
+    @Param('id') id: string,
+    @Headers('x-property-id') propertyId: string,
+  ) {
     return this.movementsService.remove(propertyId, id);
   }
 }

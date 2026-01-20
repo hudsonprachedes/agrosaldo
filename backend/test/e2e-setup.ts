@@ -39,34 +39,38 @@ jest.mock('../src/prisma/prisma.service', () => {
     PrismaService: jest.fn().mockImplementation(() => {
       const prismaMock: any = {
         usuario: {
-        findMany: jest.fn().mockResolvedValue([mockUser]),
-        findFirst: jest.fn().mockImplementation(async (args: any) => {
-          const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
-          if (cpfCnpj === '12345678901') {
-            return mockUser;
-          }
-          return null;
-        }),
-        findUnique: jest.fn().mockImplementation(async (args: any) => {
-          if (args.where.cpfCnpj === '12345678901') {
-            return mockUser;
-          }
-          if (args.where.id === 'user-1') {
-            return mockUser;
-          }
-          return null;
-        }),
-        create: jest.fn().mockResolvedValue(mockUser),
-        update: jest.fn().mockResolvedValue(mockUser),
-        delete: jest.fn().mockResolvedValue(mockUser),
-        count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([mockUser]),
+          findFirst: jest.fn().mockImplementation(async (args: any) => {
+            const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
+            if (cpfCnpj === '12345678901') {
+              return mockUser;
+            }
+            return null;
+          }),
+          findUnique: jest.fn().mockImplementation(async (args: any) => {
+            if (args.where.cpfCnpj === '12345678901') {
+              return mockUser;
+            }
+            if (args.where.id === 'user-1') {
+              return mockUser;
+            }
+            return null;
+          }),
+          create: jest.fn().mockResolvedValue(mockUser),
+          update: jest.fn().mockResolvedValue(mockUser),
+          delete: jest.fn().mockResolvedValue(mockUser),
+          count: jest.fn().mockResolvedValue(1),
         },
         propriedade: {
-        findMany: jest.fn().mockResolvedValue([]),
-        findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({ id: '1', nome: 'Test Property' }),
-        update: jest.fn().mockResolvedValue({ id: '1', nome: 'Test Property' }),
-        delete: jest.fn().mockResolvedValue({ id: '1' }),
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest
+            .fn()
+            .mockResolvedValue({ id: '1', nome: 'Test Property' }),
+          update: jest
+            .fn()
+            .mockResolvedValue({ id: '1', nome: 'Test Property' }),
+          delete: jest.fn().mockResolvedValue({ id: '1' }),
         },
         rebanho: {
           findMany: jest.fn().mockResolvedValue([]),
@@ -75,8 +79,22 @@ jest.mock('../src/prisma/prisma.service', () => {
           create: jest.fn().mockResolvedValue({ id: '1', especie: 'bovino' }),
           update: jest.fn().mockResolvedValue({ id: '1', especie: 'bovino' }),
           updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
           delete: jest.fn().mockResolvedValue({ id: '1' }),
           groupBy: jest.fn().mockResolvedValue([]),
+        },
+        loteRebanho: {
+          findMany: jest.fn().mockResolvedValue([]),
+          create: jest.fn().mockResolvedValue({ id: 'hb-1' }),
+          update: jest.fn().mockResolvedValue({ id: 'hb-1' }),
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+        },
+        saldoOutrasEspecies: {
+          findMany: jest.fn().mockResolvedValue([]),
+          findUnique: jest.fn().mockResolvedValue(null),
+          upsert: jest.fn().mockResolvedValue({ id: 'os-1' }),
+          deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
         },
         movimento: {
           findMany: jest.fn().mockResolvedValue([]),
@@ -99,9 +117,10 @@ jest.mock('../src/prisma/prisma.service', () => {
         usuarioPropriedade: {
           findMany: jest.fn().mockResolvedValue([]),
           findFirst: jest.fn().mockResolvedValue({ id: 'up-1' }),
-          create: jest
-            .fn()
-            .mockResolvedValue({ usuarioId: 'user-1', propriedadeId: 'prop-1' }),
+          create: jest.fn().mockResolvedValue({
+            usuarioId: 'user-1',
+            propriedadeId: 'prop-1',
+          }),
         },
         $transaction: jest.fn().mockImplementation(async (fn: any) => {
           return fn(prismaMock);

@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { Express } from 'express';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import {
   HttpExceptionFilter,
@@ -19,11 +20,10 @@ export async function createApp(
     process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
   const app = expressInstance
-    ? await NestFactory.create(
-        AppModule,
-        new ExpressAdapter(expressInstance),
-        { bodyParser: false, logger: isProduction ? false : undefined },
-      )
+    ? await NestFactory.create(AppModule, new ExpressAdapter(expressInstance), {
+        bodyParser: false,
+        logger: isProduction ? false : undefined,
+      })
     : await NestFactory.create(AppModule, {
         logger: isProduction ? false : undefined,
       });
@@ -32,6 +32,12 @@ export async function createApp(
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', true);
+
+  expressApp.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   const corsOriginsEnv = process.env.CORS_ORIGIN;
   const corsOrigins = (

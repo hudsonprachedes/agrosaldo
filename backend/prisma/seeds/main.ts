@@ -9,6 +9,7 @@ import { seedMovements } from './movements.seed';
 import { seedEpidemiologySurveys } from './epidemiology.seed';
 import { seedAdmin } from './admin.seed';
 import { seedRegulations } from './regulations.seed';
+import { HerdEvolutionService } from '../../src/common/herd-evolution.service';
 
 const TEST_USER_CPF_CNPJ = '52998224725';
 const SUPER_ADMIN_CPF_CNPJ = '04252011000110';
@@ -67,6 +68,12 @@ async function main() {
               (prisma as any).movimento.deleteMany({
                 where: { propriedadeId: { in: testPropertyIds } },
               }),
+              (prisma as any).loteRebanho.deleteMany({
+                where: { propriedadeId: { in: testPropertyIds } },
+              }),
+              (prisma as any).saldoOutrasEspecies.deleteMany({
+                where: { propriedadeId: { in: testPropertyIds } },
+              }),
               (prisma as any).rebanho.deleteMany({
                 where: { propriedadeId: { in: testPropertyIds } },
               }),
@@ -91,6 +98,16 @@ async function main() {
     console.log('📊 Criando movimentações...');
     await seedMovements(prisma);
     console.log('✅ Movimentações criadas com sucesso\n');
+
+    console.log('🐄 Reconstruindo lotes (HerdBatch) e rebanho bovino a partir das movimentações...');
+    const properties = await (prisma as any).propriedade.findMany({
+      select: { id: true },
+    });
+    const herdEvolution = new HerdEvolutionService(prisma as any);
+    for (const p of properties ?? []) {
+      await herdEvolution.rebuildFromMovements(prisma as any, p.id);
+    }
+    console.log('✅ Lotes e rebanho bovino reconstruídos com sucesso\n');
 
     console.log('💉 Criando dados epidemiológicos...');
     await seedEpidemiologySurveys(prisma);

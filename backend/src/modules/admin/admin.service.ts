@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -379,6 +383,13 @@ export class AdminService {
         },
       });
 
+      await (tx as any).loteRebanho.deleteMany({
+        where: {
+          propriedadeId: propertyId,
+          especie: { in: ['bovino', 'bubalino'] },
+        },
+      });
+
       await tx.propriedade.update({
         where: { id: propertyId },
         data: { quantidadeGado: 0 },
@@ -611,7 +622,9 @@ export class AdminService {
       .findMany({
         where: { papel: { in: ['proprietario', 'operador'] as any } },
         include: {
-          propriedades: { include: { propriedade: { include: { rebanho: true } } } },
+          propriedades: {
+            include: { propriedade: { include: { rebanho: true } } },
+          },
           assinaturas: {
             orderBy: { inicioEm: 'desc' },
             take: 1,
@@ -832,7 +845,7 @@ export class AdminService {
       ? dto.paidAt
         ? new Date(dto.paidAt)
         : null
-      : existing.pagoEm ?? null;
+      : (existing.pagoEm ?? null);
 
     const shouldUpdateSnapshot =
       willSetPaidAt &&
@@ -997,7 +1010,9 @@ export class AdminService {
     referrerCpfCnpj?: string;
     referrerPhone?: string;
   }) {
-    const code = String(dto.code ?? '').trim().toUpperCase();
+    const code = String(dto.code ?? '')
+      .trim()
+      .toUpperCase();
 
     const created = await (this.prisma as any).cupomIndicacao.create({
       data: {
@@ -1012,9 +1027,14 @@ export class AdminService {
     });
 
     if (String(dto.type ?? '').toLowerCase() === 'referral') {
-      const name = typeof dto.referrerName === 'string' ? dto.referrerName.trim() : '';
-      const cpfCnpj = typeof dto.referrerCpfCnpj === 'string' ? dto.referrerCpfCnpj.trim() : '';
-      const phone = typeof dto.referrerPhone === 'string' ? dto.referrerPhone.trim() : '';
+      const name =
+        typeof dto.referrerName === 'string' ? dto.referrerName.trim() : '';
+      const cpfCnpj =
+        typeof dto.referrerCpfCnpj === 'string'
+          ? dto.referrerCpfCnpj.trim()
+          : '';
+      const phone =
+        typeof dto.referrerPhone === 'string' ? dto.referrerPhone.trim() : '';
 
       if (name) {
         await (this.prisma as any).indicadorParceiro.upsert({
@@ -1088,7 +1108,7 @@ export class AdminService {
       let referralCoupon: string | undefined;
       if (r.observacoes) {
         try {
-          const parsed = JSON.parse(r.observacoes) as any;
+          const parsed = JSON.parse(r.observacoes);
           referralCoupon =
             typeof parsed?.referralCoupon === 'string'
               ? parsed.referralCoupon
@@ -1098,7 +1118,10 @@ export class AdminService {
         }
       }
       if (referralCoupon && String(referralCoupon).trim()) {
-        couponByCpfCnpj.set(cpfCnpj, String(referralCoupon).trim().toUpperCase());
+        couponByCpfCnpj.set(
+          cpfCnpj,
+          String(referralCoupon).trim().toUpperCase(),
+        );
       }
     }
 

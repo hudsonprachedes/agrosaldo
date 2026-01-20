@@ -12,6 +12,10 @@ export class UpdateMovementDto {
   type?: string;
 
   @IsOptional()
+  @IsString()
+  species?: string;
+
+  @IsOptional()
   @IsDateString()
   date?: string;
 

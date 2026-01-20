@@ -18,7 +18,11 @@ export class PropertyAccessGuard implements CanActivate {
 
     const propertyId = request.headers?.['x-property-id'] as string | undefined;
 
-    if (!propertyId || typeof propertyId !== 'string' || propertyId.trim() === '') {
+    if (
+      !propertyId ||
+      typeof propertyId !== 'string' ||
+      propertyId.trim() === ''
+    ) {
       throw new ForbiddenException('Property header required');
     }
 

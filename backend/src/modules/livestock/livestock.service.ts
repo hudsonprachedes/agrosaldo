@@ -1,11 +1,21 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { HerdEvolutionService } from '../../common/herd-evolution.service';
 import { CreateLivestockDto } from './dto/create-livestock.dto';
 import { UpdateLivestockDto } from './dto/update-livestock.dto';
 
 @Injectable()
 export class LivestockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly herdEvolution: HerdEvolutionService,
+  ) {}
+
+  private readonly HERD_SPECIES = ['bovino', 'bubalino'] as const;
 
   private readonly AGE_GROUP_BRACKETS = [
     { id: '0-4m', minMonths: 0, maxMonths: 4 },
@@ -166,25 +176,59 @@ export class LivestockService {
   }
 
   async getBalance(propertyId: string) {
-    const livestock = await this.prisma.rebanho.findMany({
-      where: { propriedadeId: propertyId },
+    const { herdLivestock, otherSpecies } = await this.prisma.$transaction(
+      async (tx) => {
+        const now = new Date();
+        for (const sp of this.HERD_SPECIES) {
+          await this.herdEvolution.evolveBatchesToDate(
+            tx as any,
+            propertyId,
+            sp,
+            now,
+          );
+        }
+
+        const [herdRows, otherRows] = await Promise.all([
+          tx.rebanho.findMany({
+            where: {
+              propriedadeId: propertyId,
+              especie: { in: [...this.HERD_SPECIES] },
+            },
+          }),
+          (tx as any).saldoOutrasEspecies.findMany({
+            where: { propriedadeId: propertyId },
+          }),
+        ]);
+
+        return { herdLivestock: herdRows, otherSpecies: otherRows };
+      },
+    );
+
+    const otherAsLivestock = (otherSpecies as any[]).map((row) => {
+      const snapshot = row.snapshotEm ? new Date(row.snapshotEm) : new Date();
+      return {
+        id: row.id,
+        propriedadeId: row.propriedadeId,
+        especie: row.especie,
+        faixaEtaria: 'unknown',
+        sexo: 'macho',
+        cabecas: row.cabecas,
+        criadoEm: snapshot,
+        atualizadoEm: snapshot,
+      };
     });
+
+    const livestock = [...(herdLivestock as any[]), ...otherAsLivestock];
 
     const total = livestock.reduce(
       (sum: number, item: any) => sum + (item.cabecas ?? 0),
       0,
     );
 
-    const byAgeGroupRaw = await this.prisma.rebanho.groupBy({
-      by: ['faixaEtaria'],
-      where: { propriedadeId: propertyId },
-      _sum: { cabecas: true },
-    });
-
-    const byAgeGroup = (byAgeGroupRaw ?? []).reduce(
-      (acc: Record<string, number>, row: any) => {
-        const key = row.faixaEtaria ?? 'unknown';
-        acc[key] = row._sum?.cabecas ?? 0;
+    const byAgeGroup = livestock.reduce(
+      (acc: Record<string, number>, item: any) => {
+        const key = item.faixaEtaria ?? 'unknown';
+        acc[key] = (acc[key] ?? 0) + (item.cabecas ?? 0);
         return acc;
       },
       {},
@@ -235,11 +279,22 @@ export class LivestockService {
     const canonicalAgeGroups = ['0-4m', '5-12m', '13-24m', '25-36m', '36+m'];
 
     const [balance, movements] = await this.prisma.$transaction(async (tx) => {
-      await this.ensureAgeGroupEvolution(tx as any, propertyId);
+      const now = new Date();
+      for (const sp of this.HERD_SPECIES) {
+        await this.herdEvolution.evolveBatchesToDate(
+          tx as any,
+          propertyId,
+          sp,
+          now,
+        );
+      }
 
       const [b, m] = await Promise.all([
         tx.rebanho.findMany({
-          where: { propriedadeId: propertyId, especie: 'bovino' },
+          where: {
+            propriedadeId: propertyId,
+            especie: { in: [...this.HERD_SPECIES] },
+          },
         }),
         tx.movimento.findMany({
           where: { propriedadeId: propertyId, data: { gte: startDate } },

@@ -1,30 +1,35 @@
-import { PrismaClient } from '@prisma/client';
-
 // Mock PrismaClient for unit tests
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
-    user: {
+    usuario: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
-    property: {
+    propriedade: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
-    livestock: {
+    rebanho: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
-    movement: {
+    movimento: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    usuarioPropriedade: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),

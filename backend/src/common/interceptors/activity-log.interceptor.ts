@@ -10,8 +10,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 function getClientIp(req: any): string {
   const xff = req?.headers?.['x-forwarded-for'];
   const raw = Array.isArray(xff) ? xff[0] : xff;
-  const ip = (typeof raw === 'string' && raw.length ? raw.split(',')[0] : req?.ip)
-    ?.trim?.();
+  const ip = (
+    typeof raw === 'string' && raw.length ? raw.split(',')[0] : req?.ip
+  )?.trim?.();
   return String(ip ?? req?.socket?.remoteAddress ?? '').replace(/^::ffff:/, '');
 }
 
@@ -104,10 +105,10 @@ export class ActivityLogInterceptor implements NestInterceptor {
     };
 
     return next.handle().pipe(
-      tap(async () => {
+      tap(() => {
         const res = http.getResponse();
         const code = Number(res?.statusCode ?? 200);
-        await writeOk(code);
+        writeOk(code).catch(); // Fire and forget
       }),
       catchError((err) => {
         const res = http.getResponse();

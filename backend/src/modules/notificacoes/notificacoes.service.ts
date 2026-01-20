@@ -34,14 +34,22 @@ export class NotificacoesService {
   }
 
   private getDiffDaysTo(target: Date) {
-    return Math.ceil(
-      (target.getTime() - Date.now()) / (24 * 60 * 60 * 1000),
-    );
+    return Math.ceil((target.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
   }
 
   private getEarliestUpcomingDeadline(
-    periods: Array<{ code?: unknown; label?: unknown; start?: unknown; end?: unknown }>,
-  ): { year: number; competence: string; label: string; deadline: Date } | null {
+    periods: Array<{
+      code?: unknown;
+      label?: unknown;
+      start?: unknown;
+      end?: unknown;
+    }>,
+  ): {
+    year: number;
+    competence: string;
+    label: string;
+    deadline: Date;
+  } | null {
     const now = new Date();
     const candidates: Array<{
       year: number;
@@ -58,7 +66,10 @@ export class NotificacoesService {
       if (!end) continue;
 
       const deadlineThisYear = this.parseMonthDayToDate(now.getFullYear(), end);
-      const deadlineNextYear = this.parseMonthDayToDate(now.getFullYear() + 1, end);
+      const deadlineNextYear = this.parseMonthDayToDate(
+        now.getFullYear() + 1,
+        end,
+      );
 
       if (deadlineThisYear) {
         candidates.push({
@@ -97,12 +108,14 @@ export class NotificacoesService {
     const uf = property?.estado ? String(property.estado) : '';
     if (!uf) return [];
 
-    const regulation = await (this.prisma as any).regulamentacaoEstadual.findUnique({
+    const regulation = await (
+      this.prisma as any
+    ).regulamentacaoEstadual.findUnique({
       where: { uf },
     });
     if (!regulation) return [];
 
-    const declarationPeriods = regulation.periodosDeclaracao as any;
+    const declarationPeriods = regulation.periodosDeclaracao;
     const periods = Array.isArray(declarationPeriods?.periods)
       ? declarationPeriods.periods
       : [];
@@ -110,7 +123,9 @@ export class NotificacoesService {
     if (!next) return [];
 
     const leadDays = Array.isArray(regulation.diasAvisoNotificacao)
-      ? (regulation.diasAvisoNotificacao as number[]).filter((d) => Number.isFinite(d))
+      ? (regulation.diasAvisoNotificacao as number[]).filter((d) =>
+          Number.isFinite(d),
+        )
       : [];
     if (leadDays.length === 0) return [];
 
@@ -127,7 +142,9 @@ export class NotificacoesService {
 
     if (propertyIdsSameUf.length === 0) return [];
 
-    const alreadySubmitted = await (this.prisma as any).declaracaoRebanho.findFirst({
+    const alreadySubmitted = await (
+      this.prisma as any
+    ).declaracaoRebanho.findFirst({
       where: {
         uf,
         ano: next.year,
@@ -289,7 +306,8 @@ export class NotificacoesService {
       };
     });
 
-    if (rows.length === 0) return [...evolutionNotifs, ...herdDeclarationNotifs];
+    if (rows.length === 0)
+      return [...evolutionNotifs, ...herdDeclarationNotifs];
 
     const nextDue = rows[0].proximoEm;
     const diffDays = Math.ceil(

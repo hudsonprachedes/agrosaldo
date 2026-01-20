@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -23,6 +24,9 @@ export class PreferencesController {
   constructor(private readonly preferencesService: PreferencesService) {}
 
   @Get()
+  @Throttle({
+    default: { ttl: 60, limit: 120 },
+  })
   get(
     @CurrentUser() user: { id: string },
     @Headers('x-property-id') propertyId: string | undefined,
@@ -34,6 +38,9 @@ export class PreferencesController {
   }
 
   @Put()
+  @Throttle({
+    default: { ttl: 60, limit: 60 },
+  })
   update(
     @CurrentUser() user: { id: string },
     @Headers('x-property-id') propertyId: string | undefined,

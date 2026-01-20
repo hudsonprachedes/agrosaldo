@@ -1,5 +1,13 @@
-import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -11,15 +19,24 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  private static readonly LOGIN_LIMIT =
+    process.env.NODE_ENV === 'test' ? 500 : 15;
+
+  private static readonly REGISTER_LIMIT =
+    process.env.NODE_ENV === 'test' ? 200 : 10;
+
   @Post('login')
-  login(
-    @Body() dto: LoginDto,
-    @Headers('x-app-version') appVersion?: string,
-  ) {
+  @Throttle({
+    default: { ttl: 60, limit: AuthController.LOGIN_LIMIT },
+  })
+  login(@Body() dto: LoginDto, @Headers('x-app-version') appVersion?: string) {
     return this.authService.login(dto, appVersion);
   }
 
   @Post('register')
+  @Throttle({
+    default: { ttl: 60, limit: AuthController.REGISTER_LIMIT },
+  })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -34,6 +51,9 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post('onboarding/complete')
+  @Throttle({
+    default: { ttl: 300, limit: 30 },
+  })
   completeOnboarding(
     @CurrentUser() user: { id: string },
     @Body()

@@ -36,8 +36,9 @@ export class PrismaService
       process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
     // Obter DATABASE_URL (suporta PRISMA_DATABASE_URL como fallback para compatibilidade)
-    const databaseUrl = configService.get<string>('DATABASE_URL') || 
-                        configService.get<string>('PRISMA_DATABASE_URL');
+    const databaseUrl =
+      configService.get<string>('DATABASE_URL') ||
+      configService.get<string>('PRISMA_DATABASE_URL');
 
     if (!databaseUrl || databaseUrl.trim() === '') {
       throw new Error(
@@ -90,7 +91,9 @@ export class PrismaService
     try {
       await this.$connect();
       if (!isProduction) {
-        this.logger.log('✅ Conexão com banco de dados estabelecida com sucesso');
+        this.logger.log(
+          '✅ Conexão com banco de dados estabelecida com sucesso',
+        );
       }
     } catch (error) {
       if (!isProduction) {

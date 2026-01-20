@@ -6,10 +6,15 @@ export async function seedLivestock(prisma: PrismaClient) {
     return;
   }
 
+  const snapshotAt = new Date();
+
   const ageGroups = ['0-4', '5-12', '12-24', '24-36', '36+'] as const;
 
   for (const property of properties) {
     await (prisma as any).rebanho.deleteMany({ where: { propriedadeId: property.id } });
+    await (prisma as any).saldoOutrasEspecies.deleteMany({
+      where: { propriedadeId: property.id },
+    });
 
     const totalTarget = property.quantidadeGado ?? 0;
 
@@ -58,13 +63,12 @@ export async function seedLivestock(prisma: PrismaClient) {
 
     for (const [speciesId, qty] of Object.entries(speciesCounts)) {
       if (!qty || qty <= 0) continue;
-      await (prisma as any).rebanho.create({
+      await (prisma as any).saldoOutrasEspecies.create({
         data: {
           propriedadeId: property.id,
           especie: speciesId,
-          faixaEtaria: 'all',
-          sexo: 'macho',
           cabecas: qty,
+          snapshotEm: snapshotAt,
         },
       });
     }

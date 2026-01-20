@@ -7,6 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PropertyAccessGuard } from '../../common/guards/property-access.guard';
@@ -20,6 +21,9 @@ export class DocumentosPublicosController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard, PropertyAccessGuard)
   @Post('espelho-oficial/emitir')
+  @Throttle({
+    default: { ttl: 3600, limit: 30 },
+  })
   emitirEspelhoOficial(
     @Headers('x-property-id') propertyId: string,
     @Headers('x-public-base-url') publicBaseUrlHeader?: string,

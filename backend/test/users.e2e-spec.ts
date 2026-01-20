@@ -4,12 +4,34 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
+// Mock types for E2E tests
+
+type MockFindFirstArgs = {
+  where?: {
+    OR?: Array<{ cpfCnpj?: string }>;
+  };
+};
+
+type MockFindUniqueArgs = {
+  where?: {
+    cpfCnpj?: string;
+    id?: string;
+  };
+};
+
+type MockCreateArgs = {
+  data: Record<string, unknown>;
+};
+
+type MockUpdateArgs = {
+  data: Record<string, unknown>;
+};
+
 describe('Users (e2e)', () => {
   let app: INestApplication;
   let prismaService: PrismaService;
   let authToken: string;
   let adminToken: string;
-  let userId: string;
 
   const mockUser = {
     id: '123e4567-e89b-12d3-a456-426614174000',
@@ -52,47 +74,49 @@ describe('Users (e2e)', () => {
 
     prismaService = app.get(PrismaService);
 
-    (prismaService as any).usuario = {
-      findFirst: jest.fn().mockImplementation(async (args: any) => {
+    (
+      prismaService as unknown as { usuario: Record<string, jest.Mock> }
+    ).usuario = {
+      findFirst: jest.fn().mockImplementation((args: MockFindFirstArgs) => {
         const cpfCnpj = args?.where?.OR?.[0]?.cpfCnpj;
         if (cpfCnpj === mockUser.cpfCnpj) {
-          return mockUser;
+          return Promise.resolve(mockUser);
         }
         if (cpfCnpj === mockAdmin.cpfCnpj) {
-          return mockAdmin;
+          return Promise.resolve(mockAdmin);
         }
-        return null;
+        return Promise.resolve(null);
       }),
-      findUnique: jest.fn().mockImplementation(async (args: any) => {
+      findUnique: jest.fn().mockImplementation((args: MockFindUniqueArgs) => {
         if (args.where?.cpfCnpj === mockUser.cpfCnpj) {
-          return mockUser;
+          return Promise.resolve(mockUser);
         }
         if (args.where?.cpfCnpj === mockAdmin.cpfCnpj) {
-          return mockAdmin;
+          return Promise.resolve(mockAdmin);
         }
         if (args.where?.id === mockUser.id) {
-          return mockUser;
+          return Promise.resolve(mockUser);
         }
         if (args.where?.id === mockAdmin.id) {
-          return mockAdmin;
+          return Promise.resolve(mockAdmin);
         }
-        return null;
+        return Promise.resolve(null);
       }),
       findMany: jest.fn().mockResolvedValue([mockUser, mockAdmin]),
-      create: jest.fn().mockImplementation(async (args: any) => {
-        return {
+      create: jest.fn().mockImplementation((args: MockCreateArgs) => {
+        return Promise.resolve({
           id: '123e4567-e89b-12d3-a456-426614174002',
           ...args.data,
           criadoEm: new Date(),
           atualizadoEm: new Date(),
-        };
+        });
       }),
-      update: jest.fn().mockImplementation(async (args: any) => {
-        return {
+      update: jest.fn().mockImplementation((args: MockUpdateArgs) => {
+        return Promise.resolve({
           ...mockUser,
           ...args.data,
           atualizadoEm: new Date(),
-        };
+        });
       }),
       delete: jest.fn().mockResolvedValue(mockUser),
       count: jest.fn().mockResolvedValue(2),
@@ -106,7 +130,7 @@ describe('Users (e2e)', () => {
         password: 'password123',
       });
 
-    authToken = loginResponse.body.token;
+    authToken = (loginResponse.body as { token: string }).token;
 
     const adminLoginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -115,7 +139,7 @@ describe('Users (e2e)', () => {
         password: 'password123',
       });
 
-    adminToken = adminLoginResponse.body.token;
+    adminToken = (adminLoginResponse.body as { token: string }).token;
   });
 
   afterAll(async () => {

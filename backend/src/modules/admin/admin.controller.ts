@@ -23,8 +23,9 @@ import { UpdatePixConfigDto } from './dto/pix-config.dto';
 function getClientIp(req: any): string {
   const xff = req?.headers?.['x-forwarded-for'];
   const raw = Array.isArray(xff) ? xff[0] : xff;
-  const ip = (typeof raw === 'string' && raw.length ? raw.split(',')[0] : req?.ip)
-    ?.trim?.();
+  const ip = (
+    typeof raw === 'string' && raw.length ? raw.split(',')[0] : req?.ip
+  )?.trim?.();
   return String(ip ?? req?.socket?.remoteAddress ?? '').replace(/^::ffff:/, '');
 }
 
@@ -79,7 +80,11 @@ export class AdminController {
 
   @Roles('super_admin')
   @Patch('usuarios/:id/aprovar')
-  approveUser(@Param('id') id: string, @Body() dto: ApproveUserDto, @Req() req: any) {
+  approveUser(
+    @Param('id') id: string,
+    @Body() dto: ApproveUserDto,
+    @Req() req: any,
+  ) {
     return this.adminService.approveUser(id, dto, getClientIp(req));
   }
 
@@ -131,7 +136,11 @@ export class AdminController {
 
   @Roles('super_admin')
   @Post('usuarios/:id/reset-onboarding')
-  resetUserOnboarding(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+  resetUserOnboarding(
+    @Param('id') id: string,
+    @Body() dto: any,
+    @Req() req: any,
+  ) {
     return this.adminService.resetUserOnboarding(id, dto, getClientIp(req));
   }
 

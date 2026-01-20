@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, UnauthorizedException, ValidationPipe } from '@nestjs/common';
+import {
+  INestApplication,
+  UnauthorizedException,
+  ValidationPipe,
+} from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
@@ -79,9 +83,7 @@ describe('MovementsController (e2e)', () => {
     jest
       .spyOn(prismaService.usuario, 'delete')
       .mockResolvedValue(mockUser as any);
-    jest
-      .spyOn(prismaService.usuario, 'count')
-      .mockResolvedValue(1);
+    jest.spyOn(prismaService.usuario, 'count').mockResolvedValue(1);
 
     jest
       .spyOn(prismaService.movimento, 'findMany')
@@ -100,15 +102,21 @@ describe('MovementsController (e2e)', () => {
         }
         return null;
       });
-    jest
-      .spyOn(prismaService.movimento, 'create')
-      .mockResolvedValue({ id: '1', tipo: 'nascimento', propriedadeId: propertyId } as any);
-    jest
-      .spyOn(prismaService.movimento, 'update')
-      .mockResolvedValue({ id: '1', tipo: 'nascimento', propriedadeId: propertyId } as any);
-    jest
-      .spyOn(prismaService.movimento, 'delete')
-      .mockResolvedValue({ id: '1', tipo: 'nascimento', propriedadeId: propertyId } as any);
+    jest.spyOn(prismaService.movimento, 'create').mockResolvedValue({
+      id: '1',
+      tipo: 'nascimento',
+      propriedadeId: propertyId,
+    } as any);
+    jest.spyOn(prismaService.movimento, 'update').mockResolvedValue({
+      id: '1',
+      tipo: 'nascimento',
+      propriedadeId: propertyId,
+    } as any);
+    jest.spyOn(prismaService.movimento, 'delete').mockResolvedValue({
+      id: '1',
+      tipo: 'nascimento',
+      propriedadeId: propertyId,
+    } as any);
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -155,9 +163,7 @@ describe('MovementsController (e2e)', () => {
 
   describe('/lancamentos (GET)', () => {
     it('should return 401 without authentication', () => {
-      return request(app.getHttpServer())
-        .get('/lancamentos')
-        .expect(401);
+      return request(app.getHttpServer()).get('/lancamentos').expect(401);
     });
 
     it('should return movements with authentication', () => {

@@ -56,9 +56,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exceptionMessage.includes('DATABASE_URL') ||
         exceptionMessage.includes('PRISMA_DATABASE_URL'));
 
-    const message = !isProduction || isConfigError
-      ? exceptionMessage
-      : 'Internal server error';
+    const message =
+      !isProduction || isConfigError
+        ? exceptionMessage
+        : 'Internal server error';
 
     if (!isProduction) {
       if (exception instanceof Error) {
