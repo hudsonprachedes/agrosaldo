@@ -20,6 +20,14 @@ import { CreateRegulationDto, UpdateRegulationDto } from './dto/regulation.dto';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto/payment.dto';
 import { UpdatePixConfigDto } from './dto/pix-config.dto';
 
+function getClientIp(req: any): string {
+  const xff = req?.headers?.['x-forwarded-for'];
+  const raw = Array.isArray(xff) ? xff[0] : xff;
+  const ip = (typeof raw === 'string' && raw.length ? raw.split(',')[0] : req?.ip)
+    ?.trim?.();
+  return String(ip ?? req?.socket?.remoteAddress ?? '').replace(/^::ffff:/, '');
+}
+
 @ApiTags('admin')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -71,44 +79,44 @@ export class AdminController {
 
   @Roles('super_admin')
   @Patch('usuarios/:id/aprovar')
-  approveUser(@Param('id') id: string, @Body() dto: ApproveUserDto) {
-    return this.adminService.approveUser(id, dto);
+  approveUser(@Param('id') id: string, @Body() dto: ApproveUserDto, @Req() req: any) {
+    return this.adminService.approveUser(id, dto, getClientIp(req));
   }
 
   @Roles('super_admin')
   @Patch('usuarios/:id/rejeitar')
-  rejectUser(@Param('id') id: string, @Body() dto: any) {
-    return this.adminService.rejectUser(id, dto);
+  rejectUser(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.adminService.rejectUser(id, dto, getClientIp(req));
   }
 
   @Roles('super_admin')
   @Patch('usuarios/:id/status')
-  updateUserStatus(@Param('id') id: string, @Body() dto: any) {
-    return this.adminService.updateUserStatus(id, dto);
+  updateUserStatus(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.adminService.updateUserStatus(id, dto, getClientIp(req));
   }
 
   @Roles('super_admin')
   @Post('usuarios/:id/reset-senha')
-  resetUserPassword(@Param('id') id: string) {
-    return this.adminService.resetUserPassword(id);
+  resetUserPassword(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.resetUserPassword(id, getClientIp(req));
   }
 
   @Roles('super_admin')
   @Post('usuarios/:id/liberar-acesso')
-  liberarAcessoPosPagamento(@Param('id') id: string) {
-    return this.adminService.liberarAcessoPosPagamento(id);
+  liberarAcessoPosPagamento(@Param('id') id: string, @Req() req: any) {
+    return this.adminService.liberarAcessoPosPagamento(id, getClientIp(req));
   }
 
   @Roles('super_admin')
   @Patch('usuarios/:id')
-  updateUser(@Param('id') id: string, @Body() dto: any) {
-    return this.adminService.updateUser(id, dto);
+  updateUser(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.adminService.updateUser(id, dto, getClientIp(req));
   }
 
   @Roles('super_admin')
   @Patch('usuarios/:id/plano')
-  updateUserPlan(@Param('id') id: string, @Body() dto: any) {
-    return this.adminService.updateUserPlan(id, dto);
+  updateUserPlan(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.adminService.updateUserPlan(id, dto, getClientIp(req));
   }
 
   @Roles('super_admin')
@@ -117,13 +125,14 @@ export class AdminController {
     return this.adminService.impersonateUser(
       { id: req.user?.id, cpfCnpj: req.user?.cpfCnpj },
       id,
+      getClientIp(req),
     );
   }
 
   @Roles('super_admin')
   @Post('usuarios/:id/reset-onboarding')
-  resetUserOnboarding(@Param('id') id: string, @Body() dto: any) {
-    return this.adminService.resetUserOnboarding(id, dto);
+  resetUserOnboarding(@Param('id') id: string, @Body() dto: any, @Req() req: any) {
+    return this.adminService.resetUserOnboarding(id, dto, getClientIp(req));
   }
 
   // --- Regulations ---
@@ -238,6 +247,12 @@ export class AdminController {
   }
 
   @Roles('super_admin')
+  @Patch('indicacao/cupons/:id')
+  updateCoupon(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updateCoupon(id, dto);
+  }
+
+  @Roles('super_admin')
   @Get('indicacao/indicadores')
   listReferrers() {
     return this.adminService.listReferrers();
@@ -277,8 +292,72 @@ export class AdminController {
 
   @Roles('super_admin')
   @Get('auditoria')
-  getAuditLogs(@Query('userId') userId?: string) {
-    return this.adminService.listAuditLogs(userId);
+  getAuditLogs(
+    @Query('userId') userId?: string,
+    @Query('action') action?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const parsedOffset = offset ? Number(offset) : undefined;
+    return this.adminService.listAuditLogs({
+      userId,
+      action,
+      startDate,
+      endDate,
+      limit: parsedLimit,
+      offset: parsedOffset,
+    });
+  }
+
+  // --- Activity Logs ---
+
+  @Roles('super_admin')
+  @Get('atividade')
+  getActivityLogs(
+    @Query('tenantId') tenantId?: string,
+    @Query('event') event?: string,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('includeArchived') includeArchived?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    const parsedOffset = offset ? Number(offset) : undefined;
+    const parsedIncludeArchived = includeArchived === 'true';
+
+    return this.adminService.listActivityLogs({
+      tenantId,
+      event,
+      status,
+      startDate,
+      endDate,
+      includeArchived: parsedIncludeArchived,
+      limit: parsedLimit,
+      offset: parsedOffset,
+    });
+  }
+
+  @Roles('super_admin')
+  @Post('atividade/arquivar')
+  archiveActivityLogs(@Body() dto: { ids: string[] }) {
+    return this.adminService.archiveActivityLogs(dto.ids);
+  }
+
+  @Roles('super_admin')
+  @Post('atividade/desarquivar')
+  unarchiveActivityLogs(@Body() dto: { ids: string[] }) {
+    return this.adminService.unarchiveActivityLogs(dto.ids);
+  }
+
+  @Roles('super_admin')
+  @Post('atividade/deletar')
+  deleteActivityLogs(@Body() dto: { ids: string[] }) {
+    return this.adminService.deleteActivityLogs(dto.ids);
   }
 
   @Roles('super_admin')

@@ -30,6 +30,9 @@ export async function createApp(
 
   app.setGlobalPrefix('api');
 
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', true);
+
   const corsOriginsEnv = process.env.CORS_ORIGIN;
   const corsOrigins = (
     corsOriginsEnv?.length

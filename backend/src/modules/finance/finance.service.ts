@@ -7,6 +7,19 @@ type Period = 'month' | 'quarter' | 'year';
 export class FinanceService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async getOnboardingDate(propertyId: string) {
+    const onboarding = await this.prisma.movimento.findFirst({
+      where: {
+        propriedadeId: propertyId,
+        descricao: '[SISTEMA] Saldo inicial (onboarding)',
+      },
+      select: { data: true },
+      orderBy: { data: 'asc' },
+    });
+
+    return onboarding?.data ? new Date(onboarding.data) : null;
+  }
+
   async getPixConfig() {
     const row = await (this.prisma as any).configuracaoPix.findFirst({
       orderBy: { criadoEm: 'desc' },
@@ -152,6 +165,9 @@ export class FinanceService {
     const now = new Date();
     const periods = this.getPeriods(now, period);
 
+    const onboardingDate = await this.getOnboardingDate(propertyId);
+    const onboardingStart = onboardingDate ? this.startOfMonth(onboardingDate) : null;
+
     const rangeStart =
       periods[0]?.start ?? this.startOfMonth(this.addMonths(now, -5));
     const rangeEnd = periods[periods.length - 1]?.end ?? this.endOfDay(now);
@@ -221,6 +237,17 @@ export class FinanceService {
       if (!qty) return 0;
       return val / qty;
     });
+
+    if (onboardingStart) {
+      for (let i = 0; i < periods.length; i++) {
+        if (periods[i].end < onboardingStart) {
+          revenueByPeriod[i] = 0;
+          soldByPeriod[i] = 0;
+          purchasesByPeriod[i] = 0;
+          boughtByPeriod[i] = 0;
+        }
+      }
+    }
 
     const { currentStart, currentEnd, previousStart, previousEnd } =
       this.getCurrentAndPreviousPeriod(now, period);

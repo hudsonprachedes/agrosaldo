@@ -392,13 +392,6 @@ export default function LaunchForm({ type }: LaunchFormProps) {
         });
         return;
       }
-
-      if (deathType === 'natural' && !hasPhoto) {
-        toast.error('Foto obrigatória para morte natural', {
-          description: 'Tire uma foto para registrar a ocorrência',
-        });
-        return;
-      }
     } else if (type === 'venda') {
       const qtyByAge = saleItems.reduce<Record<string, number>>((acc, item) => {
         const age = item.ageGroup;
@@ -1189,10 +1182,10 @@ export default function LaunchForm({ type }: LaunchFormProps) {
                   <CardContent className="p-4">
                     <Label className="flex items-center gap-2 text-base font-semibold mb-3">
                       <Camera className="w-5 h-5 text-warning" />
-                      Foto Obrigatória
+                      Foto (opcional)
                     </Label>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Para morte natural, é obrigatório registrar uma foto para auditoria.
+                      Se possível, registre uma foto para auditoria.
                     </p>
                     
                       {!showCamera && !photoDataUrl && (

@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useSyncStatus } from '@/hooks/useSyncStatus';
+import { getAppVersionLabel } from '@/version';
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -216,6 +217,8 @@ export default function MobileLayout({ children, showBottomNav = true }: MobileL
                           </div>
                           <span className="font-medium">Sair da Conta</span>
                         </button>
+
+                        <p className="pt-2 text-[10px] text-muted-foreground text-center">{getAppVersionLabel()}</p>
                       </div>
                     </SheetContent>
                   </Sheet>

@@ -290,7 +290,7 @@ export default function AdminFinanceiro() {
               <CardHeader>
                 <CardTitle>Clientes Ativos</CardTitle>
                 <CardDescription>
-                  Gestão de recebimentos de clientes com pagamentos em dia
+                  Gestão de recebimentos por cliente (CPF/CNPJ) com pagamentos em dia
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -298,6 +298,7 @@ export default function AdminFinanceiro() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>CPF/CNPJ</TableHead>
                       <TableHead>Plano</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Periodicidade</TableHead>
@@ -312,6 +313,7 @@ export default function AdminFinanceiro() {
                       .map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">{payment.tenantName}</TableCell>
+                          <TableCell className="font-mono text-xs">{payment.tenantId}</TableCell>
                           <TableCell>
                             <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                           </TableCell>
@@ -372,7 +374,7 @@ export default function AdminFinanceiro() {
                   Pagamentos em Atraso
                 </CardTitle>
                 <CardDescription>
-                  Clientes com faturas vencidas que precisam de atenção
+                  Clientes (CPF/CNPJ) com faturas vencidas que precisam de atenção
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -380,6 +382,7 @@ export default function AdminFinanceiro() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>CPF/CNPJ</TableHead>
                       <TableHead>Plano</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Vencimento</TableHead>
@@ -398,6 +401,7 @@ export default function AdminFinanceiro() {
                         return (
                           <TableRow key={payment.id}>
                             <TableCell className="font-medium">{payment.tenantName}</TableCell>
+                            <TableCell className="font-mono text-xs">{payment.tenantId}</TableCell>
                             <TableCell>
                               <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                             </TableCell>
@@ -442,6 +446,7 @@ export default function AdminFinanceiro() {
                     <TableRow>
                       <TableHead>Data</TableHead>
                       <TableHead>Cliente</TableHead>
+                      <TableHead>CPF/CNPJ</TableHead>
                       <TableHead>Plano</TableHead>
                       <TableHead>Valor</TableHead>
                       <TableHead>Método</TableHead>
@@ -458,6 +463,7 @@ export default function AdminFinanceiro() {
                             : new Date(payment.createdAt).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell className="font-medium">{payment.tenantName}</TableCell>
+                        <TableCell className="font-mono text-xs">{payment.tenantId}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{payment.plan?.toUpperCase?.() ?? '—'}</Badge>
                         </TableCell>

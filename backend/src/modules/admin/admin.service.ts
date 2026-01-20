@@ -89,6 +89,17 @@ export class AdminService {
         _sum: {
           cabecas: true,
         },
+        where: {
+          propriedade: {
+            usuarios: {
+              some: {
+                usuario: {
+                  papel: { in: ['proprietario', 'operador'] as any },
+                },
+              },
+            },
+          },
+        } as any,
       }),
     ]);
 
@@ -268,7 +279,7 @@ export class AdminService {
     });
   }
 
-  async approveUser(userId: string, dto: ApproveUserDto) {
+  async approveUser(userId: string, dto: ApproveUserDto, ip?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
     });
@@ -332,13 +343,13 @@ export class AdminService {
       'Sistema',
       'USER_APPROVED',
       `Usuário ${user.email} aprovado com status ${updated.status}`,
-      '127.0.0.1', // TODO: Get actual IP
+      ip ?? '127.0.0.1',
     );
 
     return updated;
   }
 
-  async resetUserOnboarding(userId: string, dto: any) {
+  async resetUserOnboarding(userId: string, dto: any, ip?: string) {
     const propertyId = String(dto?.propertyId ?? '').trim();
     if (!propertyId) {
       throw new BadRequestException('propertyId é obrigatório');
@@ -384,13 +395,13 @@ export class AdminService {
       'Admin',
       'ONBOARDING_RESET',
       `Onboarding resetado para usuário ${user.email} na propriedade ${propertyId}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return { success: true };
   }
 
-  async liberarAcessoPosPagamento(userId: string) {
+  async liberarAcessoPosPagamento(userId: string, ip?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
     });
@@ -409,7 +420,7 @@ export class AdminService {
       'Sistema',
       'PAYMENT_RELEASE',
       `Acesso liberado após pagamento para ${user.email}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return updated;
@@ -418,6 +429,7 @@ export class AdminService {
   async impersonateUser(
     adminUser: { id: string; cpfCnpj?: string },
     userId: string,
+    ip?: string,
   ) {
     const target = await (this.prisma as any).usuario.findUnique({
       where: { id: userId },
@@ -441,7 +453,7 @@ export class AdminService {
       'SuperAdmin',
       'ADMIN_IMPERSONATE',
       `Impersonate iniciado para ${target.email}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return { token };
@@ -450,6 +462,7 @@ export class AdminService {
   async updateUserStatus(
     userId: string,
     dto: { status: string; reason?: string },
+    ip?: string,
   ) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
@@ -470,13 +483,13 @@ export class AdminService {
       'Sistema',
       'USER_STATUS_UPDATED',
       `Status do usuário ${user.email} alterado para ${updated.status}${dto?.reason ? `: ${dto.reason}` : ''}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return updated;
   }
 
-  async resetUserPassword(userId: string) {
+  async resetUserPassword(userId: string, ip?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
     });
@@ -495,7 +508,7 @@ export class AdminService {
       'Sistema',
       'USER_PASSWORD_RESET',
       `Senha resetada para ${user.email}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return { tempPassword };
@@ -504,6 +517,7 @@ export class AdminService {
   async updateUser(
     userId: string,
     dto: { cpfCnpj?: string; telefone?: string | null; email?: string },
+    ip?: string,
   ) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
@@ -524,13 +538,13 @@ export class AdminService {
       'Sistema',
       'USER_UPDATED',
       `Dados do usuário ${user.email} atualizados`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return updated;
   }
 
-  async updateUserPlan(userId: string, dto: { plan: string }) {
+  async updateUserPlan(userId: string, dto: { plan: string }, ip?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
     });
@@ -562,13 +576,13 @@ export class AdminService {
       'Sistema',
       'USER_PLAN_UPDATED',
       `Plano do usuário ${user.email} alterado para ${requested}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return updated;
   }
 
-  async rejectUser(userId: string, dto?: { reason?: string }) {
+  async rejectUser(userId: string, dto?: { reason?: string }, ip?: string) {
     const user = await this.prisma.usuario.findUnique({
       where: { id: userId },
     });
@@ -586,7 +600,7 @@ export class AdminService {
       'Sistema',
       'USER_REJECTED',
       `Usuário ${user.email} rejeitado${dto?.reason ? `: ${dto.reason}` : ''}`,
-      '127.0.0.1',
+      ip ?? '127.0.0.1',
     );
 
     return updated;
@@ -597,7 +611,7 @@ export class AdminService {
       .findMany({
         where: { papel: { in: ['proprietario', 'operador'] as any } },
         include: {
-          propriedades: { include: { propriedade: true } },
+          propriedades: { include: { propriedade: { include: { rebanho: true } } } },
           assinaturas: {
             orderBy: { inicioEm: 'desc' },
             take: 1,
@@ -611,10 +625,13 @@ export class AdminService {
             .map((up: any) => up.propriedade)
             .filter(Boolean);
           const propertyCount = properties.length;
-          const cattleCount = properties.reduce(
-            (acc: number, p: any) => acc + (Number(p?.quantidadeGado) || 0),
-            0,
-          );
+          const cattleCount = properties.reduce((acc: number, p: any) => {
+            const herdSum = (p?.rebanho ?? []).reduce(
+              (s: number, r: any) => s + (Number(r?.cabecas) || 0),
+              0,
+            );
+            return acc + herdSum;
+          }, 0);
           const currentPlan = u.assinaturas?.[0]?.plano ?? null;
 
           return {
@@ -976,16 +993,56 @@ export class AdminService {
     commission?: number;
     createdBy: string;
     status?: string;
+    referrerName?: string;
+    referrerCpfCnpj?: string;
+    referrerPhone?: string;
   }) {
-    return (this.prisma as any).cupomIndicacao.create({
+    const code = String(dto.code ?? '').trim().toUpperCase();
+
+    const created = await (this.prisma as any).cupomIndicacao.create({
       data: {
-        codigo: dto.code,
+        codigo: code,
         tipo: dto.type,
         valor: dto.value,
         maxUso: dto.maxUsage ?? null,
         comissao: dto.commission ?? 0,
         criadoPor: dto.createdBy,
         status: dto.status ?? 'active',
+      },
+    });
+
+    if (String(dto.type ?? '').toLowerCase() === 'referral') {
+      const name = typeof dto.referrerName === 'string' ? dto.referrerName.trim() : '';
+      const cpfCnpj = typeof dto.referrerCpfCnpj === 'string' ? dto.referrerCpfCnpj.trim() : '';
+      const phone = typeof dto.referrerPhone === 'string' ? dto.referrerPhone.trim() : '';
+
+      if (name) {
+        await (this.prisma as any).indicadorParceiro.upsert({
+          where: { codigo: code },
+          create: {
+            nome: name,
+            codigo: code,
+            ...(cpfCnpj ? { cpfCnpj } : {}),
+            ...(phone ? { telefone: phone } : {}),
+            status: 'active',
+          },
+          update: {
+            nome: name,
+            ...(cpfCnpj ? { cpfCnpj } : {}),
+            ...(phone ? { telefone: phone } : {}),
+          },
+        });
+      }
+    }
+
+    return created;
+  }
+
+  async updateCoupon(id: string, dto: { status?: string }) {
+    return (this.prisma as any).cupomIndicacao.update({
+      where: { id },
+      data: {
+        ...(dto?.status !== undefined ? { status: dto.status } : {}),
       },
     });
   }
@@ -1169,12 +1226,177 @@ export class AdminService {
 
   // --- Audit Logs ---
 
-  async listAuditLogs(userId?: string) {
-    return (this.prisma as any).logAuditoria.findMany({
-      where: userId ? { usuarioId: userId } : undefined,
-      orderBy: { dataHora: 'desc' },
-      take: 100,
+  async listAuditLogs(params?: {
+    userId?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const takeRaw = params?.limit;
+    const skipRaw = params?.offset;
+
+    const take =
+      typeof takeRaw === 'number' && Number.isFinite(takeRaw)
+        ? Math.max(1, Math.min(200, Math.trunc(takeRaw)))
+        : 100;
+    const skip =
+      typeof skipRaw === 'number' && Number.isFinite(skipRaw)
+        ? Math.max(0, Math.trunc(skipRaw))
+        : 0;
+
+    const where: any = {
+      ...(params?.userId ? { usuarioId: params.userId } : {}),
+      ...(params?.action ? { acao: params.action } : {}),
+    };
+
+    if (params?.startDate || params?.endDate) {
+      const gte = params?.startDate ? new Date(params.startDate) : undefined;
+      const lte = params?.endDate ? new Date(params.endDate) : undefined;
+      where.dataHora = {
+        ...(gte ? { gte } : {}),
+        ...(lte ? { lte } : {}),
+      };
+    }
+
+    const [items, total] = await Promise.all([
+      (this.prisma as any).logAuditoria.findMany({
+        where,
+        orderBy: { dataHora: 'desc' },
+        take,
+        skip,
+      }),
+      (this.prisma as any).logAuditoria.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      limit: take,
+      offset: skip,
+    };
+  }
+
+  // --- Activity Logs ---
+
+  async listActivityLogs(params?: {
+    tenantId?: string;
+    event?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    includeArchived?: boolean;
+    limit?: number;
+    offset?: number;
+  }) {
+    const takeRaw = params?.limit;
+    const skipRaw = params?.offset;
+
+    const take =
+      typeof takeRaw === 'number' && Number.isFinite(takeRaw)
+        ? Math.max(1, Math.min(200, Math.trunc(takeRaw)))
+        : 50;
+    const skip =
+      typeof skipRaw === 'number' && Number.isFinite(skipRaw)
+        ? Math.max(0, Math.trunc(skipRaw))
+        : 0;
+
+    const where: any = {
+      ...(params?.tenantId ? { usuarioId: params.tenantId } : {}),
+      ...(params?.status ? { status: params.status } : {}),
+      ...(params?.event ? { evento: params.event } : {}),
+      ...(params?.includeArchived ? {} : { arquivadoEm: null }),
+    };
+
+    if (params?.startDate || params?.endDate) {
+      const gte = params?.startDate ? new Date(params.startDate) : undefined;
+      const lte = params?.endDate ? new Date(params.endDate) : undefined;
+      where.dataHora = {
+        ...(gte ? { gte } : {}),
+        ...(lte ? { lte } : {}),
+      };
+    }
+
+    const activityModel = (this.prisma as any).logAtividade;
+    if (!activityModel?.findMany || !activityModel?.count) {
+      return {
+        items: [],
+        total: 0,
+        limit: take,
+        offset: skip,
+      };
+    }
+
+    const [items, total] = await Promise.all([
+      activityModel.findMany({
+        where,
+        orderBy: { dataHora: 'desc' },
+        take,
+        skip,
+      }),
+      activityModel.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      limit: take,
+      offset: skip,
+    };
+  }
+
+  async archiveActivityLogs(ids: string[]) {
+    if (!ids?.length) {
+      throw new BadRequestException('ids é obrigatório');
+    }
+
+    const activityModel = (this.prisma as any).logAtividade;
+    if (!activityModel?.updateMany) {
+      return { updated: 0 };
+    }
+
+    const result = await activityModel.updateMany({
+      where: { id: { in: ids } },
+      data: { arquivadoEm: new Date() },
     });
+
+    return { updated: result.count };
+  }
+
+  async unarchiveActivityLogs(ids: string[]) {
+    if (!ids?.length) {
+      throw new BadRequestException('ids é obrigatório');
+    }
+
+    const activityModel = (this.prisma as any).logAtividade;
+    if (!activityModel?.updateMany) {
+      return { updated: 0 };
+    }
+
+    const result = await activityModel.updateMany({
+      where: { id: { in: ids } },
+      data: { arquivadoEm: null },
+    });
+
+    return { updated: result.count };
+  }
+
+  async deleteActivityLogs(ids: string[]) {
+    if (!ids?.length) {
+      throw new BadRequestException('ids é obrigatório');
+    }
+
+    const activityModel = (this.prisma as any).logAtividade;
+    if (!activityModel?.deleteMany) {
+      return { deleted: 0 };
+    }
+
+    const result = await activityModel.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    return { deleted: result.count };
   }
 
   async createAuditLog(

@@ -358,6 +358,8 @@ model IndicadorParceiro {
   id                 String   @id @default(uuid()) @map("id")
   nome               String   @map("name")
   codigo             String   @unique @map("code")
+  cpfCnpj            String?  @map("cpfCnpj")
+  telefone           String?  @map("phone")
   indicacoes         Int      @default(0) @map("referrals")
   comissaoTotal      Float    @default(0) @map("totalCommission")
   comissaoPendente   Float    @default(0) @map("pendingCommission")
@@ -396,6 +398,30 @@ model LogAuditoria {
   dataHora  DateTime @default(now()) @map("timestamp")
 
   @@map("AuditLog")
+}
+
+model LogAtividade {
+  id          String   @id @default(uuid()) @map("id")
+  usuarioId   String?  @map("userId")
+  usuarioNome String?  @map("userName")
+  evento      String   @map("event")
+  status      String   @map("status")
+  detalhes    String?  @map("details")
+  metodo      String?  @map("method")
+  rota        String?  @map("route")
+  codigoHttp  Int?     @map("httpStatus")
+  duracaoMs   Int?     @map("durationMs")
+  ip          String?  @map("ip")
+  metadata    Json?    @map("metadata")
+  arquivadoEm DateTime? @map("archivedAt")
+  dataHora    DateTime @default(now()) @map("timestamp")
+
+  @@index([usuarioId])
+  @@index([dataHora])
+  @@index([evento])
+  @@index([status])
+  @@index([arquivadoEm])
+  @@map("ActivityLog")
 }
 
 model NotificacaoUsuario {

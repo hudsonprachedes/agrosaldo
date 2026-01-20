@@ -69,6 +69,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Navegação (SPA): sempre tentar rede primeiro para não prender versão antiga do index.html
+  if (request.mode === 'navigate') {
+    event.respondWith(networkFirstStrategy(request));
+    return;
+  }
+
+  // HTML/Entry points: rede primeiro
+  const isHtml =
+    request.headers.get('accept')?.includes('text/html') ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname === '/index.html';
+  if (isHtml) {
+    event.respondWith(networkFirstStrategy(request));
+    return;
+  }
+
   // Strategy: Network First para APIs, Cache First para assets
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request));

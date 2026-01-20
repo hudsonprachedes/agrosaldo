@@ -25,13 +25,34 @@ function endOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 
+function compareMonthKey(a: string, b: string) {
+  if (a === b) return 0;
+  return a < b ? -1 : 1;
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async getOnboardingMonthKey(propertyId: string) {
+    const onboarding = await this.prisma.movimento.findFirst({
+      where: {
+        propriedadeId: propertyId,
+        descricao: '[SISTEMA] Saldo inicial (onboarding)',
+      },
+      select: { data: true },
+      orderBy: { data: 'asc' },
+    });
+
+    if (!onboarding?.data) return null;
+    return monthKey(new Date(onboarding.data));
+  }
+
   async getDashboard(propertyId: string) {
     const now = new Date();
     const months = getLastNMonths(6, now);
+
+    const onboardingMonthKey = await this.getOnboardingMonthKey(propertyId);
 
     const [balance, movements] = await Promise.all([
       this.prisma.rebanho.findMany({
@@ -116,11 +137,19 @@ export class AnalyticsService {
       (sum, m) => sum + (deltaByMonth[m.key] ?? 0),
       0,
     );
-    const startTotal = Math.max(0, totalCattle - totalDelta);
+
+    void totalDelta;
 
     const evolution: number[] = [];
-    let running = startTotal;
+    let running = 0;
     for (const m of seriesMonths) {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      ) {
+        evolution.push(0);
+        continue;
+      }
       running = Math.max(0, running + (deltaByMonth[m.key] ?? 0));
       evolution.push(running);
     }
@@ -257,6 +286,8 @@ export class AnalyticsService {
     const monthsCount = period === 'year' ? 12 : 6;
     const months = getLastNMonths(monthsCount, now);
 
+    const onboardingMonthKey = await this.getOnboardingMonthKey(propertyId);
+
     const [balance, movements] = await Promise.all([
       this.prisma.rebanho.findMany({ where: { propriedadeId: propertyId } }),
       this.prisma.movimento.findMany({
@@ -314,24 +345,60 @@ export class AnalyticsService {
       end: endOfMonth(m),
     }));
 
-    const totalDelta = seriesMonths.reduce(
-      (sum, m) => sum + (deltaByMonth[m.key] ?? 0),
-      0,
-    );
-    const startTotal = Math.max(0, totalCattle - totalDelta);
-
     const evolution: number[] = [];
-    let running = startTotal;
+    let running = 0;
     for (const m of seriesMonths) {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      ) {
+        evolution.push(0);
+        continue;
+      }
       running = Math.max(0, running + (deltaByMonth[m.key] ?? 0));
       evolution.push(running);
     }
 
-    const birthsSeries = seriesMonths.map((m) => birthsByMonth[m.key] ?? 0);
-    const deathsSeries = seriesMonths.map((m) => deathsByMonth[m.key] ?? 0);
-    const salesSeries = seriesMonths.map((m) => salesByMonth[m.key] ?? 0);
-    const revenueSeries = seriesMonths.map((m) => revenueByMonth[m.key] ?? 0);
-    const vaccinesSeries = seriesMonths.map((m) => vaccinesByMonth[m.key] ?? 0);
+    const birthsSeries = seriesMonths.map((m) => {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      )
+        return 0;
+      return birthsByMonth[m.key] ?? 0;
+    });
+    const deathsSeries = seriesMonths.map((m) => {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      )
+        return 0;
+      return deathsByMonth[m.key] ?? 0;
+    });
+    const salesSeries = seriesMonths.map((m) => {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      )
+        return 0;
+      return salesByMonth[m.key] ?? 0;
+    });
+    const revenueSeries = seriesMonths.map((m) => {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      )
+        return 0;
+      return revenueByMonth[m.key] ?? 0;
+    });
+    const vaccinesSeries = seriesMonths.map((m) => {
+      if (
+        onboardingMonthKey &&
+        compareMonthKey(m.key, onboardingMonthKey) === -1
+      )
+        return 0;
+      return vaccinesByMonth[m.key] ?? 0;
+    });
 
     const birthRateSeries = birthsSeries.map((b, i) => {
       const base = evolution[i] ?? 0;
@@ -370,8 +437,7 @@ export class AnalyticsService {
       totalCattle > 0
         ? Math.max(0, 100 - (deathsThisMonth / totalCattle) * 100)
         : 0;
-    const herdGrowthPct =
-      startTotal > 0 ? ((totalCattle - startTotal) / startTotal) * 100 : 0;
+    const herdGrowthPct = 0;
     const avgSalePrice =
       salesThisMonth > 0 ? revenueThisMonth / salesThisMonth : 0;
 
@@ -471,9 +537,7 @@ export class AnalyticsService {
         },
         yearComparison: {
           current: evolution,
-          previous: evolution.map((v) =>
-            Math.max(0, v - totalDelta / monthsCount),
-          ),
+          previous: new Array(monthsCount).fill(0),
         },
         health: {
           vaccination: Math.round(vaccinationCompliance),

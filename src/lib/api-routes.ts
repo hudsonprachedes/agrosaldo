@@ -283,6 +283,9 @@ export const API_ROUTES = {
     COUPONS: '/admin/indicacao/cupons',
     // GET|POST /admin/indicacao/cupons
 
+    COUPONS_ID: '/admin/indicacao/cupons/:id',
+    // PATCH /admin/indicacao/cupons/:id
+
     REFERRERS: '/admin/indicacao/indicadores',
     // GET /admin/indicacao/indicadores
 
@@ -345,6 +348,14 @@ export const API_ROUTES = {
 
     AUDIT_LOGS: '/admin/auditoria',
     // GET /admin/auditoria
+
+    ACTIVITY_LOGS: '/admin/atividade',
+
+    ACTIVITY_LOGS_ARCHIVE: '/admin/atividade/arquivar',
+
+    ACTIVITY_LOGS_UNARCHIVE: '/admin/atividade/desarquivar',
+
+    ACTIVITY_LOGS_DELETE: '/admin/atividade/deletar',
 
     GET_TENANTS: '/admin/tenants',
     // GET /admin/tenants

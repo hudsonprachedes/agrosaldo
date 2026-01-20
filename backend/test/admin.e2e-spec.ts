@@ -92,15 +92,29 @@ describe('Admin (e2e)', () => {
       }),
       findUnique: jest.fn().mockResolvedValue(mockAdmin),
       findMany: jest.fn().mockResolvedValue([mockAdmin]),
+      count: jest.fn().mockResolvedValue(1),
     };
     (prismaService as any).propriedade = {
       findMany: jest.fn().mockResolvedValue(mockProperties),
       count: jest.fn().mockResolvedValue(2),
     };
 
+    (prismaService as any).pagamentoFinanceiro = {
+      findMany: jest.fn().mockResolvedValue([]),
+    };
+
     (prismaService as any).logAuditoria = {
       findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
       create: jest.fn().mockResolvedValue({ id: 'log-1' }),
+    };
+
+    (prismaService as any).logAtividade = {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+      create: jest.fn().mockResolvedValue({ id: 'activity-1' }),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     };
 
     (prismaService as any).solicitacaoPendente = {
@@ -222,7 +236,78 @@ describe('Admin (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 
-      expect(response.body).toBeInstanceOf(Array);
+      expect(response.body).toHaveProperty('items');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body).toHaveProperty('limit');
+      expect(response.body).toHaveProperty('offset');
+      expect(response.body.items).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('GET /admin/atividade', () => {
+    it('should return 401 without authentication', async () => {
+      await request(app.getHttpServer()).get('/admin/atividade').expect(401);
+    });
+
+    it('should return activity logs with authentication', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/atividade')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(200);
+
+      expect(response.body).toHaveProperty('items');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body).toHaveProperty('limit');
+      expect(response.body).toHaveProperty('offset');
+      expect(response.body.items).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('POST /admin/atividade/arquivar', () => {
+    it('should archive activity logs in bulk', async () => {
+      (prismaService as any).logAtividade.updateMany = jest
+        .fn()
+        .mockResolvedValue({ count: 2 });
+
+      const response = await request(app.getHttpServer())
+        .post('/admin/atividade/arquivar')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ids: ['a', 'b'] })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('updated', 2);
+    });
+  });
+
+  describe('POST /admin/atividade/desarquivar', () => {
+    it('should unarchive activity logs in bulk', async () => {
+      (prismaService as any).logAtividade.updateMany = jest
+        .fn()
+        .mockResolvedValue({ count: 1 });
+
+      const response = await request(app.getHttpServer())
+        .post('/admin/atividade/desarquivar')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ids: ['a'] })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('updated', 1);
+    });
+  });
+
+  describe('POST /admin/atividade/deletar', () => {
+    it('should delete activity logs in bulk', async () => {
+      (prismaService as any).logAtividade.deleteMany = jest
+        .fn()
+        .mockResolvedValue({ count: 3 });
+
+      const response = await request(app.getHttpServer())
+        .post('/admin/atividade/deletar')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ ids: ['a', 'b', 'c'] })
+        .expect(201);
+
+      expect(response.body).toHaveProperty('deleted', 3);
     });
   });
 

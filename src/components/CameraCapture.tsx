@@ -13,13 +13,16 @@ interface CameraCaptureProps {
 export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
 
   // Iniciar câmera
   const startCamera = useCallback(async () => {
     console.log('🎥 Tentando iniciar câmera...');
+    setCameraError(false);
     
     // Verificar se o navegador suporta getUserMedia
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -27,6 +30,7 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
       toast.error('Câmera não suportada', {
         description: 'Seu navegador não suporta acesso à câmera',
       });
+      setCameraError(true);
       return;
     }
 
@@ -68,6 +72,8 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
       toast.error(errorMessage, {
         description: errorDescription,
       });
+
+      setCameraError(true);
     }
   }, []);
 
@@ -79,6 +85,41 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
       setIsCameraActive(false);
     }
   }, [stream]);
+
+  const handleUploadFile = useCallback(async (file: File) => {
+    try {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Arquivo inválido', {
+          description: 'Selecione uma imagem (JPG/PNG) para continuar.',
+        });
+        return;
+      }
+
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('Falha ao ler arquivo'));
+        reader.readAsDataURL(file);
+      });
+
+      const originalSize = getDataURLSize(dataUrl);
+      const compressed = await compressImage(dataUrl, {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.8,
+      });
+      const compressedSize = getDataURLSize(compressed);
+      const reduction = Math.round(((originalSize - compressedSize) / originalSize) * 100);
+
+      setCapturedImage(compressed);
+      toast.success('Imagem enviada e comprimida', {
+        description: `${formatBytes(originalSize)} → ${formatBytes(compressedSize)} (${reduction}% menor)`,
+      });
+    } catch (error) {
+      console.error('Erro ao processar upload:', error);
+      toast.error('Não foi possível processar a imagem');
+    }
+  }, []);
 
   // Capturar foto
   const capturePhoto = useCallback(async () => {
@@ -181,11 +222,42 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
             />
           )}
 
-          {!capturedImage && !isCameraActive && (
+          {!capturedImage && !isCameraActive && !cameraError && (
             <div className="flex flex-col items-center gap-3 text-white p-8">
               <Camera className="w-16 h-16 opacity-50 animate-pulse" />
               <p className="text-sm opacity-75">Inicializando câmera...</p>
               <p className="text-xs opacity-50">Aguardando permissão</p>
+            </div>
+          )}
+
+          {!capturedImage && !isCameraActive && cameraError && (
+            <div className="flex flex-col items-center gap-3 text-white p-6 w-full">
+              <Camera className="w-12 h-12 opacity-50" />
+              <p className="text-sm opacity-75 text-center">Não foi possível acessar a câmera</p>
+              <p className="text-xs opacity-50 text-center">Envie uma imagem do arquivo como alternativa</p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    void handleUploadFile(file);
+                  }
+                  e.currentTarget.value = '';
+                }}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Selecionar arquivo
+              </Button>
             </div>
           )}
 
@@ -218,7 +290,7 @@ export default function CameraCapture({ onCapture, onCancel }: CameraCaptureProp
               <Button
                 type="button"
                 onClick={capturePhoto}
-                disabled={!isCameraActive}
+                disabled={!isCameraActive || cameraError}
                 size="lg"
                 className="flex-[2] bg-primary hover:bg-primary/90 min-w-0"
               >

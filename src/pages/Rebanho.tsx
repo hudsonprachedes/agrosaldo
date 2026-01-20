@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ApexOptions } from 'apexcharts';
 import { generatePDF, printReport, ReportData } from '@/lib/pdf-report-final';
 import { formatReportForWhatsApp, shareViaWhatsApp } from '@/lib/whatsapp-share';
@@ -691,99 +692,257 @@ export default function Rebanho() {
             Espelho Oficial do Rebanho
           </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-32">Faixa Etária</TableHead>
-                <TableHead className="text-center" colSpan={4}>Machos</TableHead>
-                <TableHead className="text-center" colSpan={4}>Fêmeas</TableHead>
-                <TableHead className="text-center">Total</TableHead>
-              </TableRow>
-              <TableRow>
-                <TableHead></TableHead>
-                <TableHead className="text-center text-xs">Anterior</TableHead>
-                <TableHead className="text-center text-xs text-success">Entradas</TableHead>
-                <TableHead className="text-center text-xs text-error">Saídas</TableHead>
-                <TableHead className="text-center text-xs font-bold">Atual</TableHead>
-                <TableHead className="text-center text-xs">Anterior</TableHead>
-                <TableHead className="text-center text-xs text-success">Entradas</TableHead>
-                <TableHead className="text-center text-xs text-error">Saídas</TableHead>
-                <TableHead className="text-center text-xs font-bold">Atual</TableHead>
-                <TableHead className="text-center text-xs font-bold">Atual</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedBalances.map((balance) => {
-                const ageGroup = ageGroups.find(g => g.id === balance.ageGroupId);
-                const totalCurrent = balance.male.currentBalance + balance.female.currentBalance;
-                
-                return (
-                  <TableRow key={balance.ageGroupId}>
-                    <TableCell className="font-medium">{ageGroup?.label}</TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {balance.male.previousBalance}
-                    </TableCell>
-                    <TableCell className="text-center text-success">
-                      +{balance.male.entries}
-                    </TableCell>
-                    <TableCell className="text-center text-error">
-                      -{balance.male.exits}
-                    </TableCell>
-                    <TableCell className="text-center font-bold">
-                      {balance.male.currentBalance}
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {balance.female.previousBalance}
-                    </TableCell>
-                    <TableCell className="text-center text-success">
-                      +{balance.female.entries}
-                    </TableCell>
-                    <TableCell className="text-center text-error">
-                      -{balance.female.exits}
-                    </TableCell>
-                    <TableCell className="text-center font-bold">
-                      {balance.female.currentBalance}
-                    </TableCell>
-                    <TableCell className="text-center font-bold text-primary">
-                      {totalCurrent}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {/* Totals Row */}
-              <TableRow className="bg-muted/50 font-bold">
-                <TableCell>TOTAL</TableCell>
-                <TableCell className="text-center">
-                  {balances.reduce((s, b) => s + b.male.previousBalance, 0)}
-                </TableCell>
-                <TableCell className="text-center text-success">
-                  +{balances.reduce((s, b) => s + b.male.entries, 0)}
-                </TableCell>
-                <TableCell className="text-center text-error">
-                  -{balances.reduce((s, b) => s + b.male.exits, 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {balances.reduce((s, b) => s + b.male.currentBalance, 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {balances.reduce((s, b) => s + b.female.previousBalance, 0)}
-                </TableCell>
-                <TableCell className="text-center text-success">
-                  +{balances.reduce((s, b) => s + b.female.entries, 0)}
-                </TableCell>
-                <TableCell className="text-center text-error">
-                  -{balances.reduce((s, b) => s + b.female.exits, 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  {balances.reduce((s, b) => s + b.female.currentBalance, 0)}
-                </TableCell>
-                <TableCell className="text-center text-primary text-lg">
-                  {totalCattle}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+        <CardContent className="md:overflow-x-auto">
+          <div className="space-y-4 md:hidden">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">Total atual</div>
+                  <div className="text-lg font-bold text-foreground">{totalCattle.toLocaleString('pt-BR')}</div>
+                </div>
+              </div>
+
+              <Accordion type="multiple" className="w-full">
+                {sortedBalances.map((balance) => {
+                  const ageGroup = ageGroups.find((g) => g.id === balance.ageGroupId);
+                  const totalCurrent = balance.male.currentBalance + balance.female.currentBalance;
+
+                  return (
+                    <AccordionItem key={balance.ageGroupId} value={balance.ageGroupId}>
+                      <AccordionTrigger className="no-underline">
+                        <div className="flex w-full items-center justify-between gap-3">
+                          <div className="text-left">
+                            <div className="font-medium text-foreground">{ageGroup?.label}</div>
+                            <div className="text-xs text-muted-foreground">Total atual</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-primary">{totalCurrent}</div>
+                            <div className="text-xs text-muted-foreground">cabeças</div>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="rounded-md border p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <div className="text-sm font-medium text-foreground">Machos</div>
+                              <div className="text-sm font-bold text-foreground">{balance.male.currentBalance}</div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="rounded bg-muted/30 p-2">
+                                <div className="text-muted-foreground">Anterior</div>
+                                <div className="font-medium text-foreground">{balance.male.previousBalance}</div>
+                              </div>
+                              <div className="rounded bg-muted/30 p-2">
+                                <div className="text-muted-foreground">Entradas</div>
+                                <div className="font-medium text-success">+{balance.male.entries}</div>
+                              </div>
+                              <div className="rounded bg-muted/30 p-2">
+                                <div className="text-muted-foreground">Saídas</div>
+                                <div className="font-medium text-error">-{balance.male.exits}</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-md border p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <div className="text-sm font-medium text-foreground">Fêmeas</div>
+                              <div className="text-sm font-bold text-foreground">{balance.female.currentBalance}</div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="rounded bg-muted/30 p-2">
+                                <div className="text-muted-foreground">Anterior</div>
+                                <div className="font-medium text-foreground">{balance.female.previousBalance}</div>
+                              </div>
+                              <div className="rounded bg-muted/30 p-2">
+                                <div className="text-muted-foreground">Entradas</div>
+                                <div className="font-medium text-success">+{balance.female.entries}</div>
+                              </div>
+                              <div className="rounded bg-muted/30 p-2">
+                                <div className="text-muted-foreground">Saídas</div>
+                                <div className="font-medium text-error">-{balance.female.exits}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+
+                <AccordionItem value="total">
+                  <AccordionTrigger className="no-underline">
+                    <div className="flex w-full items-center justify-between gap-3">
+                      <div className="text-left">
+                        <div className="font-bold text-foreground">TOTAL</div>
+                        <div className="text-xs text-muted-foreground">Resumo geral</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-primary">{totalCattle}</div>
+                        <div className="text-xs text-muted-foreground">cabeças</div>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="rounded-md border p-3">
+                        <div className="mb-2 text-sm font-medium text-foreground">Machos</div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="rounded bg-muted/30 p-2">
+                            <div className="text-muted-foreground">Anterior</div>
+                            <div className="font-medium text-foreground">
+                              {balances.reduce((s, b) => s + b.male.previousBalance, 0)}
+                            </div>
+                          </div>
+                          <div className="rounded bg-muted/30 p-2">
+                            <div className="text-muted-foreground">Entradas</div>
+                            <div className="font-medium text-success">
+                              +{balances.reduce((s, b) => s + b.male.entries, 0)}
+                            </div>
+                          </div>
+                          <div className="rounded bg-muted/30 p-2">
+                            <div className="text-muted-foreground">Saídas</div>
+                            <div className="font-medium text-error">
+                              -{balances.reduce((s, b) => s + b.male.exits, 0)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-sm">
+                          <div className="text-muted-foreground">Atual</div>
+                          <div className="font-bold text-foreground">
+                            {balances.reduce((s, b) => s + b.male.currentBalance, 0)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-md border p-3">
+                        <div className="mb-2 text-sm font-medium text-foreground">Fêmeas</div>
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="rounded bg-muted/30 p-2">
+                            <div className="text-muted-foreground">Anterior</div>
+                            <div className="font-medium text-foreground">
+                              {balances.reduce((s, b) => s + b.female.previousBalance, 0)}
+                            </div>
+                          </div>
+                          <div className="rounded bg-muted/30 p-2">
+                            <div className="text-muted-foreground">Entradas</div>
+                            <div className="font-medium text-success">
+                              +{balances.reduce((s, b) => s + b.female.entries, 0)}
+                            </div>
+                          </div>
+                          <div className="rounded bg-muted/30 p-2">
+                            <div className="text-muted-foreground">Saídas</div>
+                            <div className="font-medium text-error">
+                              -{balances.reduce((s, b) => s + b.female.exits, 0)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-sm">
+                          <div className="text-muted-foreground">Atual</div>
+                          <div className="font-bold text-foreground">
+                            {balances.reduce((s, b) => s + b.female.currentBalance, 0)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-32">Faixa Etária</TableHead>
+                  <TableHead className="text-center" colSpan={4}>Machos</TableHead>
+                  <TableHead className="text-center" colSpan={4}>Fêmeas</TableHead>
+                  <TableHead className="text-center">Total</TableHead>
+                </TableRow>
+                <TableRow>
+                  <TableHead></TableHead>
+                  <TableHead className="text-center text-xs">Anterior</TableHead>
+                  <TableHead className="text-center text-xs text-success">Entradas</TableHead>
+                  <TableHead className="text-center text-xs text-error">Saídas</TableHead>
+                  <TableHead className="text-center text-xs font-bold">Atual</TableHead>
+                  <TableHead className="text-center text-xs">Anterior</TableHead>
+                  <TableHead className="text-center text-xs text-success">Entradas</TableHead>
+                  <TableHead className="text-center text-xs text-error">Saídas</TableHead>
+                  <TableHead className="text-center text-xs font-bold">Atual</TableHead>
+                  <TableHead className="text-center text-xs font-bold">Atual</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedBalances.map((balance) => {
+                  const ageGroup = ageGroups.find(g => g.id === balance.ageGroupId);
+                  const totalCurrent = balance.male.currentBalance + balance.female.currentBalance;
+                  
+                  return (
+                    <TableRow key={balance.ageGroupId}>
+                      <TableCell className="font-medium">{ageGroup?.label}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {balance.male.previousBalance}
+                      </TableCell>
+                      <TableCell className="text-center text-success">
+                        +{balance.male.entries}
+                      </TableCell>
+                      <TableCell className="text-center text-error">
+                        -{balance.male.exits}
+                      </TableCell>
+                      <TableCell className="text-center font-bold">
+                        {balance.male.currentBalance}
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {balance.female.previousBalance}
+                      </TableCell>
+                      <TableCell className="text-center text-success">
+                        +{balance.female.entries}
+                      </TableCell>
+                      <TableCell className="text-center text-error">
+                        -{balance.female.exits}
+                      </TableCell>
+                      <TableCell className="text-center font-bold">
+                        {balance.female.currentBalance}
+                      </TableCell>
+                      <TableCell className="text-center font-bold text-primary">
+                        {totalCurrent}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {/* Totals Row */}
+                <TableRow className="bg-muted/50 font-bold">
+                  <TableCell>TOTAL</TableCell>
+                  <TableCell className="text-center">
+                    {balances.reduce((s, b) => s + b.male.previousBalance, 0)}
+                  </TableCell>
+                  <TableCell className="text-center text-success">
+                    +{balances.reduce((s, b) => s + b.male.entries, 0)}
+                  </TableCell>
+                  <TableCell className="text-center text-error">
+                    -{balances.reduce((s, b) => s + b.male.exits, 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {balances.reduce((s, b) => s + b.male.currentBalance, 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {balances.reduce((s, b) => s + b.female.previousBalance, 0)}
+                  </TableCell>
+                  <TableCell className="text-center text-success">
+                    +{balances.reduce((s, b) => s + b.female.entries, 0)}
+                  </TableCell>
+                  <TableCell className="text-center text-error">
+                    -{balances.reduce((s, b) => s + b.female.exits, 0)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {balances.reduce((s, b) => s + b.female.currentBalance, 0)}
+                  </TableCell>
+                  <TableCell className="text-center text-primary text-lg">
+                    {totalCattle}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -796,68 +955,119 @@ export default function Rebanho() {
               Espelho Oficial do Rebanho (Outras Espécies)
             </CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-48">Espécie</TableHead>
-                  <TableHead className="text-center">Saldo Anterior</TableHead>
-                  <TableHead className="text-center text-success">Entradas</TableHead>
-                  <TableHead className="text-center text-error">Saídas</TableHead>
-                  <TableHead className="text-center font-bold">Saldo Atual</TableHead>
-                  <TableHead className="text-center">Unidade</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <CardContent className="md:overflow-x-auto">
+            <div className="space-y-3 md:hidden">
                 {activeOtherSpeciesBalances.map((balance) => {
-                    const species = otherSpecies.find(s => s.id === balance.speciesId);
-                    return (
-                      <TableRow key={balance.speciesId}>
-                        <TableCell className="font-medium flex items-center gap-2">
+                  const species = otherSpecies.find((s) => s.id === balance.speciesId);
+                  return (
+                    <div key={balance.speciesId} className="rounded-lg border p-3">
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2">
                           <span className="text-xl">{species?.icon}</span>
-                          {balance.speciesName}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {balance.previousBalance}
-                        </TableCell>
-                        <TableCell className="text-center text-success">
-                          +{balance.entries}
-                        </TableCell>
-                        <TableCell className="text-center text-error">
-                          -{balance.exits}
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-primary">
-                          {balance.currentBalance}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {balance.unit}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                {/* Totals Row */}
-                <TableRow className="bg-muted/50 font-bold">
-                  <TableCell>TOTAL</TableCell>
-                  <TableCell className="text-center">
-                    {activeOtherSpeciesBalances
-                      .reduce((s, b) => s + b.previousBalance, 0)}
-                  </TableCell>
-                  <TableCell className="text-center text-success">
-                    +{activeOtherSpeciesBalances
-                      .reduce((s, b) => s + b.entries, 0)}
-                  </TableCell>
-                  <TableCell className="text-center text-error">
-                    -{activeOtherSpeciesBalances
-                      .reduce((s, b) => s + b.exits, 0)}
-                  </TableCell>
-                  <TableCell className="text-center text-primary text-lg">
-                    {activeOtherSpeciesBalances
-                      .reduce((s, b) => s + b.currentBalance, 0)}
-                  </TableCell>
-                  <TableCell></TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+                          <div>
+                            <div className="font-medium text-foreground">{balance.speciesName}</div>
+                            <div className="text-xs text-muted-foreground">Unidade: {balance.unit}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground">Saldo atual</div>
+                          <div className="text-lg font-bold text-primary">{balance.currentBalance}</div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="rounded bg-muted/30 p-2">
+                          <div className="text-muted-foreground">Anterior</div>
+                          <div className="font-medium text-foreground">{balance.previousBalance}</div>
+                        </div>
+                        <div className="rounded bg-muted/30 p-2">
+                          <div className="text-muted-foreground">Entradas</div>
+                          <div className="font-medium text-success">+{balance.entries}</div>
+                        </div>
+                        <div className="rounded bg-muted/30 p-2">
+                          <div className="text-muted-foreground">Saídas</div>
+                          <div className="font-medium text-error">-{balance.exits}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div className="rounded-lg border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-foreground">TOTAL</div>
+                      <div className="text-xs text-muted-foreground">Saldo atual</div>
+                    </div>
+                    <div className="text-lg font-bold text-primary">
+                      {activeOtherSpeciesBalances.reduce((s, b) => s + b.currentBalance, 0)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-48">Espécie</TableHead>
+                    <TableHead className="text-center">Saldo Anterior</TableHead>
+                    <TableHead className="text-center text-success">Entradas</TableHead>
+                    <TableHead className="text-center text-error">Saídas</TableHead>
+                    <TableHead className="text-center font-bold">Saldo Atual</TableHead>
+                    <TableHead className="text-center">Unidade</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeOtherSpeciesBalances.map((balance) => {
+                      const species = otherSpecies.find(s => s.id === balance.speciesId);
+                      return (
+                        <TableRow key={balance.speciesId}>
+                          <TableCell className="font-medium flex items-center gap-2">
+                            <span className="text-xl">{species?.icon}</span>
+                            {balance.speciesName}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {balance.previousBalance}
+                          </TableCell>
+                          <TableCell className="text-center text-success">
+                            +{balance.entries}
+                          </TableCell>
+                          <TableCell className="text-center text-error">
+                            -{balance.exits}
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-primary">
+                            {balance.currentBalance}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {balance.unit}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {/* Totals Row */}
+                  <TableRow className="bg-muted/50 font-bold">
+                    <TableCell>TOTAL</TableCell>
+                    <TableCell className="text-center">
+                      {activeOtherSpeciesBalances
+                        .reduce((s, b) => s + b.previousBalance, 0)}
+                    </TableCell>
+                    <TableCell className="text-center text-success">
+                      +{activeOtherSpeciesBalances
+                        .reduce((s, b) => s + b.entries, 0)}
+                    </TableCell>
+                    <TableCell className="text-center text-error">
+                      -{activeOtherSpeciesBalances
+                        .reduce((s, b) => s + b.exits, 0)}
+                    </TableCell>
+                    <TableCell className="text-center text-primary text-lg">
+                      {activeOtherSpeciesBalances
+                        .reduce((s, b) => s + b.currentBalance, 0)}
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}

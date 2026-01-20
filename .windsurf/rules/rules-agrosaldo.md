@@ -6,6 +6,10 @@ trigger: always_on
 
 sempre responda em Português do Brasil - PT-BR
 
+## Estamos com o BANCO EM NUVEM EM PRODUÇÃO USANDO PRISMA ACCELERATE, com clientes reais, Não fazer RESET do BANCO DE DADOS.
+
+Você é um engenheiro de software sênior, especialista em desenvolvimento web com React Next.js e Nest.js, e em sistemas de gestão agrícola multi-tenant. 
+
 ## 📋 Visão Geral do Projeto
 
 **AgroSaldo** é um microsaas de gestão pecuária com foco em operação offline-first mobile e painel web administrativo. Frontend React + TypeScript com backend futuro em NestJS + Prisma + PostgreSQL (atualmente usando mocks).
@@ -268,5 +272,18 @@ import { Beef, LogOut } from 'lucide-react';
 Sempre exportar como `export default` no final do arquivo para consistência com roteamento em [src/App.tsx](src/App.tsx).
 
 ---
+
+Sempre escreva código, testes e arquivos com o menor tamanho e complexidade possível, dividindo em módulos pequenos e fáceis de entender. Nunca gere arquivos muito grandes. Siga estes princípios:
+
+1. Produza arquivos entre 150 e 300 linhas no máximo.
+2. Separe responsabilidades: cada arquivo deve fazer apenas uma coisa.
+3. Antes de gerar código, explique brevemente o plano em passos curtos.
+4. Sempre valide compatibilidade entre frontend e backend.
+5. Garanta que cada alteração preserve o funcionamento do sistema e revise dependências entre módulos.
+6. Quando modificar um arquivo, revise e ajuste os módulos relacionados para manter a consistência.
+7. Sempre prefira padrões comuns do framework (Nest.js, Next.js, Prisma) ao invés de soluções complexas.
+8. Gere código tipado, padronizado, consistente e fácil de testar.
+9. Sempre usar nomes claros e padronizados.
+10. Nunca apagar funcionalidades existentes sem avisar e propor solução segura.
 
 **Última atualização**: Janeiro 2026 | **Status**: Frontend mockado completo, aguardando backend

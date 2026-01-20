@@ -31,18 +31,20 @@ export class SubscriptionsService {
 
     if (!latest) return null;
 
-    const propAgg = await this.prisma.propriedade.aggregate({
-      _sum: { quantidadeGado: true },
+    const cattleAgg = await this.prisma.rebanho.aggregate({
+      _sum: { cabecas: true },
       where: {
-        usuarios: {
-          some: {
-            usuarioId: userId,
+        propriedade: {
+          usuarios: {
+            some: {
+              usuarioId: userId,
+            },
           },
         },
-      },
+      } as any,
     });
 
-    const totalCattle = propAgg._sum?.quantidadeGado ?? 0;
+    const totalCattle = cattleAgg._sum?.cabecas ?? 0;
     const requiredPlan = this.getRequiredPlanByTotalCattle(totalCattle);
 
     const currentRank = this.getPlanRank(latest.plano as any);
@@ -84,17 +86,19 @@ export class SubscriptionsService {
       throw new ForbiddenException('Assinatura não está ativa');
     }
 
-    const propAgg = await this.prisma.propriedade.aggregate({
-      _sum: { quantidadeGado: true },
+    const cattleAgg = await this.prisma.rebanho.aggregate({
+      _sum: { cabecas: true },
       where: {
-        usuarios: {
-          some: {
-            usuarioId: userId,
+        propriedade: {
+          usuarios: {
+            some: {
+              usuarioId: userId,
+            },
           },
         },
-      },
+      } as any,
     });
-    const totalCattle = propAgg._sum?.quantidadeGado ?? 0;
+    const totalCattle = cattleAgg._sum?.cabecas ?? 0;
 
     const requiredPlan = this.getRequiredPlanByTotalCattle(totalCattle);
     const requiredRank = this.getPlanRank(requiredPlan);

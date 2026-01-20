@@ -12,6 +12,7 @@ import {
   Wallet,
   Users,
   MessageCircle,
+  ShieldAlert,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,11 @@ export default function MobileHome() {
   const previousEvolution = dashboard.charts.evolution[dashboard.charts.evolution.length - 2] ?? 0;
   const evolutionDelta = latestEvolution - previousEvolution;
   const netChangeThisMonth = monthlyBirths - monthlyDeaths;
+
+  const pendingComplianceCount = compliance.filter((item) => item.percentage < 95).length;
+  const nextCompliance = compliance
+    .filter((item) => item.percentage < 95)
+    .sort((a, b) => a.percentage - b.percentage)[0];
 
   void monthlyPurchases;
 
@@ -277,6 +283,19 @@ export default function MobileHome() {
       {/* Compliance Cards */}
       <div className="px-4 space-y-3 pb-4">
         <div className="grid grid-cols-2 gap-3 pt-2">
+          <Card className="border-0 shadow-sm bg-muted/30">
+            <CardContent className="p-3 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-warning" />
+                <span className="text-xs text-muted-foreground">Pendências sanitárias</span>
+              </div>
+              <div className="text-2xl font-bold text-foreground mt-1">{pendingComplianceCount}</div>
+              <p className="text-[11px] text-muted-foreground mt-1 truncate">
+                {nextCompliance ? `Próximo: ${nextCompliance.category}` : 'Tudo em dia'}
+              </p>
+            </CardContent>
+          </Card>
+
           {compliance.slice(0, 4).map((item, index) => (
             (() => {
               const status = item.percentage >= 95 ? 'ok' : item.percentage >= 80 ? 'warning' : 'error';

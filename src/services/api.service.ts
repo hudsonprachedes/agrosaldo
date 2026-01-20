@@ -455,6 +455,8 @@ export interface AdminReferrer {
   name?: string;
   codigo?: string;
   code?: string;
+  cpfCnpj?: string;
+  telefone?: string;
   indicacoes?: number;
   referrals?: number;
   comissaoTotal?: number;
@@ -559,6 +561,29 @@ export interface AuditLog {
   ip: string;
   timestamp: string;
   dataHora?: string; // Backend usa dataHora
+}
+
+export type PaginatedResult<T> = {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export interface ActivityLog {
+  id: string;
+  usuarioId?: string | null;
+  usuarioNome?: string | null;
+  evento: string;
+  status: string;
+  detalhes?: string | null;
+  metodo?: string | null;
+  rota?: string | null;
+  codigoHttp?: number | null;
+  duracaoMs?: number | null;
+  ip?: string | null;
+  arquivadoEm?: string | null;
+  dataHora: string;
 }
 
 type AuditLogBackendLike = AuditLog & {
@@ -690,21 +715,75 @@ export const adminService = {
     return apiClient.post<PixConfig>(API_ROUTES.ADMIN.PIX_CONFIG, data);
   },
 
-  async getAuditLogs(userId?: string): Promise<AuditLog[]> {
-    const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
-    const logs = await apiClient.get<AuditLog[]>(`${API_ROUTES.ADMIN.AUDIT_LOGS}${params}`);
-    // Mapear dataHora para timestamp se necessário, ou ajustar a interface
-    return logs.map((log) => {
-      const maybe = log as unknown as AuditLogBackendLike;
-      return {
-        ...log,
-        timestamp: maybe.dataHora ?? log.timestamp,
-        userId: maybe.usuarioId ?? log.userId,
-        userName: maybe.usuarioNome ?? log.userName,
-        action: maybe.acao ?? log.action,
-        details: maybe.detalhes ?? log.details,
-      };
-    });
+  async getAuditLogs(params?: {
+    userId?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<PaginatedResult<AuditLog>> {
+    const qs = new URLSearchParams();
+    if (params?.userId) qs.set('userId', params.userId);
+    if (params?.action) qs.set('action', params.action);
+    if (params?.startDate) qs.set('startDate', params.startDate);
+    if (params?.endDate) qs.set('endDate', params.endDate);
+    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+    if (typeof params?.offset === 'number') qs.set('offset', String(params.offset));
+
+    const url = `${API_ROUTES.ADMIN.AUDIT_LOGS}${qs.toString() ? `?${qs.toString()}` : ''}`;
+    const resp = await apiClient.get<PaginatedResult<AuditLog>>(url);
+
+    return {
+      ...resp,
+      items: resp.items.map((log) => {
+        const maybe = log as unknown as AuditLogBackendLike;
+        return {
+          ...log,
+          timestamp: maybe.dataHora ?? log.timestamp,
+          userId: maybe.usuarioId ?? log.userId,
+          userName: maybe.usuarioNome ?? log.userName,
+          action: maybe.acao ?? log.action,
+          details: maybe.detalhes ?? log.details,
+        };
+      }),
+    };
+  },
+
+  async getActivityLogs(params?: {
+    tenantId?: string;
+    event?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    includeArchived?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<PaginatedResult<ActivityLog>> {
+    const qs = new URLSearchParams();
+    if (params?.tenantId) qs.set('tenantId', params.tenantId);
+    if (params?.event) qs.set('event', params.event);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.startDate) qs.set('startDate', params.startDate);
+    if (params?.endDate) qs.set('endDate', params.endDate);
+    if (params?.includeArchived) qs.set('includeArchived', 'true');
+    if (typeof params?.limit === 'number') qs.set('limit', String(params.limit));
+    if (typeof params?.offset === 'number') qs.set('offset', String(params.offset));
+
+    const url = `${API_ROUTES.ADMIN.ACTIVITY_LOGS}${qs.toString() ? `?${qs.toString()}` : ''}`;
+    return apiClient.get<PaginatedResult<ActivityLog>>(url);
+  },
+
+  async archiveActivityLogs(ids: string[]): Promise<{ updated: number }> {
+    return apiClient.post<{ updated: number }>(API_ROUTES.ADMIN.ACTIVITY_LOGS_ARCHIVE, { ids });
+  },
+
+  async unarchiveActivityLogs(ids: string[]): Promise<{ updated: number }> {
+    return apiClient.post<{ updated: number }>(API_ROUTES.ADMIN.ACTIVITY_LOGS_UNARCHIVE, { ids });
+  },
+
+  async deleteActivityLogs(ids: string[]): Promise<{ deleted: number }> {
+    return apiClient.post<{ deleted: number }>(API_ROUTES.ADMIN.ACTIVITY_LOGS_DELETE, { ids });
   },
 
   async getRequests(): Promise<unknown[]> {
@@ -751,8 +830,23 @@ export const adminService = {
     return apiClient.get<AdminCoupon[]>(API_ROUTES.ADMIN.COUPONS);
   },
 
-  async createCoupon(data: { code: string; type: string; value: number; maxUsage?: number | null; commission?: number; createdBy?: string; status?: string }): Promise<AdminCoupon> {
+  async createCoupon(data: {
+    code: string;
+    type: string;
+    value: number;
+    maxUsage?: number | null;
+    commission?: number;
+    createdBy?: string;
+    status?: string;
+    referrerName?: string;
+    referrerCpfCnpj?: string;
+    referrerPhone?: string;
+  }): Promise<AdminCoupon> {
     return apiClient.post<AdminCoupon>(API_ROUTES.ADMIN.COUPONS, data);
+  },
+
+  async updateCoupon(id: string, data: Partial<{ status: string }>): Promise<AdminCoupon> {
+    return apiClient.patch<AdminCoupon>(API_ROUTES.ADMIN.COUPONS_ID.replace(':id', id), data);
   },
 
   async listReferrers(): Promise<AdminReferrer[]> {

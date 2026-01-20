@@ -243,8 +243,8 @@ export default function AdminClientes() {
     setHistoryDialog(true);
     void (async () => {
       try {
-        const logs = await adminService.getAuditLogs(tenant.id);
-        const mapped: ActionLog[] = logs.map((l: AuditLog) => ({
+        const resp = await adminService.getAuditLogs({ userId: tenant.id, limit: 100, offset: 0 });
+        const mapped: ActionLog[] = resp.items.map((l: AuditLog) => ({
           timestamp: new Date(l.timestamp),
           action: l.action,
           adminUser: l.userName,
@@ -381,10 +381,12 @@ export default function AdminClientes() {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
 
-    return date.toLocaleDateString('pt-BR', {
+    return date.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 

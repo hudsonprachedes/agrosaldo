@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   TrendingUp,
+  Power,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,9 @@ export default function AdminIndicacao() {
   const [newValue, setNewValue] = useState<number>(10);
   const [newMaxUsage, setNewMaxUsage] = useState<number | ''>('');
   const [newCommission, setNewCommission] = useState<number>(0);
+  const [newReferrerName, setNewReferrerName] = useState('');
+  const [newReferrerCpfCnpj, setNewReferrerCpfCnpj] = useState('');
+  const [newReferrerPhone, setNewReferrerPhone] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -85,6 +89,21 @@ export default function AdminIndicacao() {
       return;
     }
 
+    if (newType === 'referral' && !newReferrerName.trim()) {
+      toast.error('Informe o nome do indicador');
+      return;
+    }
+
+    if (newType === 'referral' && !newReferrerCpfCnpj.trim()) {
+      toast.error('Informe o CPF/CNPJ do indicador');
+      return;
+    }
+
+    if (newType === 'referral' && !newReferrerPhone.trim()) {
+      toast.error('Informe o telefone do indicador');
+      return;
+    }
+
     try {
       const created = await adminService.createCoupon({
         code: newCode.trim().toUpperCase(),
@@ -93,6 +112,13 @@ export default function AdminIndicacao() {
         maxUsage: newMaxUsage === '' ? null : Number(newMaxUsage),
         commission: newType === 'referral' ? Number(newCommission) : 0,
         status: 'active',
+        ...(newType === 'referral'
+          ? {
+              referrerName: newReferrerName.trim(),
+              referrerCpfCnpj: newReferrerCpfCnpj.trim() || undefined,
+              referrerPhone: newReferrerPhone.trim() || undefined,
+            }
+          : {}),
       });
       setCoupons([created, ...coupons]);
       toast.success('Cupom criado com sucesso!');
@@ -102,9 +128,25 @@ export default function AdminIndicacao() {
       setNewValue(10);
       setNewMaxUsage('');
       setNewCommission(0);
+      setNewReferrerName('');
+      setNewReferrerCpfCnpj('');
+      setNewReferrerPhone('');
     } catch (error) {
       console.error('Erro ao criar cupom:', error);
       toast.error('Erro ao criar cupom');
+    }
+  };
+
+  const toggleCouponStatus = async (coupon: AdminCoupon) => {
+    const current = String(coupon.status ?? 'active').toLowerCase();
+    const nextStatus = current === 'active' ? 'inactive' : 'active';
+    try {
+      const updated = await adminService.updateCoupon(coupon.id, { status: nextStatus });
+      setCoupons((prev) => prev.map((c) => (c.id === coupon.id ? { ...c, ...updated } : c)));
+      toast.success(nextStatus === 'active' ? 'Cupom ativado' : 'Cupom desativado');
+    } catch (error) {
+      console.error('Erro ao atualizar cupom:', error);
+      toast.error('Erro ao atualizar cupom');
     }
   };
 
@@ -143,6 +185,13 @@ export default function AdminIndicacao() {
     const code = String(u.coupon ?? '').trim().toUpperCase();
     if (!code) return acc;
     acc[code] = (acc[code] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const referrerByCode = referrers.reduce<Record<string, AdminReferrer>>((acc, r) => {
+    const code = String(r.code ?? r.codigo ?? '').trim().toUpperCase();
+    if (!code) return acc;
+    acc[code] = r;
     return acc;
   }, {});
 
@@ -198,9 +247,25 @@ export default function AdminIndicacao() {
                 <Input type="number" placeholder="100" value={newMaxUsage === '' ? '' : String(newMaxUsage)} onChange={(e) => setNewMaxUsage(e.target.value === '' ? '' : Number(e.target.value))} />
               </div>
               {newType === 'referral' && (
-                <div className="space-y-2">
-                  <Label>Comissão (%)</Label>
-                  <Input type="number" placeholder="15" value={String(newCommission)} onChange={(e) => setNewCommission(Number(e.target.value))} />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nome do Indicador</Label>
+                    <Input placeholder="Ex: João Silva" value={newReferrerName} onChange={(e) => setNewReferrerName(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>CPF/CNPJ</Label>
+                      <Input placeholder="Ex: 123.456.789-00" value={newReferrerCpfCnpj} onChange={(e) => setNewReferrerCpfCnpj(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Telefone</Label>
+                      <Input placeholder="Ex: (11) 99999-9999" value={newReferrerPhone} onChange={(e) => setNewReferrerPhone(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Comissão (%)</Label>
+                    <Input type="number" placeholder="15" value={String(newCommission)} onChange={(e) => setNewCommission(Number(e.target.value))} />
+                  </div>
                 </div>
               )}
               <Button className="w-full" onClick={() => {
@@ -246,6 +311,7 @@ export default function AdminIndicacao() {
                 <TableHead>Desconto</TableHead>
                 <TableHead>Uso</TableHead>
                 <TableHead>Comissão</TableHead>
+                <TableHead>Indicador</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -259,7 +325,12 @@ export default function AdminIndicacao() {
                   const type = (coupon.type ?? coupon.tipo ?? '').toLowerCase();
                   return code.includes(term) || type.includes(term);
                 })
-                .map((coupon) => (
+                .map((coupon) => {
+                  const code = String(coupon.code ?? coupon.codigo ?? '').trim().toUpperCase();
+                  const referrer = referrerByCode[code];
+                  const status = String(coupon.status ?? 'active').toLowerCase();
+                  const isActive = status === 'active';
+                  return (
                 <TableRow key={coupon.id}>
                   <TableCell className="font-mono font-bold">{coupon.code ?? coupon.codigo}</TableCell>
                   <TableCell>
@@ -275,19 +346,46 @@ export default function AdminIndicacao() {
                     {(coupon.commission ?? coupon.comissao ?? 0) > 0 ? `${coupon.commission ?? coupon.comissao}%` : '-'}
                   </TableCell>
                   <TableCell>
-                    <Badge className="bg-success/10 text-success">Ativo</Badge>
+                    {referrer ? (
+                      <div className="text-sm">
+                        <div className="font-medium">{referrer.name ?? referrer.nome}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {[referrer.cpfCnpj, referrer.telefone].filter(Boolean).join(' • ') || '-'}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">-</span>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => copyToClipboard(String(coupon.code ?? coupon.codigo ?? ''))}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
+                    {isActive ? (
+                      <Badge className="bg-success/10 text-success">Ativo</Badge>
+                    ) : (
+                      <Badge className="bg-muted text-muted-foreground">Inativo</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => void toggleCouponStatus(coupon)}
+                        title={isActive ? 'Desativar cupom' : 'Ativar cupom'}
+                      >
+                        <Power className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => copyToClipboard(String(coupon.code ?? coupon.codigo ?? ''))}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              );
+              })}
             </TableBody>
           </Table>
         </CardContent>
@@ -304,6 +402,8 @@ export default function AdminIndicacao() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Código</TableHead>
+                <TableHead>CPF/CNPJ</TableHead>
+                <TableHead>Telefone</TableHead>
                 <TableHead>Indicações</TableHead>
                 <TableHead>Comissão Total</TableHead>
                 <TableHead>Pendente</TableHead>
@@ -315,6 +415,8 @@ export default function AdminIndicacao() {
                 <TableRow key={referrer.id}>
                   <TableCell className="font-medium">{referrer.name ?? referrer.nome}</TableCell>
                   <TableCell className="font-mono">{referrer.code ?? referrer.codigo}</TableCell>
+                  <TableCell className="font-mono">{referrer.cpfCnpj || '-'}</TableCell>
+                  <TableCell className="font-mono">{referrer.telefone || '-'}</TableCell>
                   <TableCell>{referrer.referrals ?? referrer.indicacoes}</TableCell>
                   <TableCell className="text-success font-medium">
                     R$ {(referrer.totalCommission ?? referrer.comissaoTotal ?? 0).toLocaleString('pt-BR')}

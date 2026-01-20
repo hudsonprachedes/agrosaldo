@@ -76,7 +76,12 @@ interface StockInputProps {
 }
 
 function StockInput({ species, sex, ageGroupId, label, control, errors }: StockInputProps) {
-  const fieldName = `${species}_${sex}_${ageGroupId.replace(/\D/g, '')}` as keyof StockFormValues;
+  const ageKey = (() => {
+    if (ageGroupId === '36+m') return '36m';
+    return ageGroupId.replace('-', '_');
+  })();
+
+  const fieldName = `${species}_${sex}_${ageKey}` as keyof StockFormValues;
 
   return (
     <FormField
@@ -559,8 +564,13 @@ function parseStockKey(key: string): [string, string, string] {
   const parts = key.split('_');
   const species = parts[0]; // bovino ou bubalino
   const sex = parts[1]; // male ou female
-  const ageGroupId = `${parts[2]}-${parts[3]}m`; // ex: 0-4m
 
+  const rawAge = parts.slice(2).join('_');
+  if (rawAge === '36m') {
+    return [species, sex, '36+m'];
+  }
+
+  const ageGroupId = rawAge.replace('_', '-');
   return [species, sex, ageGroupId];
 }
 

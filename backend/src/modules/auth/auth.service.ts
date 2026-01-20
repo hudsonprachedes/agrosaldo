@@ -378,6 +378,8 @@ export class AuthService {
     }
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const onboardingDate = new Date();
+
       const rel = await tx.usuarioPropriedade.findUnique({
         where: {
           usuarioId_propriedadeId: {
@@ -427,6 +429,24 @@ export class AuthService {
             cabecas: b.quantity,
           })),
         });
+
+        await tx.movimento.createMany({
+          data: normalized.map((b) => ({
+            propriedadeId: propertyId,
+            tipo: 'ajuste' as any,
+            especie: b.species,
+            data: onboardingDate,
+            quantidade: b.quantity,
+            sexo: b.sex as any,
+            faixaEtaria: b.ageGroupId,
+            descricao: '[SISTEMA] Saldo inicial (onboarding)',
+            destino: null,
+            valor: null,
+            numeroGta: null,
+            fotoUrl: null,
+            causa: null,
+          })) as any,
+        });
       }
 
       const totalCattle = normalized
@@ -440,7 +460,7 @@ export class AuthService {
 
       return tx.usuario.update({
         where: { id: userId },
-        data: { onboardingConcluidoEm: new Date() } as any,
+        data: { onboardingConcluidoEm: onboardingDate } as any,
       });
     });
 

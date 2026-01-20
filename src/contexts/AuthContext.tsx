@@ -241,6 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('agrosaldo_property_id');
     localStorage.removeItem('agrosaldo_admin_token_before_impersonation');
     localStorage.removeItem('agrosaldo_is_impersonating');
+    sessionStorage.removeItem('agrosaldo_skip_onboarding_once');
   };
 
   const selectProperty = (propertyOrId: PropertyDTO | string) => {
