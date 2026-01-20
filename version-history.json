@@ -1,5 +1,17 @@
 [
   {
+    "version": "0.0.2.0",
+    "date": "2026-01-20",
+    "changes": [
+      "🔧 chore: atualiza versionamento automático [skip ci]",
+      "🔧 Atualização de regras, logs de atividade e melhorias no painel administrativo",
+      "🔧 onboarding",
+      "🔧 versao",
+      "🔧 regulamentacoes"
+    ],
+    "type": "patch"
+  },
+  {
     "version": "0.0.1.0",
     "date": "2026-01-20",
     "changes": [
