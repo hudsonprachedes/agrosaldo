@@ -876,7 +876,20 @@ export const adminService = {
     return apiClient.post<AdminCoupon>(API_ROUTES.ADMIN.COUPONS, data);
   },
 
-  async updateCoupon(id: string, data: Partial<{ status: string }>): Promise<AdminCoupon> {
+  async updateCoupon(
+    id: string,
+    data: Partial<{
+      code: string;
+      type: string;
+      value: number;
+      maxUsage?: number | null;
+      commission?: number;
+      status?: string;
+      referrerName?: string;
+      referrerCpfCnpj?: string;
+      referrerPhone?: string;
+    }>,
+  ): Promise<AdminCoupon> {
     return apiClient.patch<AdminCoupon>(API_ROUTES.ADMIN.COUPONS_ID.replace(':id', id), data);
   },
 

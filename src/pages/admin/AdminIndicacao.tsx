@@ -8,6 +8,7 @@ import {
   Search,
   TrendingUp,
   Power,
+  Pencil,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import { useAdminCreateCoupon, useAdminUpdateCoupon } from '@/hooks/mutations/ad
 export default function AdminIndicacao() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<AdminCoupon | null>(null);
 
   const couponsQuery = useAdminCoupons();
   const referrersQuery = useAdminReferrers();
@@ -75,7 +77,19 @@ export default function AdminIndicacao() {
     toast.success('Cupom copiado!');
   };
 
-  const handleCreateCoupon = async () => {
+  const resetForm = () => {
+    setEditingCoupon(null);
+    setNewCode('');
+    setNewType('discount');
+    setNewValue(10);
+    setNewMaxUsage('');
+    setNewCommission(0);
+    setNewReferrerName('');
+    setNewReferrerCpfCnpj('');
+    setNewReferrerPhone('');
+  };
+
+  const handleSaveCoupon = async () => {
     if (!newCode.trim()) {
       toast.error('Informe o código do cupom');
       return;
@@ -97,34 +111,38 @@ export default function AdminIndicacao() {
     }
 
     try {
-      await createCoupon.mutateAsync({
+      const payload = {
         code: newCode.trim().toUpperCase(),
         type: newType,
         value: Number(newValue),
         maxUsage: newMaxUsage === '' ? null : Number(newMaxUsage),
         commission: newType === 'referral' ? Number(newCommission) : 0,
-        status: 'active',
         ...(newType === 'referral'
           ? {
               referrerName: newReferrerName.trim(),
               referrerCpfCnpj: newReferrerCpfCnpj.trim() || undefined,
               referrerPhone: newReferrerPhone.trim() || undefined,
             }
-          : {}),
-      });
-      toast.success('Cupom criado com sucesso!');
+          : {
+              referrerName: undefined,
+              referrerCpfCnpj: undefined,
+              referrerPhone: undefined,
+            }),
+      } as const;
+
+      if (editingCoupon) {
+        await updateCoupon.mutateAsync({ id: editingCoupon.id, data: payload });
+        toast.success('Cupom atualizado com sucesso!');
+      } else {
+        await createCoupon.mutateAsync({ ...payload, status: 'active' });
+        toast.success('Cupom criado com sucesso!');
+      }
+
       setDialogOpen(false);
-      setNewCode('');
-      setNewType('discount');
-      setNewValue(10);
-      setNewMaxUsage('');
-      setNewCommission(0);
-      setNewReferrerName('');
-      setNewReferrerCpfCnpj('');
-      setNewReferrerPhone('');
+      resetForm();
     } catch (error) {
-      console.error('Erro ao criar cupom:', error);
-      toast.error('Erro ao criar cupom');
+      console.error('Erro ao salvar cupom:', error);
+      toast.error('Erro ao salvar cupom');
     }
   };
 
@@ -207,7 +225,15 @@ export default function AdminIndicacao() {
           </p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              resetForm();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -216,9 +242,11 @@ export default function AdminIndicacao() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Criar Novo Cupom</DialogTitle>
+              <DialogTitle>{editingCoupon ? 'Editar Cupom' : 'Criar Novo Cupom'}</DialogTitle>
               <DialogDescription>
-                Crie um cupom de desconto ou de indicação para compartilhar com seus clientes.
+                {editingCoupon
+                  ? 'Atualize os dados do cupom selecionado.'
+                  : 'Crie um cupom de desconto ou de indicação para compartilhar com seus clientes.'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -267,10 +295,13 @@ export default function AdminIndicacao() {
                   </div>
                 </div>
               )}
-              <Button className="w-full" onClick={() => {
-                void handleCreateCoupon();
-              }}>
-                Criar Cupom
+              <Button
+                className="w-full"
+                onClick={() => {
+                  void handleSaveCoupon();
+                }}
+              >
+                {editingCoupon ? 'Salvar Alterações' : 'Criar Cupom'}
               </Button>
             </div>
           </DialogContent>
@@ -368,6 +399,31 @@ export default function AdminIndicacao() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => {
+                          setEditingCoupon(coupon);
+                          setDialogOpen(true);
+                          setNewCode(String(coupon.code ?? coupon.codigo ?? ''));
+                          setNewType((coupon.type ?? coupon.tipo ?? 'discount') as 'discount' | 'referral');
+                          setNewValue(Number(coupon.value ?? coupon.valor ?? 0));
+                          setNewMaxUsage(
+                            coupon.maxUsage !== undefined && coupon.maxUsage !== null
+                              ? coupon.maxUsage
+                              : coupon.maxUso !== undefined && coupon.maxUso !== null
+                                ? coupon.maxUso
+                                : ''
+                          );
+                          setNewCommission(Number(coupon.commission ?? coupon.comissao ?? 0));
+                          setNewReferrerName(referrer?.name ?? referrer?.nome ?? '');
+                          setNewReferrerCpfCnpj(referrer?.cpfCnpj ?? '');
+                          setNewReferrerPhone(referrer?.telefone ?? '');
+                        }}
+                        title="Editar cupom"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => void toggleCouponStatus(coupon)}
                         title={isActive ? 'Desativar cupom' : 'Ativar cupom'}
                       >
@@ -445,6 +501,7 @@ export default function AdminIndicacao() {
                 <TableHead>Cupom</TableHead>
                 <TableHead>CPF/CNPJ</TableHead>
                 <TableHead>Data do Pagamento</TableHead>
+                <TableHead>Comissão</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -454,6 +511,13 @@ export default function AdminIndicacao() {
                   <TableCell className="font-mono">{u.cpfCnpj}</TableCell>
                   <TableCell>
                     {u.paidAt ? new Date(u.paidAt).toLocaleDateString('pt-BR') : '-'}
+                  </TableCell>
+                  <TableCell>
+                    {u.paidAt ? (
+                      <Badge className="bg-success/10 text-success">Liberada</Badge>
+                    ) : (
+                      <Badge className="bg-warning/10 text-warning">Pendente</Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
